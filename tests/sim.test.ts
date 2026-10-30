@@ -86,3 +86,17 @@ describe('echo keys used by events all have handlers', () => {
     for (const k of keys) expect(ECHO_HANDLERS[k], k).toBeTypeOf('function');
   });
 });
+
+import { ART, BY_CATEGORY, BY_EVENT, artForEvent } from '../src/data/illustrations';
+import { existsSync, statSync } from 'node:fs';
+describe('illustrations', () => {
+  it('every art key has both webp sizes under 80KB and Japanese alt', () => {
+    for (const k of Object.keys(ART)) for (const w of [480, 800]) { const f = `public/illustrations/${k}-${w}.webp`; expect(existsSync(f), f).toBe(true); expect(statSync(f).size).toBeLessThan(80_000); }
+    for (const a of Object.values(ART)) expect(a).toMatch(/[\u3040-\u30ff\u4e00-\u9fff]/);
+  });
+  it('all mappings point to existing art and every event resolves to art', () => {
+    for (const k of [...Object.values(BY_CATEGORY), ...Object.values(BY_EVENT)]) expect(ART[k], k).toBeTruthy();
+    for (const id of Object.keys(BY_EVENT)) expect(EVENTS.some(e => e.id === id), id).toBe(true);
+    for (const e of EVENTS) expect(artForEvent(e.id, e.cat), e.id).toBeTruthy();
+  });
+});

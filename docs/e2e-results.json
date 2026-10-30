@@ -1,7 +1,12 @@
 {
-  "at": "2026-10-30T09:09:38.754Z",
+  "at": "2026-10-30T09:39:49.717Z",
   "base": "http://localhost:4173",
   "results": [
+    {
+      "name": "mobile: title art loaded",
+      "pass": true,
+      "extra": "w=390"
+    },
     {
       "name": "mobile: tutorial shown",
       "pass": true,
@@ -13,6 +18,21 @@
       "extra": ""
     },
     {
+      "name": "mobile: event art loaded",
+      "pass": true,
+      "extra": "w=390 key=education"
+    },
+    {
+      "name": "mobile: first choice visible without scroll",
+      "pass": true,
+      "extra": "{\"first\":467,\"lim\":777,\"n\":4,\"last\":725}"
+    },
+    {
+      "name": "mobile: event art has ja alt",
+      "pass": true,
+      "extra": ""
+    },
+    {
       "name": "mobile: choice shows result",
       "pass": true,
       "extra": "(event edu_crossroads)"
@@ -20,7 +40,7 @@
     {
       "name": "mobile: years progress",
       "pass": true,
-      "extra": "25歳"
+      "extra": "27歳"
     },
     {
       "name": "mobile: saved to localStorage",
@@ -30,7 +50,7 @@
     {
       "name": "mobile: restore after reload",
       "pass": true,
-      "extra": "高嶺 創 25歳"
+      "extra": "高嶺 創 27歳"
     },
     {
       "name": "mobile: chart rendered",
@@ -40,12 +60,17 @@
     {
       "name": "mobile: export produces code",
       "pass": true,
-      "extra": "len=18368"
+      "extra": "len=22112"
     },
     {
       "name": "mobile: life reaches review",
       "pass": true,
-      "extra": "actions=181"
+      "extra": "actions=192"
+    },
+    {
+      "name": "mobile: review art loaded",
+      "pass": true,
+      "extra": ""
     },
     {
       "name": "mobile: next generation starts",
@@ -93,12 +118,32 @@
       "extra": ""
     },
     {
+      "name": "desktop: title art loaded",
+      "pass": true,
+      "extra": "w=600"
+    },
+    {
       "name": "desktop: tutorial shown",
       "pass": true,
       "extra": ""
     },
     {
       "name": "desktop: game started",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: event art loaded",
+      "pass": true,
+      "extra": "w=600 key=education"
+    },
+    {
+      "name": "desktop: first choice visible without scroll",
+      "pass": true,
+      "extra": "{\"first\":495,\"lim\":735,\"n\":4,\"last\":753}"
+    },
+    {
+      "name": "desktop: event art has ja alt",
       "pass": true,
       "extra": ""
     },
@@ -110,7 +155,7 @@
     {
       "name": "desktop: years progress",
       "pass": true,
-      "extra": "25歳"
+      "extra": "27歳"
     },
     {
       "name": "desktop: saved to localStorage",
@@ -120,7 +165,7 @@
     {
       "name": "desktop: restore after reload",
       "pass": true,
-      "extra": "高嶺 創 25歳"
+      "extra": "高嶺 創 27歳"
     },
     {
       "name": "desktop: chart rendered",
@@ -130,12 +175,17 @@
     {
       "name": "desktop: export produces code",
       "pass": true,
-      "extra": "len=18368"
+      "extra": "len=22112"
     },
     {
       "name": "desktop: life reaches review",
       "pass": true,
-      "extra": "actions=181"
+      "extra": "actions=192"
+    },
+    {
+      "name": "desktop: review art loaded",
+      "pass": true,
+      "extra": ""
     },
     {
       "name": "desktop: next generation starts",

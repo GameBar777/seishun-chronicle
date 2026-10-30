@@ -48,3 +48,10 @@ CLI の場合: `npx wrangler pages deploy dist`（Cloudflare ログインが必�
 
 ## ドキュメント
 `docs/spec.md` 仕様 / `docs/events.md` イベント一覧 / `docs/test-results.md` テスト結果 / `docs/revenue-sim.md` 収益試算 / `docs/marketing.md` / `docs/ads-platform-research.md` / `docs/legal-checklist.md` / `docs/user-actions.md` / `docs/screenshots/` / `docs/assets/`
+
+## イラストの追加
+1. `public/illustrations/<key>-480.webp` と `<key>-800.webp` を置く（16:9推奨、WebP q≈68、1枚 80KB 未満。テストで検査）
+2. `src/data/illustrations.ts` の `ART` にキーと日本語altを追加
+3. カテゴリ単位なら `BY_CATEGORY`、特定イベントなら `BY_EVENT` に割り当て（イベント指定が優先）
+4. `npm test` で欠落・未知IDを検出
+イラストは本プロジェクト用に新規生成したオリジナル（既存IP・実在人物なし）。

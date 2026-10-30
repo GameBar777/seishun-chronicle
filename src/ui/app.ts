@@ -13,6 +13,9 @@ import { track, setAnalytics, analyticsConfigured } from '../platform/analytics'
 import { t, setLang, LANGS } from '../i18n';
 import { BRAND } from '../brand';
 import { lineChart, bars } from './chart';
+import { EVENTS } from '../data/events';
+import { artForEvent, artImg } from '../data/illustrations';
+const EV_CAT: Record<string, string> = Object.fromEntries(EVENTS.map(e => [e.id, e.cat]));
 
 type Tab = 'life' | 'timeline' | 'money' | 'people' | 'news' | 'more' | 'family' | 'awards' | 'settings';
 const esc = (s: string) => s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
@@ -85,7 +88,7 @@ export class App {
   }
   vTitle() {
     const s = this.s; const cont = s ? `<button class="btn primary" data-act="continue" data-testid="continue">${t('title.continue')}<small>${esc(s.p.name)}・${s.p.age}歳・${s.world.year}年・${s.gen}代目</small></button>` : '';
-    return `<main class="title"><div class="logo" aria-hidden="true"><span></span><span></span><span></span></div>
+    return `<main class="title"><figure class="title-art">${artImg('title', 'key', true)}</figure>
       <h1>${BRAND.name}<small>${BRAND.sub}</small></h1><p class="lead">${t('title.lead')}</p>
       <div class="stack">${cont}<button class="btn ${s ? '' : 'primary'}" data-act="setup" data-testid="new-life">${t('title.start')}</button>
       <a class="btn ghost" href="/how-to-play.html">${t('title.how')}</a></div>
@@ -107,7 +110,7 @@ export class App {
     const tn: Record<string, string> = { life: t('tab.life'), timeline: t('tab.timeline'), money: t('tab.money'), people: t('tab.people'), news: t('tab.news'), more: 'その他' };
     const moreActive = ['more', 'family', 'awards', 'settings'].includes(this.tab);
     const nav = `<nav class="tabs" aria-label="画面切り替え">${tabs.map(k => `<button data-act="tab" data-arg="${k}" data-testid="tab-${k}" class="${this.tab === k || (k === 'more' && moreActive) ? 'on' : ''}" aria-current="${this.tab === k}"><i>${ICON[k]}</i>${tn[k]}</button>`).join('')}</nav>`;
-    const body = ({ life: () => this.vLife(), timeline: () => this.vTimeline(), money: () => this.vMoney(), people: () => this.vPeople(), news: () => this.vNews(), more: () => this.vMore(), family: () => this.vFamily(), awards: () => this.vAwards(), settings: () => this.vSettings() } as Record<Tab, () => string>)[this.tab]();
+    const body = ({ life: () => this.vLife(), timeline: () => this.vTimeline(), money: () => this.vMoney(), people: () => this.vPeople(), news: () => `<figure class="news-art">${artImg('news', 'nw')}</figure>` + this.vNews(), more: () => this.vMore(), family: () => this.vFamily(), awards: () => this.vAwards(), settings: () => this.vSettings() } as Record<Tab, () => string>)[this.tab]();
     return `${head}<main class="content">${body}</main>${nav}`;
   }
   meter(label: string, v: number, k: string) { return `<div class="m m-${k}" title="${label} ${Math.round(v)}"><small>${label}</small><span><i style="width:${Math.round(v)}%"></i></span></div>`; }
@@ -117,7 +120,7 @@ export class App {
     if (s.phase === 'dead') return this.vReview();
     const res = this.lastResult ? `<div class="result" data-testid="result">${esc(this.lastResult)}</div>` : '';
     if (s.active) { const a = s.active; const n = a.npcId ? s.npcs.find(x => x.id === a.npcId) : undefined;
-      return `${res}<article class="card event" data-testid="event" data-event="${a.id}"><div class="ev-meta">${s.world.year}年・${s.p.age}歳${n ? `<span class="chip">${esc(n.name)}（${ROLE[n.role] ?? ''}）</span>` : ''}</div>
+      return `${res}<article class="card event" data-testid="event" data-event="${a.id}">${(() => { const k = artForEvent(a.id, EV_CAT[a.id] ?? ''); return k ? `<figure class="ev-art">${artImg(k, 'ev')}</figure>` : ''; })()}<div class="ev-meta">${s.world.year}年・${s.p.age}歳${n ? `<span class="chip">${esc(n.name)}（${ROLE[n.role] ?? ''}）</span>` : ''}</div>
         <h2>${esc(a.title)}</h2><p class="ev-text">${esc(a.text)}</p>
         <div class="choices">${a.choices.map((ch, i) => `<button class="choice" data-act="choose" data-arg="${i}" data-testid="choice"><span>${esc(ch.label)}</span>${this.meta.settings.showHints && ch.hint ? `<small>${esc(ch.hint)}</small>` : ''}</button>`).join('')}</div></article>`; }
     if (s.phase === 'yearEnd') { const r = s.ledger[s.ledger.length - 1]; const news = s.world.history.filter(h => h.year === s.world.year).slice(-4);
@@ -142,7 +145,7 @@ export class App {
   }
   vReview() {
     const s = this.s!; const sum = s.pendingSummary!; const hs = heirs(s);
-    return `<article class="card review" data-testid="review"><div class="ending-badge">${esc(sum.endingTitle)}</div>
+    return `<article class="card review" data-testid="review"><figure class="rv-art">${artImg('review', 'rv')}</figure><div class="ending-badge">${esc(sum.endingTitle)}</div>
       <h2>${t('dead.title', { name: esc(sum.name) })}</h2><p class="muted">${sum.birthYear}年 – ${sum.deathYear}年（${sum.age}歳）・${esc(sum.cause)}</p>
       <p class="obit">${esc(sum.obituary)}</p>${bars(sum.scores, AXES)}
       <h3>人生のハイライト</h3><ul class="results">${sum.highlights.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
