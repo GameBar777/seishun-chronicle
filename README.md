@@ -63,3 +63,15 @@ CLI の場合: `npx wrangler pages deploy dist`（Cloudflare ログインが必�
 3. カテゴリ単位なら `BY_CATEGORY`、特定イベントなら `BY_EVENT` に割り当て（イベント指定が優先）
 4. `npm test` で欠落・未知IDを検出
 イラストは本プロジェクト用に新規生成したオリジナル（既存IP・実在人物なし）。
+
+## v0.3 — feel & drama overhaul
+- Short event text: a speaker avatar and speech bubble, with the rest of the text behind a 「くわしく」 toggle. Choices have an icon and color-coded risk/reward chips.
+- Feedback (src/ui/fx.ts): floating stat deltas, animated bars, a rolling net-worth counter, a shake or glow on big swings, and a year splash. Optional WebAudio SFX (off by default). Honors `prefers-reduced-motion` and the in-game setting.
+- Drama:
+  - Full-screen ECHO flashbacks show the original choice and your age when you made it.
+  - Newspaper 号外 headlines.
+  - A per-life dream with a HUD meter, milestone popups, an ending payoff and a `dream_true` ending.
+  - Arcs: rival, first love, a mysterious stranger, a letter chain and a stray cat, plus one-off twists such as the lottery, a scandal, a viral moment, an inheritance and a promotion.
+  - A drama director makes most years notable.
+  - Mortality before 50 is softened, so there are no unfair early deaths.
+- Save schema v3 with v2→v3 migration. `tests/drama.test.ts` checks the pacing and fairness numbers.

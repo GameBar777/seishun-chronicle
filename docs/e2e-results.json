@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T09:39:49.717Z",
+  "at": "2026-10-30T14:14:53.168Z",
   "base": "http://localhost:4173",
   "results": [
     {
@@ -20,12 +20,12 @@
     {
       "name": "mobile: event art loaded",
       "pass": true,
-      "extra": "w=390 key=education"
+      "extra": "w=390 key=hometown"
     },
     {
       "name": "mobile: first choice visible without scroll",
       "pass": true,
-      "extra": "{\"first\":467,\"lim\":777,\"n\":4,\"last\":725}"
+      "extra": "{\"first\":484,\"lim\":777,\"n\":4,\"last\":708}"
     },
     {
       "name": "mobile: event art has ja alt",
@@ -33,14 +33,29 @@
       "extra": ""
     },
     {
+      "name": "mobile: speech bubble + choice icons",
+      "pass": true,
+      "extra": ""
+    },
+    {
       "name": "mobile: choice shows result",
       "pass": true,
-      "extra": "(event edu_crossroads)"
+      "extra": "(event dream_pick)"
+    },
+    {
+      "name": "mobile: dream meter shown",
+      "pass": true,
+      "extra": "picked at start"
     },
     {
       "name": "mobile: years progress",
       "pass": true,
-      "extra": "27歳"
+      "extra": "28歳"
+    },
+    {
+      "name": "mobile: year-transition card",
+      "pass": true,
+      "extra": "28歳\n—\n2036年"
     },
     {
       "name": "mobile: saved to localStorage",
@@ -50,7 +65,7 @@
     {
       "name": "mobile: restore after reload",
       "pass": true,
-      "extra": "高嶺 創 27歳"
+      "extra": "高嶺 創 28歳"
     },
     {
       "name": "mobile: chart rendered",
@@ -60,12 +75,27 @@
     {
       "name": "mobile: export produces code",
       "pass": true,
-      "extra": "len=22112"
+      "extra": "len=27636"
     },
     {
       "name": "mobile: life reaches review",
       "pass": true,
-      "extra": "actions=192"
+      "extra": "actions=98"
+    },
+    {
+      "name": "mobile: ECHO flashback overlay appeared",
+      "pass": true,
+      "extra": "ECHO 25歳のあなたが選んだ 「地図の場所を探す」 が、いま返ってきた。 倉庫の二つ目の扉 「その鍵なら、奥の扉のだよ」。 いまを生きる"
+    },
+    {
+      "name": "mobile: newspaper headline overlay appeared",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: dream payoff in review",
+      "pass": true,
+      "extra": ""
     },
     {
       "name": "mobile: review art loaded",
@@ -81,6 +111,11 @@
       "name": "mobile: import restores",
       "pass": true,
       "extra": ""
+    },
+    {
+      "name": "mobile: feedback animations fire (motion on)",
+      "pass": true,
+      "extra": "nodes=6"
     },
     {
       "name": "mobile: no horizontal overflow",
@@ -135,12 +170,12 @@
     {
       "name": "desktop: event art loaded",
       "pass": true,
-      "extra": "w=600 key=education"
+      "extra": "w=600 key=hometown"
     },
     {
       "name": "desktop: first choice visible without scroll",
       "pass": true,
-      "extra": "{\"first\":495,\"lim\":735,\"n\":4,\"last\":753}"
+      "extra": "{\"first\":510,\"lim\":735,\"n\":4,\"last\":731}"
     },
     {
       "name": "desktop: event art has ja alt",
@@ -148,14 +183,29 @@
       "extra": ""
     },
     {
+      "name": "desktop: speech bubble + choice icons",
+      "pass": true,
+      "extra": ""
+    },
+    {
       "name": "desktop: choice shows result",
       "pass": true,
-      "extra": "(event edu_crossroads)"
+      "extra": "(event dream_pick)"
+    },
+    {
+      "name": "desktop: dream meter shown",
+      "pass": true,
+      "extra": "picked at start"
     },
     {
       "name": "desktop: years progress",
       "pass": true,
-      "extra": "27歳"
+      "extra": "28歳"
+    },
+    {
+      "name": "desktop: year-transition card",
+      "pass": true,
+      "extra": "28歳\n—\n2036年"
     },
     {
       "name": "desktop: saved to localStorage",
@@ -165,7 +215,7 @@
     {
       "name": "desktop: restore after reload",
       "pass": true,
-      "extra": "高嶺 創 27歳"
+      "extra": "高嶺 創 28歳"
     },
     {
       "name": "desktop: chart rendered",
@@ -175,12 +225,27 @@
     {
       "name": "desktop: export produces code",
       "pass": true,
-      "extra": "len=22112"
+      "extra": "len=27636"
     },
     {
       "name": "desktop: life reaches review",
       "pass": true,
-      "extra": "actions=192"
+      "extra": "actions=98"
+    },
+    {
+      "name": "desktop: ECHO flashback overlay appeared",
+      "pass": true,
+      "extra": "ECHO 25歳のあなたが選んだ 「地図の場所を探す」 が、いま返ってきた。 倉庫の二つ目の扉 「その鍵なら、奥の扉のだよ」。 いまを生きる"
+    },
+    {
+      "name": "desktop: newspaper headline overlay appeared",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: dream payoff in review",
+      "pass": true,
+      "extra": ""
     },
     {
       "name": "desktop: review art loaded",
@@ -196,6 +261,11 @@
       "name": "desktop: import restores",
       "pass": true,
       "extra": ""
+    },
+    {
+      "name": "desktop: feedback animations fire (motion on)",
+      "pass": true,
+      "extra": "nodes=6"
     },
     {
       "name": "desktop: no horizontal overflow",

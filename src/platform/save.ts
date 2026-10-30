@@ -7,10 +7,10 @@ export const META_KEY = 'ripple_years_meta';
 export interface Meta {
   version: number;
   achievements: Record<string, number>; // id -> unlock timestamp
-  settings: { textSpeed: 'normal' | 'fast'; showHints: boolean; ads: boolean; analytics: boolean; lang: string; tutorialDone: boolean; reduceMotion: boolean };
+  settings: { textSpeed: 'normal' | 'fast'; showHints: boolean; ads: boolean; analytics: boolean; lang: string; tutorialDone: boolean; reduceMotion: boolean; sound: boolean };
   lifetime: { lives: number; years: number; endings: Record<string, number>; maxGen: number; maxNetWorth: number };
 }
-export const defaultMeta = (): Meta => ({ version: 1, achievements: {}, settings: { textSpeed: 'normal', showHints: true, ads: true, analytics: false, lang: 'ja', tutorialDone: false, reduceMotion: false }, lifetime: { lives: 0, years: 0, endings: {}, maxGen: 1, maxNetWorth: 0 } });
+export const defaultMeta = (): Meta => ({ version: 1, achievements: {}, settings: { textSpeed: 'normal', showHints: true, ads: true, analytics: false, lang: 'ja', tutorialDone: false, reduceMotion: false, sound: false }, lifetime: { lives: 0, years: 0, endings: {}, maxGen: 1, maxNetWorth: 0 } });
 
 type Migr = (s: any) => any;
 /** Schema migrations: key = version being migrated FROM. */
@@ -21,6 +21,12 @@ export const MIGRATIONS: Record<number, Migr> = {
     s.ledger = (s.ledger ?? []).map((r: any) => ({ forgiven: 0, ...r }));
     s.choiceLog = s.choiceLog ?? []; s.stats = s.stats ?? { yearsPlayed: (s.hist ?? []).length, eventsSeen: 0 };
     s.version = 2; return s;
+  },
+  2: s => {
+    // v3 added drama moments, the per-life dream and notable-year tracking.
+    s.moments = s.moments ?? []; s.dream = s.dream ?? null; s.yearMark = s.yearMark ?? null;
+    s.stats = { notableYears: 0, ...(s.stats ?? {}) };
+    s.version = 3; return s;
   },
 };
 export function migrate(raw: any): GameState {

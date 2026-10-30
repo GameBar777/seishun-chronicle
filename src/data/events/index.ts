@@ -10,6 +10,7 @@ import { worldEvents } from './world';
 import { aging } from './aging';
 import { legacy } from './legacy';
 import { life } from './life';
-export const EVENTS: EventDef[] = [...education, ...career, ...moneyEvents, ...love, ...family, ...healthEvents, ...social, ...worldEvents, ...aging, ...legacy, ...life];
+import { drama } from './drama';
+export const EVENTS: EventDef[] = [...education, ...career, ...moneyEvents, ...love, ...family, ...healthEvents, ...social, ...worldEvents, ...aging, ...legacy, ...life, ...drama];
 const map = new Map(EVENTS.map(e => [e.id, e]));
 export const eventById = (id: string) => map.get(id);

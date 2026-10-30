@@ -29,7 +29,7 @@ describe('content volume', () => {
   it('has 100+ unique events with 3-5 choices each', () => {
     expect(EVENTS.length).toBeGreaterThanOrEqual(100);
     expect(new Set(EVENTS.map(e => e.id)).size).toBe(EVENTS.length);
-    for (const e of EVENTS) { expect(e.choices.length, e.id).toBeGreaterThanOrEqual(3); expect(e.choices.length, e.id).toBeLessThanOrEqual(5); }
+    for (const e of EVENTS) { expect(e.choices.length, e.id).toBeGreaterThanOrEqual(3); expect(e.choices.length, e.id).toBeLessThanOrEqual(e.id === 'dream_pick' ? 7 : 5); } // dream_pick shows 4 of 7
   });
   it('has 20+ jobs', () => expect(JOBS.length).toBeGreaterThanOrEqual(20));
   it('every echo key has a handler', () => { for (const k of Object.keys(ECHO_HANDLERS)) expect(typeof ECHO_HANDLERS[k]).toBe('function'); });

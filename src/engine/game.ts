@@ -1,5 +1,6 @@
 import type { GameState, NPC, LifeSummary } from './types';
-import { Ctx, money } from './ctx';
+import { Ctx, money, setCurChoice } from './ctx';
+import { dreamById, dreamProgress } from '../data/dreams';
 import { clamp } from './rng';
 import { newWorld, tickWorld } from './world';
 import { settleYear } from './finance';
@@ -10,7 +11,7 @@ import { JOBS, jobById } from '../data/jobs';
 import { computeReview } from './review';
 import type { EventDef } from './eventTypes';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const FAMILY_TYPES = [
   { id: 'shop', name: '商店を営む家', wealth: 50, biz: true }, { id: 'office', name: '共働きの会社員家庭', wealth: 55 }, { id: 'single', name: 'ひとり親の家庭', wealth: 25 },
   { id: 'farm', name: '代々の農家', wealth: 40, biz: true }, { id: 'wealthy', name: '裕福な家庭', wealth: 85 }, { id: 'struggle', name: '借金を抱えた家庭', wealth: 12 },
@@ -22,7 +23,7 @@ const TRAITS = ['楽天家', '慎重派', '負けず嫌い', 'お人好し', '�
 function blankState(seed: number, year: number): GameState {
   return { version: SAVE_VERSION, seed, rng: seed, gen: 1, createdAt: Date.now(), world: newWorld(year), p: null as any, npcs: [], queue: [], active: null, yearResults: [],
     log: [], ledger: [], hist: [], flags: {}, evHist: {}, scheduled: [], phase: 'play', lineage: [], pendingSummary: null,
-    cur: { oneoff: 0, loans: 0, invDeposit: 0, invWithdraw: 0, education: 0, forgiven: 0 }, choiceLog: [], stats: { yearsPlayed: 0, eventsSeen: 0 } };
+    cur: { oneoff: 0, loans: 0, invDeposit: 0, invWithdraw: 0, education: 0, forgiven: 0 }, choiceLog: [], stats: { yearsPlayed: 0, eventsSeen: 0, notableYears: 0 }, moments: [], dream: null, yearMark: null };
 }
 
 // Create a fresh life in a (possibly existing) world.
@@ -55,7 +56,7 @@ function startLife(s: GameState, opts: { regionId?: string; family?: string } = 
   const inherited = s.world.echoes.filter(e => e.surfaced && e.target !== 'npc').slice(-3);
   c.log(`${regionById(reg).name}の${fam.name}に生まれ、18歳の春を迎えた。`, true, 'life');
   for (const e of inherited) c.log(`（この町には、かつての選択の残響が残っている：${e.effect}）`, false, 'echo');
-  s.queue = [{ id: 'edu_crossroads' }];
+  s.dream = null; s.moments = []; s.queue = [{ id: 'dream_pick' }, { id: 'edu_crossroads' }];
   s.hist.push({ year: s.world.year, age: 18, netWorth: c.netWorth, happy: s.p.happy, health: s.p.health, income: 0 });
   nextEvent(s);
 }
@@ -86,12 +87,22 @@ export function nextEvent(s: GameState) {
     const choices = e.choices.map((ch, i) => ({ ch, i })).filter(x => !x.ch.req || safe(() => x.ch.req!(c)));
     if (!choices.length) continue;
     const tx = (t: any) => fill(typeof t === 'function' ? t(c) : t, c);
-    s.active = { id: e.id, npcId: c.npc?.id, data: q.data, title: tx(e.title), text: tx(e.text),
-      choices: choices.map(x => ({ label: tx(x.ch.label), hint: x.ch.hint ? tx(x.ch.hint) : fxHint(x.ch.fx) })), choiceMap: choices.map(x => x.i) };
+    s.active = { id: e.id, npcId: c.npc?.id, data: q.data, title: tx(e.title), text: tx(e.text), cat: e.cat, drama: !!e.drama,
+      say: e.say ? tx(e.say) : undefined, speaker: e.speaker ? tx(e.speaker) : undefined,
+      choices: choices.map(x => ({ label: tx(x.ch.label), hint: x.ch.hint ? tx(x.ch.hint) : fxHint(x.ch.fx), icon: x.ch.icon ?? fxIcon(x.ch.fx) })), choiceMap: choices.map(x => x.i) };
+    if (e.drama && s.yearMark) s.yearMark.notable = true;
+    const o = q.data?._o; if (q.scheduled && o && s.world.year - o.year >= 2) {
+      s.active.flash = { age: o.age, label: o.label };
+      c.moment({ kind: 'echo', title: s.active.title, lead: `${o.age}歳のあなたが選んだ`, quote: o.label, text: (s.active.say ?? s.active.text).split('。')[0] + '。', tone: 'neutral', icon: '🌊' });
+    }
     const h = s.evHist[e.id] ?? { n: 0, last: 0 }; h.n++; h.last = s.world.year; s.evHist[e.id] = h; s.stats.eventsSeen++;
     return;
   }
   s.active = null; endYear(s);
+}
+function fxIcon(fx: any): string {
+  if (!fx) return '➜'; if (fx.later) return '⏳'; if (fx.cash > 0) return '💰'; if (fx.cash < 0) return '💸'; if (fx.health > 0) return '💪'; if (fx.health < 0) return '🤒';
+  if (fx.happy > 0) return '😊'; if (fx.stress < 0) return '🍃'; if (fx.stress > 0) return '😤'; if (fx.stats) return '📈'; if (fx.feel) return '❤️'; if (fx.rep) return '⭐'; return '➜';
 }
 const safe = (f: () => boolean) => { try { return f(); } catch { return false; } };
 export function fill(t: string, c: Ctx) {
@@ -124,6 +135,9 @@ export function choose(s: GameState, idx: number): string {
   const e = eventById(a.id)!; const ch = e.choices[a.choiceMap[idx]]; if (!ch) return '';
   const npc = a.npcId ? s.npcs.find(n => n.id === a.npcId) : undefined; const c = new Ctx(s, npc, a.data);
   const fx = ch.fx;
+  const lbl = fill(typeof ch.label === 'function' ? ch.label(c) : ch.label, c);
+  setCurChoice({ age: s.p.age, year: s.world.year, label: lbl, title: a.title, name: s.p.name });
+  try {
   if (fx) {
     if (fx.cash) c.cash(fx.cash); if (fx.health) c.health(fx.health); if (fx.happy) c.happy(fx.happy); if (fx.stress) c.stress(fx.stress); if (fx.rep) c.rep(fx.rep);
     if (fx.stats) for (const k in fx.stats) c.stat(k as any, (fx.stats as any)[k]);
@@ -131,10 +145,11 @@ export function choose(s: GameState, idx: number): string {
     for (const f of [fx.flag ?? []].flat()) c.flag(f); for (const f of [fx.unflag ?? []].flat()) c.unflag(f);
     if (fx.later) c.later(fx.later[0], fx.later[1], fx.later[2]);
   }
-  let res = ''; if (ch.run) res = (ch.run(c) as string) || '';
+  var res = ''; if (ch.run) res = (ch.run(c) as string) || '';
+  } finally { setCurChoice(null); }
   const r = ch.result ? (typeof ch.result === 'function' ? ch.result(c) : ch.result) : '';
   const text = fill([r, res].filter(Boolean).join(' '), c);
-  s.choiceLog.push({ year: s.world.year, ev: a.id, c: a.choiceMap[idx] }); if (s.choiceLog.length > 400) s.choiceLog.shift();
+  s.choiceLog.push({ year: s.world.year, ev: a.id, c: a.choiceMap[idx], age: s.p.age, label: lbl }); if (s.choiceLog.length > 400) s.choiceLog.shift();
   c.log(`【${a.title}】${fill(typeof ch.label === 'function' ? ch.label(c) : ch.label, c)}${text ? ' — ' + text : ''}`, false, e.cat);
   s.yearResults.push(text || '選んだ道を歩き出した。');
   s.active = null; nextEvent(s); return text;
@@ -159,9 +174,14 @@ function endYear(s: GameState) {
   tickNpcs(s);
   s.hist.push({ year: s.world.year, age: p.age, netWorth: Math.round(c.netWorth), happy: Math.round(p.happy), health: Math.round(p.health), income: Math.round(row.income + row.spouseIncome) });
   s.stats.yearsPlayed++;
+  if (s.dream) { const d = dreamById(s.dream.id); const pr = dreamProgress(c);
+    for (const m of [25, 50, 75, 100]) if (pr >= m && s.dream.best < m && d) { s.dream.best = m;
+      if (m === 100) { s.dream.done = s.world.year; c.flag('dream_done'); c.happy(10); c.log(`夢「${d.name}」をかなえた！`, true, 'life'); }
+      c.moment({ kind: 'dream', title: m === 100 ? '夢がかなった！' : `夢まで ${m}%`, text: m === 100 ? d.payoff : `「${d.name}」に一歩ずつ近づいている。`, tone: 'good', icon: d.icon }); } }
+  if (s.yearMark?.notable || s.log.some(l => l.year === s.world.year && l.important)) s.stats.notableYears = (s.stats.notableYears ?? 0) + 1;
   // mortality: gentle before 50, unavoidable eventually; low health raises risk
   const base = 0.00025 * Math.exp(0.088 * (age - 18)); const hf = p.health < 10 ? 6 : p.health < 25 ? 2.5 : p.health < 45 ? 1.4 : p.health > 75 ? 0.7 : 1;
-  let pd = base * hf; if (age < 50) pd = Math.min(pd, p.health < 10 ? 0.05 : 0.002); if (age >= 105) pd = 1;
+  let pd = base * hf; if (age < 50) pd = Math.min(pd, p.health < 10 ? 0.05 : p.health < 40 ? 0.002 : age < 40 ? 0 : 0.0008); // no out-of-the-blue deaths for healthy young adults if (age >= 105) pd = 1;
   if (c.chance(pd)) { p.deathCause = p.illness ? `${p.illness}の悪化` : age > 75 ? '老衰' : p.health < 30 ? '長年の無理がたたった病' : '突然の心臓発作'; die(s); return; }
   s.phase = 'yearEnd';
 }
@@ -194,21 +214,39 @@ function childComesOfAge(s: GameState, n: NPC) {
 export function nextYear(s: GameState) {
   if (s.phase !== 'yearEnd') return;
   const c = new Ctx(s); s.yearResults = [];
+  if (!s.moments) s.moments = [];
+  s.yearMark = { notable: false, start: { health: s.p.health, happy: s.p.happy, stress: s.p.stress, nw: Math.round(c.netWorth), cash: Math.round(s.p.cash) } };
+  const hBefore = s.world.history.length;
   s.world.year++; s.p.age++; tickWorld(s); s.phase = 'play';
+  // Newspaper headline when the world changes (one per year)
+  const fresh = s.world.history.slice(hBefore).find(h => ['economy', 'tech', 'intl'].includes(h.kind));
+  if (fresh) c.moment({ kind: 'headline', title: fresh.text.split(/[。：]/)[0], text: fresh.text, tone: /不況|緊張|自動化|置き換/.test(fresh.text) ? 'bad' : /好況|回復|新しい/.test(fresh.text) ? 'good' : 'neutral', icon: '📰' });
   // Surface echoes whose time has come
-  for (const e of s.world.echoes) if (!e.surfaced && e.surfaceYear <= s.world.year) { e.surfaced = true; const h = ECHO_HANDLERS[e.key]; if (h) h(new Ctx(s, e.npcId ? s.npcs.find(n => n.id === e.npcId) : undefined), e); }
+  for (const e of s.world.echoes) if (!e.surfaced && e.surfaceYear <= s.world.year) { e.surfaced = true; const h = ECHO_HANDLERS[e.key]; if (h) h(new Ctx(s, e.npcId ? s.npcs.find(n => n.id === e.npcId) : undefined), e);
+    const o = e.origin; const bad = ['child_drift', 'biz_orphaned', 'divorce_kids', 'family_biz_closed'].includes(e.key);
+    const lead = o ? (e.gen === s.gen ? `${o.age}歳のあなたが選んだ` : `先代${o.name ? '・' + o.name.split(' ')[1] : ''}が${o.age}歳で選んだ`) : `${e.year}年の「${e.cause}」`;
+    c.moment({ kind: 'echo', title: '残響', lead, quote: o?.label, text: e.effect, tone: bad ? 'bad' : 'good', icon: '🌊' }); }
+  if (!s.dream && s.p.age < 70 && !s.queue.some(q => q.id === 'dream_pick')) s.queue.unshift({ id: 'dream_pick' });
   // Disasters
   const rg = s.world.regions[s.p.regionId]; if (c.chance(rg.disasterRisk * 0.6)) s.queue.push({ id: 'world_disaster' });
   // Build this year's event queue: scheduled first, then conditional weighted draws
   const due = s.scheduled.filter(x => x.year <= s.world.year); s.scheduled = s.scheduled.filter(x => x.year > s.world.year);
   for (const d of due.slice(0, 3)) s.queue.push({ id: d.id, npcId: d.npcId, data: d.data, scheduled: true });
   for (const d of due.slice(3)) { d.year = s.world.year + 1; s.scheduled.push(d); }
-  const n = Math.max(0, (c.chance(0.45) ? 3 : 2) - Math.min(1, s.queue.length));
+  // Tempo: 1-2 draws a year (quiet years resolve in a tap or two)
+  const n = Math.max(1, (c.chance(0.65) ? 2 : 1) + (c.chance(0.3) ? 1 : 0) - Math.min(1, s.queue.length));
   const used = new Set(s.queue.map(q => q.id)); const usedCats = new Set<string>();
   for (let i = 0; i < n; i++) {
     const pool = EVENTS.filter(e => !used.has(e.id)).filter(e => { const cc = new Ctx(s); if (e.bind) { cc.npc = e.bind(cc); if (!cc.npc) return false; } return eligible(cc, e, false); });
     const pick = c.rng.weighted(pool, e => { const cc = new Ctx(s); if (e.bind) cc.npc = e.bind(cc); const w = typeof e.weight === 'function' ? safeN(() => (e.weight as any)(cc)) : e.weight ?? 1; return w * (usedCats.has(e.cat) ? 0.35 : 1); });
     if (!pick) break; used.add(pick.id); usedCats.add(pick.cat); s.queue.push({ id: pick.id });
+  }
+  // Drama director: if nothing notable is lined up, usually inject a surprise
+  const lined = s.yearMark.notable || s.queue.some(q => q.scheduled || eventById(q.id)?.drama);
+  if (!lined && c.chance(0.6)) {
+    const pool = EVENTS.filter(e => e.drama && !e.scheduledOnly && !used.has(e.id)).filter(e => { const cc = new Ctx(s); if (e.bind) { cc.npc = e.bind(cc); if (!cc.npc) return false; } return eligible(cc, e, false); });
+    const pick = c.rng.weighted(pool, e => (typeof e.weight === 'number' ? e.weight : 1));
+    if (pick) s.queue.push({ id: pick.id });
   }
   nextEvent(s);
 }
@@ -254,7 +292,7 @@ export function succeed(s: GameState, heirId?: string) {
   nc.log(`${old.name}の子として、${s.p.name}の人生が始まる。相続した財産は${money(share)}（相続税${money(tax / kids)}）。`, true, 'life');
   if (bizInherit) nc.log(`${bizInherit.name}も受け継いだ。`, true, 'career');
   if (heir.outcome === 'uni') nc.study('uni', 4, 90); else if (heir.outcome === 'voc') nc.study('voc', 2, 70);
-  s.queue = heir.outcome === 'uni' || heir.outcome === 'voc' ? [{ id: 'legacy_letter' }] : [{ id: 'legacy_letter' }, { id: 'career_job_hunt' }];
+  s.dream = null; s.queue = heir.outcome === 'uni' || heir.outcome === 'voc' ? [{ id: 'legacy_letter' }, { id: 'dream_pick' }] : [{ id: 'legacy_letter' }, { id: 'dream_pick' }, { id: 'career_job_hunt' }];
   s.hist.push({ year: s.world.year, age: s.p.age, netWorth: Math.round(nc.netWorth), happy: s.p.happy, health: s.p.health, income: 0 });
   nextEvent(s);
 }

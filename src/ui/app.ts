@@ -15,16 +15,40 @@ import { BRAND } from '../brand';
 import { lineChart, bars } from './chart';
 import { EVENTS } from '../data/events';
 import { artForEvent, artImg } from '../data/illustrations';
+import { dreamById, dreamProgress } from '../data/dreams';
+import { sfx, prefersReduced, floatDelta, flash, rollNumber, bump, splash, type Sfx } from './fx';
+import type { Moment } from '../engine/types';
 const EV_CAT: Record<string, string> = Object.fromEntries(EVENTS.map(e => [e.id, e.cat]));
 
 type Tab = 'life' | 'timeline' | 'money' | 'people' | 'news' | 'more' | 'family' | 'awards' | 'settings';
 const esc = (s: string) => s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
-const ROLE: Record<string, string> = { parent: '親', sibling: 'きょうだい', friend: '友人', partner: '恋人', spouse: '配偶者', ex: '元パートナー', child: '子ども', boss: '上司', coworker: '同僚', mentor: '恩師', neighbor: 'ご近所', stranger: '知人' };
+const ROLE: Record<string, string> = { parent: '親', sibling: 'きょうだい', friend: '友人', partner: '恋人', spouse: '配偶者', ex: '元パートナー', child: '子ども', boss: '上司', coworker: '同僚', mentor: '恩師', neighbor: 'ご近所', stranger: '知人', rival: 'ライバル' };
+const CAT_AVA: Record<string, [string, string]> = { career: ['💼', '職場'], love: ['💗', 'こころ'], family: ['🏠', '家族'], money: ['💴', 'お金'], health: ['🩺', 'からだ'], social: ['🤝', '人づきあい'], world: ['📰', '世の中'], aging: ['🍵', '日々'], legacy: ['📜', '受け継ぐもの'], life: ['🌱', 'あなた'], education: ['📚', '学び'], echo: ['🌊', '残響'] };
+const KIND_ICON: Record<string, string> = { career: '💼', love: '💗', family: '👨‍👩‍👧', money: '💴', health: '🩺', social: '🤝', world: '📰', aging: '🍵', legacy: '📜', life: '🌱', education: '🎓', echo: '🌊' };
+function npcAva(n: NPC, age: number): string {
+  const f = n.sex === 'f'; switch (n.role) {
+    case 'parent': return age >= 68 ? (f ? '👵' : '👴') : f ? '👩' : '👨'; case 'child': return age < 13 ? '🧒' : f ? '👧' : '👦';
+    case 'spouse': case 'partner': return '💞'; case 'rival': return '🔥'; case 'boss': return '🧑‍💼'; case 'mentor': return '🧓'; case 'ex': return '🥀';
+    default: return age >= 68 ? (f ? '👵' : '👴') : f ? '👩' : '🧑'; }
+}
+/** First 1-2 short sentences become the spoken line; the rest goes behind "くわしく". */
+function splitLead(t: string): [string, string] {
+  const parts = t.match(/[^。！？]+[。！？]*[」』]?/g) ?? [t]; let lead = parts[0] ?? t; let i = 1;
+  while (i < parts.length && lead.length < 22 && lead.length + parts[i].length <= 64) lead += parts[i++];
+  return [lead, parts.slice(i).join('')];
+}
+function chips(h: string): string {
+  return h.split(/\s*[・\/]\s*/).filter(Boolean).slice(0, 3).map(x => { const inv = /ストレス/.test(x); const up = /↑|＋|\+|大金|収入|成功/.test(x), down = /↓|出費|損|失|負け|借金/.test(x);
+    const cls = x.includes('か') && up && down ? 'risk' : (up && !inv) || (down && inv) ? 'good' : (down && !inv) || (up && inv) ? 'bad' : x.includes('…') ? 'myst' : ''; return `<em class="hc ${cls}">${esc(x)}</em>`; }).join('');
+}
 const ICON: Record<string, string> = { life: '◉', timeline: '☰', money: '¥', people: '♡', news: '▤', more: '⋯' };
 
 export class App {
   s: GameState | null = null; meta: Meta = loadMeta(); tab: Tab = 'life'; screen: 'title' | 'setup' | 'game' = 'title';
-  lastResult = ''; toastTimer: any = 0; tutStep = -1;
+  lastResult = ''; toastTimer: any = 0; tutStep = -1; pendingFx: { health: number; happy: number; stress: number; nw: number; kind: 'choose' | 'year' } | null = null; shownMoment: Moment | null = null;
+  reduced() { return this.meta.settings.reduceMotion || prefersReduced(); }
+  snd(k: Sfx) { sfx(k, !!this.meta.settings.sound); }
+  snap(kind: 'choose' | 'year') { const s = this.s!; return { health: s.p.health, happy: s.p.happy, stress: s.p.stress, nw: Math.round(new Ctx(s).netWorth), kind }; }
   constructor(public root: HTMLElement) {}
 
   boot() {
@@ -35,8 +59,8 @@ export class App {
     this.render(); track('boot');
   }
   persist() { if (this.s) saveGame(this.s); saveMeta(this.meta); }
-  toast(msg: string) { let el = document.getElementById('toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); } el.textContent = msg; el.className = 'show'; clearTimeout(this.toastTimer); this.toastTimer = setTimeout(() => el!.className = '', 2200); }
-  unlock() { if (!this.s) return; const n = checkAchievements(this.s, this.meta); for (const a of n) this.toast(`🏅 実績解除：${a.name}`); }
+  toast(msg: string, cls = '') { let el = document.getElementById('toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); } el.textContent = msg; el.className = 'show ' + cls; clearTimeout(this.toastTimer); this.toastTimer = setTimeout(() => el!.className = '', 2200); }
+  unlock() { if (!this.s) return; const n = checkAchievements(this.s, this.meta); for (const a of n) { this.toast(`🏅 実績解除：${a.name}`, 'ach'); this.snd('ach'); } }
 
   // ---------- events ----------
   onClick(e: Event) {
@@ -56,8 +80,10 @@ export class App {
         if (!this.meta.settings.tutorialDone) this.tutStep = 0;
         track('start', { region: region ?? 'random' }); this.persist(); break;
       }
-      case 'choose': if (s?.active) { const r = choose(s, Number(arg)); this.lastResult = r; this.afterAction(); window.scrollTo(0, 0); } break;
-      case 'next-year': if (s && s.phase === 'yearEnd') { this.lastResult = ''; nextYear(s); this.afterAction(); window.scrollTo(0, 0); } break;
+      case 'choose': if (s?.active) { this.pendingFx = this.snap('choose'); this.snd('tap'); const r = choose(s, Number(arg)); this.lastResult = r; this.afterAction(); window.scrollTo(0, 0); } break;
+      case 'next-year': if (s && s.phase === 'yearEnd') { this.pendingFx = this.snap('year'); this.lastResult = ''; nextYear(s); this.afterAction(); window.scrollTo(0, 0); this.snd('year');
+        if (!this.reduced() && (s.phase as string) !== 'dead') splash(`<b>${s.p.age}歳</b><span>—</span><b>${s.world.year}年</b>`); } break;
+      case 'moment-ok': if (s?.moments?.length) { s.moments.shift(); this.shownMoment = null; this.persist(); } break;
       case 'tab': this.tab = arg as Tab; window.scrollTo(0, 0); break;
       case 'heir': case 'stranger': case 'newworld': if (s && s.phase === 'dead') {
         const go = () => { if (act === 'newworld') { this.s = newGame(); } else succeed(s, act === 'heir' ? arg : undefined); this.lastResult = ''; this.tab = 'life'; this.afterAction(); this.render(); window.scrollTo(0, 0); };
@@ -85,6 +111,33 @@ export class App {
     else if (this.screen === 'setup') this.root.innerHTML = this.vSetup();
     else this.root.innerHTML = this.vGame();
     if (this.tutStep >= 0 && this.screen === 'game') this.root.insertAdjacentHTML('beforeend', this.vTutorial());
+    else if (this.screen === 'game' && this.tab === 'life' && this.s?.moments?.length && this.s.phase !== 'dead') { const m = this.s.moments[0]; this.root.insertAdjacentHTML('beforeend', this.vMoment(m));
+      if (this.shownMoment !== m) { this.shownMoment = m; this.snd(m.kind === 'echo' ? 'echo' : m.kind === 'headline' ? 'news' : 'good'); } }
+    const fx = this.pendingFx; this.pendingFx = null; if (fx && this.s && this.screen === 'game') this.feedback(fx);
+  }
+  feedback(prev: { health: number; happy: number; stress: number; nw: number; kind: string }) {
+    const s = this.s!; const p = s.p; const nw = Math.round(new Ctx(s).netWorth); const dn = nw - prev.nw;
+    const big = Math.abs(dn) >= Math.max(300, Math.abs(prev.nw) * 0.3) || p.health - prev.health <= -10 || Math.abs(p.happy - prev.happy) >= 10;
+    if (prev.kind === 'choose') { if (dn > 0 || p.happy > prev.happy) this.snd('good'); else if (dn < 0 && p.happy < prev.happy) this.snd('bad'); }
+    if (this.reduced()) return;
+    for (const [k, cur, old] of [['h', p.health, prev.health], ['j', p.happy, prev.happy], ['s', p.stress, prev.stress]] as const) {
+      const m = this.root.querySelector('.m-' + k); const bar = m?.querySelector('i') as HTMLElement | null; const d = Math.round(cur) - Math.round(old);
+      if (bar && d) { bar.style.width = Math.round(old) + '%'; requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = Math.round(cur) + '%'; })); }
+      if (d) { floatDelta(m, d); flash(m, k === 's' ? d < 0 : d > 0); }
+    }
+    const nwEl = this.root.querySelector('[data-testid="networth"]') as HTMLElement | null;
+    if (dn) { rollNumber(nwEl, prev.nw, nw, money); floatDelta(nwEl?.parentElement ?? null, dn, n => (n > 0 ? '+' : '') + money(n)); flash(nwEl?.parentElement ?? null, dn > 0); }
+    if (big) { const good = dn > 0 || p.happy > prev.happy; bump(this.root.querySelector('.result') ?? this.root.querySelector('.card'), good ? 'glow' : 'shake'); if (!good) bump(this.root.querySelector('.hud'), 'shake'); }
+  }
+  vMoment(m: Moment) {
+    const s = this.s!; const ok = (label: string) => `<button class="btn primary" data-act="moment-ok" data-testid="moment-ok">${label}</button>`;
+    const wrap = (inner: string) => `<div class="overlay moment m-${m.kind} tone-${m.tone}" role="dialog" aria-modal="true" aria-label="${esc(m.title)}" data-testid="moment" data-kind="${m.kind}"><div class="mcard">${inner}</div></div>`;
+    if (m.kind === 'echo') return wrap(`<div class="mtag">ECHO</div><div class="ripples" aria-hidden="true"><i></i><i></i><i></i></div>
+      ${m.quote ? `<p class="m-lead">${esc(m.lead ?? '')}</p><blockquote>「${esc(m.quote)}」</blockquote><p class="m-lead">が、いま返ってきた。</p>` : `<p class="m-lead">${esc(m.lead ?? '')}が、いま返ってきた。</p>`}
+      <h2>${esc(m.title)}</h2><p class="m-text">${esc(m.text)}</p>${ok('いまを生きる')}`);
+    if (m.kind === 'headline') return wrap(`<div class="np"><div class="masthead">青嶺新報<small>${m.year}年・号外</small></div><h2 class="np-h">${esc(m.title)}</h2><p>${esc(m.text)}</p></div>${ok('新聞をたたむ')}`);
+    const d = dreamById(s.dream?.id);
+    return wrap(`<div class="mtag gold">DREAM</div><div class="bigicon">${m.icon}</div><h2>${esc(m.title)}</h2><p class="m-text">${esc(m.text)}</p>${d ? `<span class="prog dprog"><i style="width:${s.dream?.best ?? 0}%"></i></span><p class="small muted">夢：${esc(d.name)}</p>` : ''}${ok('つづける')}`);
   }
   vTitle() {
     const s = this.s; const cont = s ? `<button class="btn primary" data-act="continue" data-testid="continue">${t('title.continue')}<small>${esc(s.p.name)}・${s.p.age}歳・${s.world.year}年・${s.gen}代目</small></button>` : '';
@@ -105,7 +158,7 @@ export class App {
   vGame() {
     const s = this.s!; const c = new Ctx(s); const p = s.p;
     const head = `<header class="hud"><div class="who"><b data-testid="player-name">${esc(p.name)}</b><span data-testid="player-age">${p.age}歳</span><span class="muted">${s.world.year}年・${regionById(p.regionId).name}${s.gen > 1 ? `・${s.gen}代目` : ''}</span></div>
-      <div class="meters">${this.meter('健康', p.health, 'h')}${this.meter('幸福', p.happy, 'j')}${this.meter('ストレス', p.stress, 's')}<div class="nw"><small>純資産</small><b data-testid="networth">${money(c.netWorth)}</b></div></div></header>`;
+      <div class="meters">${this.meter('健康', p.health, 'h')}${this.meter('幸福', p.happy, 'j')}${this.meter('ストレス', p.stress, 's')}<div class="nw"><small>純資産</small><b data-testid="networth">${money(c.netWorth)}</b></div></div>${(() => { const d = dreamById(s.dream?.id); if (!d) return ''; const pr = dreamProgress(c); return `<div class="dream" data-testid="dream" title="夢の進み具合"><span>${d.icon} ${esc(d.name)}</span><span class="prog"><i style="width:${pr}%"></i></span><b>${pr}%</b></div>`; })()}</header>`;
     const tabs: Tab[] = ['life', 'timeline', 'money', 'people', 'news', 'more'];
     const tn: Record<string, string> = { life: t('tab.life'), timeline: t('tab.timeline'), money: t('tab.money'), people: t('tab.people'), news: t('tab.news'), more: 'その他' };
     const moreActive = ['more', 'family', 'awards', 'settings'].includes(this.tab);
@@ -119,18 +172,33 @@ export class App {
     const s = this.s!; const c = new Ctx(s);
     if (s.phase === 'dead') return this.vReview();
     const res = this.lastResult ? `<div class="result" data-testid="result">${esc(this.lastResult)}</div>` : '';
-    if (s.active) { const a = s.active; const n = a.npcId ? s.npcs.find(x => x.id === a.npcId) : undefined;
-      return `${res}<article class="card event" data-testid="event" data-event="${a.id}">${(() => { const k = artForEvent(a.id, EV_CAT[a.id] ?? ''); return k ? `<figure class="ev-art">${artImg(k, 'ev')}</figure>` : ''; })()}<div class="ev-meta">${s.world.year}年・${s.p.age}歳${n ? `<span class="chip">${esc(n.name)}（${ROLE[n.role] ?? ''}）</span>` : ''}</div>
-        <h2>${esc(a.title)}</h2><p class="ev-text">${esc(a.text)}</p>
-        <div class="choices">${a.choices.map((ch, i) => `<button class="choice" data-act="choose" data-arg="${i}" data-testid="choice"><span>${esc(ch.label)}</span>${this.meta.settings.showHints && ch.hint ? `<small>${esc(ch.hint)}</small>` : ''}</button>`).join('')}</div></article>`; }
+    if (s.active) { const a = s.active; const n = a.npcId ? s.npcs.find(x => x.id === a.npcId) : undefined; const cat = a.cat ?? EV_CAT[a.id] ?? 'life';
+      const [lead, rest] = a.say ? [a.say, a.text] : splitLead(a.text);
+      const [ava, who] = n ? [npcAva(n, c.npcAge(n)), `${n.name.split(' ')[1] ?? n.name}・${ROLE[n.role] ?? ''}`] : a.speaker ? [CAT_AVA[cat]?.[0] ?? '💬', a.speaker] : CAT_AVA[cat] ?? ['💬', ''];
+      return `${res}<article class="card event ${a.drama ? 'drama' : ''}" data-testid="event" data-event="${a.id}">${(() => { const k = artForEvent(a.id, cat); return k ? `<figure class="ev-art">${artImg(k, 'ev')}${a.drama ? '<span class="dtag">DRAMA</span>' : ''}</figure>` : ''; })()}
+        ${a.flash ? `<div class="flashback" data-testid="flashback">🌊 ${a.flash.age}歳で選んだ「${esc(a.flash.label)}」の続き</div>` : ''}
+        <div class="ev-meta">${s.world.year}年・${s.p.age}歳</div><h2>${esc(a.title)}</h2>
+        <div class="say"><div class="ava" aria-hidden="true">${ava}</div><div class="bubble">${who ? `<b class="who">${esc(who)}</b>` : ''}<p class="ev-text">${esc(lead)}</p></div></div>
+        ${rest ? `<details class="more"><summary>くわしく</summary><p>${esc(rest)}</p></details>` : ''}
+        <div class="choices">${a.choices.map((ch, i) => `<button class="choice" data-act="choose" data-arg="${i}" data-testid="choice"><i class="ci" aria-hidden="true">${ch.icon ?? '➜'}</i><span class="cl">${esc(ch.label)}</span>${this.meta.settings.showHints && ch.hint ? `<small class="chips">${chips(ch.hint)}</small>` : ''}</button>`).join('')}</div></article>`; }
     if (s.phase === 'yearEnd') { const r = s.ledger[s.ledger.length - 1]; const news = s.world.history.filter(h => h.year === s.world.year).slice(-4);
       const echoes = s.log.filter(l => l.year === s.world.year && l.kind === 'echo');
-      return `${res}<article class="card yearend" data-testid="year-end"><h2>${t('year.end', { year: s.world.year })}</h2>
-        ${echoes.map(e => `<div class="echo">${esc(e.text)}</div>`).join('')}
+      const st = s.yearMark?.start; const p = s.p; const nwNow = Math.round(c.netWorth);
+      const kinds = [...new Set(s.log.filter(l => l.year === s.world.year).map(l => l.kind))].map(k => KIND_ICON[k]).filter(Boolean);
+      const dchip = (ic: string, d: number, f: (n: number) => string = n => String(Math.round(n)), inv = false) => { const r = Math.round(d); return r ? `<span class="yd ${(r > 0) !== inv ? 'good' : 'bad'}">${ic}<b>${r > 0 ? '+' : ''}${f(r)}</b></span>` : ''; };
+      const deltas = st ? dchip('💴', nwNow - st.nw, money) + dchip('💪', p.health - st.health) + dchip('😊', p.happy - st.happy) + dchip('😮‍💨', p.stress - st.stress, undefined, true) : '';
+      const line = s.yearResults.length ? s.yearResults[s.yearResults.length - 1] : 'おだやかに過ぎた一年だった。';
+      return `${res}<article class="card yearend ytc" data-testid="year-end"><div class="yt-head"><span class="yt-age">${p.age}歳</span><span class="yt-dash">—</span><span class="yt-year">${s.world.year}年</span></div>
+        <div class="yt-sub">${t('year.end', { year: s.world.year })}・${phaseName(s.world)}</div>
+        ${kinds.length ? `<div class="yt-icons" aria-label="この一年の出来事">${kinds.map(i => `<span>${i}</span>`).join('')}</div>` : ''}
+        ${deltas ? `<div class="yt-deltas">${deltas}</div>` : ''}
+        ${echoes.slice(0, 1).map(e => `<div class="echo">${esc(e.text)}</div>`).join('')}
+        <p class="yt-line">${esc(line)}</p>
+        <details class="more"><summary>この一年の記録</summary>
         <ul class="results">${s.yearResults.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
         ${r ? `<div class="mini-ledger"><div><small>収入</small><b>${money(r.income + r.spouseIncome)}</b></div><div><small>税・社保</small><b>${money(-r.tax)}</b></div><div><small>生活・住居・教育</small><b>${money(-(r.living + r.housing + r.education))}</b></div><div><small>年末の現金</small><b>${money(r.cashEnd)}</b></div></div>` : ''}
         ${news.length ? `<div class="news-mini"><h3>今年のニュース</h3>${news.map(n => `<p>${esc(n.text)}</p>`).join('')}</div>` : ''}
-        <div class="econ muted small">景気：${phaseName(s.world)}・物価指数 ${s.world.priceLevel.toFixed(2)}・失業率 ${s.world.unemployment}%</div>
+        <div class="econ muted small">景気：${phaseName(s.world)}・物価指数 ${s.world.priceLevel.toFixed(2)}・失業率 ${s.world.unemployment}%</div></details>
         <button class="btn primary" data-act="next-year" data-testid="next-year">${t('year.next')}</button></article>${this.vStatus(c)}`; }
     return `<div class="card">…</div>`;
   }
@@ -145,7 +213,7 @@ export class App {
   }
   vReview() {
     const s = this.s!; const sum = s.pendingSummary!; const hs = heirs(s);
-    return `<article class="card review" data-testid="review"><figure class="rv-art">${artImg('review', 'rv')}</figure><div class="ending-badge">${esc(sum.endingTitle)}</div>
+    return `<article class="card review" data-testid="review"><figure class="rv-art">${artImg('review', 'rv')}</figure><div class="ending-badge">${esc(sum.endingTitle)}</div>${sum.dream ? `<div class="dream-pay ${sum.dream.done ? 'ok' : ''}" data-testid="dream-payoff"><b>${sum.dream.icon} 夢「${esc(sum.dream.name)}」${sum.dream.done ? '— かなえた！' : `— ${sum.dream.best}%`}</b><p>${esc(sum.dream.payoff)}</p></div>` : ''}
       <h2>${t('dead.title', { name: esc(sum.name) })}</h2><p class="muted">${sum.birthYear}年 – ${sum.deathYear}年（${sum.age}歳）・${esc(sum.cause)}</p>
       <p class="obit">${esc(sum.obituary)}</p>${bars(sum.scores, AXES)}
       <h3>人生のハイライト</h3><ul class="results">${sum.highlights.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
@@ -217,7 +285,7 @@ export class App {
   vSettings() {
     const st = this.meta.settings; const tg = (k: keyof Meta['settings'], label: string, note = '') => `<button class="toggle ${st[k] ? 'on' : ''}" data-act="setting" data-arg="${k}" role="switch" aria-checked="${!!st[k]}"><span>${label}${note ? `<small>${note}</small>` : ''}</span><i></i></button>`;
     return `<section class="card"><h2>${t('tab.settings')}</h2>
-      ${tg('showHints', t('set.hints'))}${tg('reduceMotion', t('set.motion'))}
+      ${tg('showHints', t('set.hints'))}${tg('reduceMotion', t('set.motion'), '端末の「視差効果を減らす」設定にも自動で従います')}${tg('sound', '効果音', '初期設定はオフ。短い音をその場で生成して鳴らします')}
       ${tg('ads', t('set.ads'), adsConfigured() ? '' : '現在、広告は設定されていません')}${tg('analytics', t('set.analytics'), analyticsConfigured() ? '' : '現在、統計の送信先は設定されていません')}
       <label class="small">${t('set.lang')}：<select disabled>${LANGS.map(l => `<option>${l.name}</option>`).join('')}</select></label>
       <button class="btn ghost" data-act="tut-again">${t('set.tutorial')}</button></section>

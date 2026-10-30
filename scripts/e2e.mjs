@@ -4,8 +4,15 @@ const BASE = process.argv[2] || 'http://localhost:4173';
 const OUT = process.env.E2E_OUT || 'docs/screenshots'; import('node:fs').then(fs => fs.mkdirSync(OUT, { recursive: true }));
 const results = []; const errors = [];
 const ok = (name, cond, extra = '') => { results.push({ name, pass: !!cond, extra }); console.log(`${cond ? 'PASS' : 'FAIL'} ${name} ${extra}`); };
+const momentShots = {}; let curLabel = '';
+async function dismissMoments(page) { // full-screen ECHO / headline / dream overlays: screenshot the first of each kind, then dismiss
+  for (let k = 0; k < 8; k++) { const m = page.getByTestId('moment'); if (!(await m.count())) return; const kind = await m.getAttribute('data-kind');
+    const key = curLabel + kind; if (!momentShots[key]) { momentShots[key] = await m.innerText(); await page.waitForTimeout(150); await page.screenshot({ path: `${OUT}/${curLabel}-11-moment-${kind}.png` }); }
+    await page.getByTestId('moment-ok').click(); }
+}
 async function playUntil(page, n) { // make n actions (choices or next-year)
   for (let i = 0; i < n; i++) {
+    await dismissMoments(page);
     const c = page.getByTestId('choice'); const ny = page.getByTestId('next-year');
     if (await c.count()) await c.nth(i % (await c.count())).click();
     else if (await ny.count()) await ny.click();
@@ -17,7 +24,7 @@ async function choicesFit(page) { return page.evaluate(() => { const cs = [...do
 async function run(label, viewport, isMobile) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: isMobile ? 2 : 1, isMobile, hasTouch: isMobile, locale: 'ja-JP', reducedMotion: 'reduce' });
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); curLabel = label;
   page.on('pageerror', e => errors.push(`${label}: ${e.message}`));
   page.on('console', m => { if (m.type() === 'error') errors.push(`${label} console: ${m.text()}`); });
   await page.goto(BASE); await page.waitForSelector('[data-testid=new-life]');
@@ -32,10 +39,12 @@ async function run(label, viewport, isMobile) {
   { const w = await artLoaded(page, '.ev-art img'); ok(`${label}: event art loaded`, w > 0, `w=${w} key=${await page.locator('.ev-art img').getAttribute('data-art').catch(() => '-')}`);
     const f = await choicesFit(page); ok(`${label}: first choice visible without scroll`, f.first > 0 && f.first <= f.lim, JSON.stringify(f));
     ok(`${label}: event art has ja alt`, /[\u3040-\u9fff]/.test(await page.locator('.ev-art img').getAttribute('alt') ?? '')); }
+  ok(`${label}: speech bubble + choice icons`, (await page.locator('.say .bubble').count()) && (await page.locator('.choice .ci').count()) >= 2);
   await page.screenshot({ path: `${OUT}/${label}-03-event.png` });
   const ev1 = await page.getByTestId('event').getAttribute('data-event').catch(() => null);
   await page.getByTestId('choice').first().click();
   ok(`${label}: choice shows result`, await page.getByTestId('result').count(), `(event ${ev1})`);
+  await dismissMoments(page); ok(`${label}: dream meter shown`, await page.getByTestId('dream').count(), ev1 === 'dream_pick' ? 'picked at start' : '');
   const shots = new Set(); const firstArt = await page.locator('.ev-art img').getAttribute('data-art').catch(() => null);
   for (let g = 0; g < 400 && shots.size < 2; g++) { const ev = page.locator('.ev-art img'); if (await ev.count()) { const k = await ev.getAttribute('data-art'); if (!shots.has(k) && k !== firstArt) { await artLoaded(page, '.ev-art img'); shots.add(k); await page.screenshot({ path: `${OUT}/${label}-03${'bc'[shots.size - 1]}-event-${k}.png` }); } } await playUntil(page, 1); }
   await playUntil(page, 25);
@@ -43,7 +52,10 @@ async function run(label, viewport, isMobile) {
   const nameBefore = await page.getByTestId('player-name').textContent();
   ok(`${label}: years progress`, parseInt(ageBefore) > 18, ageBefore);
   if (await page.getByTestId('year-end').count() === 0) await playUntil(page, 1);
+  for (let g = 0; g < 40 && !(await page.getByTestId('year-end').count()); g++) { await dismissMoments(page); if (await page.getByTestId('year-end').count()) break; await playUntil(page, 1); }
+  await dismissMoments(page);
   const ye = page.getByTestId('year-end'); if (await ye.count()) await page.screenshot({ path: `${OUT}/${label}-04-yearend.png`, fullPage: false });
+  ok(`${label}: year-transition card`, /\d+歳—\d{4}年/.test((await page.locator('.yt-head').innerText().catch(() => '')).replace(/\s/g, '')), await page.locator('.yt-head').innerText().catch(() => '-'));
   const saved = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('ripple')).length);
   ok(`${label}: saved to localStorage`, saved >= 1, `keys=${saved}`);
   const ageNow = await page.getByTestId('player-age').textContent();
@@ -65,6 +77,9 @@ async function run(label, viewport, isMobile) {
   await page.getByTestId('tab-life').click();
   let guard = 0; while (!(await page.getByTestId('review').count()) && guard++ < 1500) await playUntil(page, 1);
   ok(`${label}: life reaches review`, await page.getByTestId('review').count(), `actions=${guard}`);
+  ok(`${label}: ECHO flashback overlay appeared`, !!momentShots[label + 'echo'], (momentShots[label + 'echo'] ?? '').replace(/\s+/g, ' ').slice(0, 80));
+  ok(`${label}: newspaper headline overlay appeared`, !!momentShots[label + 'headline']);
+  ok(`${label}: dream payoff in review`, await page.getByTestId('dream-payoff').count());
   ok(`${label}: review art loaded`, await (async () => { await page.locator('[data-art=review]').scrollIntoViewIfNeeded(); return artLoaded(page, '[data-art=review]'); })());
   await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: `${OUT}/${label}-09b-review-top.png` });
   await page.screenshot({ path: `${OUT}/${label}-09-review.png`, fullPage: true });
@@ -78,6 +93,12 @@ async function run(label, viewport, isMobile) {
   for (let i = 0; i < 4; i++) await p2.getByTestId('tut-next').click();
   await p2.getByTestId('tab-more').click(); await p2.getByTestId('tab-settings').click(); await p2.getByTestId('io').fill(code); await p2.getByTestId('import').click();
   ok(`${label}: import restores`, (await p2.getByTestId('player-name').textContent()) === nameBefore);
+  // motion on (default OS setting): floating deltas / bar flashes appear after a choice
+  { const p3 = await (await browser.newContext({ viewport, isMobile, hasTouch: isMobile })).newPage(); await p3.goto(BASE); await p3.evaluate(() => localStorage.clear()); await p3.reload();
+    await p3.getByTestId('new-life').click(); await p3.getByTestId('start').click(); for (let i = 0; i < 4; i++) await p3.getByTestId('tut-next').click();
+    let seen = 0; for (let i = 0; i < 30 && !seen; i++) { const m = p3.getByTestId('moment-ok'); if (await m.count()) await m.click(); const c = p3.getByTestId('choice'); const ny = p3.getByTestId('next-year');
+      if (await c.count()) await c.first().click(); else if (await ny.count()) await ny.click(); seen = await p3.locator('.float, .fl-up, .fl-down, .ysplash').count(); }
+    ok(`${label}: feedback animations fire (motion on)`, seen > 0, `nodes=${seen}`); await p3.context().close(); }
   // horizontal overflow check
   const ov = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth); ok(`${label}: no horizontal overflow`, ov <= 1, `overflow=${ov}`);
   for (const pg of ['privacy', 'terms', 'about', 'how-to-play', 'faq', 'changelog']) { const r = await page.goto(`${BASE}/${pg}.html`); ok(`${label}: /${pg}.html`, r.ok() && (await page.locator('h1').count()) > 0); }

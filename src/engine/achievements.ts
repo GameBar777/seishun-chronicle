@@ -4,6 +4,10 @@ import { Ctx } from './ctx';
 export interface Achievement { id: string; name: string; desc: string; test: (s: GameState, m: Meta) => boolean }
 const has = (s: GameState, f: string) => s.flags[f] !== undefined;
 export const ACHIEVEMENTS: Achievement[] = [
+  { id: 'dream_done', name: '夢の続きを生きる', desc: '人生の夢をかなえる', test: s => has(s, 'dream_done') },
+  { id: 'echo_seen', name: '時を越えて', desc: '過去の選択の残響に出会う', test: s => s.world.echoes.some(e => e.surfaced && e.gen === s.gen) },
+  { id: 'stranger_back', name: '恩送り', desc: '助けた見知らぬ人と再会する', test: s => !!s.evHist['drama_stranger_returns'] },
+  { id: 'rival_end', name: '好敵手', desc: 'ライバルとの物語を最後まで見届ける', test: s => !!s.evHist['drama_rival_3'] },
   { id: 'first_year', name: 'はじまりの一年', desc: '最初の一年を終える', test: s => s.stats.yearsPlayed >= 1 },
   { id: 'married', name: '誓いの日', desc: '結婚する', test: s => has(s, 'married') },
   { id: 'parent', name: '小さな手', desc: '子どもを迎える', test: s => has(s, 'parent') },

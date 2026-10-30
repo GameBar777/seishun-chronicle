@@ -1,7 +1,7 @@
 // Core data types. All money values are in 万円 (10,000 JPY units).
 export type Stat = 'int' | 'soc' | 'phy' | 'cre' | 'dis';
 export type Edu = 'hs' | 'voc' | 'uni' | 'grad';
-export type Role = 'parent' | 'sibling' | 'friend' | 'partner' | 'spouse' | 'ex' | 'child' | 'boss' | 'coworker' | 'mentor' | 'neighbor' | 'stranger';
+export type Role = 'parent' | 'sibling' | 'friend' | 'partner' | 'spouse' | 'ex' | 'child' | 'boss' | 'coworker' | 'mentor' | 'neighbor' | 'stranger' | 'rival';
 
 export interface Feelings { trust: number; affection: number; anger: number; respect: number; disappointment: number; }
 
@@ -48,7 +48,12 @@ export interface WorldNews { year: number; kind: string; text: string; echoId?: 
 export interface Echo {
   id: string; year: number; gen: number; cause: string; effect: string; target: 'npc' | 'town' | 'world' | 'family';
   key: string; surfaceYear: number; surfaced: boolean; magnitude: number; npcId?: string;
+  origin?: ChoiceOrigin; // the player's choice that started this ripple (for flashbacks)
 }
+export interface ChoiceOrigin { age: number; year: number; label: string; title: string; name?: string }
+/** UI-facing dramatic beats (flashbacks, headlines, milestones). Consumed by the UI, capped in the engine. */
+export interface Moment { kind: 'echo' | 'headline' | 'dream' | 'twist'; year: number; title: string; text: string; quote?: string; lead?: string; tone: 'good' | 'bad' | 'neutral'; icon: string }
+export interface DreamState { id: string; picked: number; best: number; done?: number }
 
 export interface LedgerRow {
   year: number; age: number; cashStart: number; oneoff: number; income: number; spouseIncome: number; tax: number; living: number;
@@ -60,11 +65,13 @@ export interface LedgerRow {
 export interface LogEntry { year: number; age: number; kind: string; text: string; important?: boolean; }
 export interface HistPoint { year: number; age: number; netWorth: number; happy: number; health: number; income: number; }
 
-export interface PendingChoice { label: string; hint: string; disabled?: boolean; }
-export interface ActiveEvent { id: string; npcId?: string; title: string; text: string; choices: PendingChoice[]; choiceMap: number[]; data?: any; }
+export interface PendingChoice { label: string; hint: string; icon?: string; disabled?: boolean; }
+export interface ActiveEvent { id: string; npcId?: string; title: string; text: string; choices: PendingChoice[]; choiceMap: number[]; data?: any;
+  cat?: string; drama?: boolean; say?: string; speaker?: string; flash?: { age: number; label: string } }
 
 export interface LifeSummary {
   gen: number; name: string; birthYear: number; deathYear: number; age: number; cause: string; ending: string; endingTitle: string;
+  dream?: { name: string; icon: string; best: number; done: boolean; payoff: string };
   scores: Record<string, number>; netWorth: number; heirId?: string; highlights: string[]; obituary: string;
 }
 
@@ -79,6 +86,9 @@ export interface GameState {
   phase: 'play' | 'yearEnd' | 'dead' | 'over';
   lineage: LifeSummary[]; pendingSummary: LifeSummary | null;
   cur: { oneoff: number; loans: number; invDeposit: number; invWithdraw: number; education: number; forgiven: number };
-  choiceLog: { year: number; ev: string; c: number }[];
-  stats: { yearsPlayed: number; eventsSeen: number };
+  choiceLog: { year: number; ev: string; c: number; age?: number; label?: string }[];
+  stats: { yearsPlayed: number; eventsSeen: number; notableYears: number };
+  // v3: drama & feel
+  moments: Moment[]; dream: DreamState | null;
+  yearMark: { notable: boolean; start: { health: number; happy: number; stress: number; nw: number; cash: number } } | null;
 }

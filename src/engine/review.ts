@@ -1,3 +1,4 @@
+import { dreamById } from '../data/dreams';
 import type { GameState, LifeSummary } from './types';
 import { Ctx, money } from './ctx';
 import { clamp } from './rng';
@@ -5,6 +6,7 @@ import { jobById } from '../data/jobs';
 
 export const AXES: Record<string, string> = { wealth: '財産', family: '家族', bonds: '友情', contribution: '社会への貢献', work: '仕事', legacy: '後世への影響', happiness: '幸福', experience: '経験' };
 export const ENDINGS: Record<string, { title: string; text: string }> = {
+  dream_true: { title: '夢をかなえた人', text: '18歳の春に決めたことを、最後まで手放さなかった。' },
   quiet_joy: { title: '静かな幸福', text: '大きな財産も名声もなかった。けれど、毎朝の湯気と誰かの笑い声があった。' },
   lonely_rich: { title: '孤独な富', text: '数字は積み上がった。最後に枕元にいたのは、弁護士と通帳だけだった。' },
   town_changer: { title: '町を変えた人', text: 'あなたの名前は知らなくても、あなたが作ったものの上で人々は暮らしている。' },
@@ -37,6 +39,7 @@ export function computeReview(s: GameState): LifeSummary {
   const regrets = Object.keys(s.flags).filter(f => f.startsWith('regret_')).length;
   let ending = 'ordinary';
   if (p.age < 45) ending = 'short_bright';
+  else if (s.dream?.done && sc.happiness >= 40) ending = 'dream_true';
   else if (sc.contribution >= 70) ending = 'town_changer';
   else if (sc.wealth >= 75 && sc.family + sc.bonds < 50) ending = 'lonely_rich';
   else if (sc.family >= 65) ending = 'guardian';
@@ -49,7 +52,8 @@ export function computeReview(s: GameState): LifeSummary {
   const job = jobById(p.jobId) ?? jobById(s.flags['last_job_id'] as any);
   const hl = s.log.filter(l => l.important).slice(-40);
   const pickHl = [hl[0], ...hl.filter(l => /結婚|起業|立ち上げ|生まれた|昇進|家を買|卒業|独立|受賞/.test(l.text)).slice(0, 5), hl[hl.length - 1]].filter(Boolean).map(l => `${l!.age}歳 ${l!.text}`).filter((x, i, a) => a.indexOf(x) === i);
+  const dr = dreamById(s.dream?.id); const dream = dr ? { name: dr.name, icon: dr.icon, best: s.dream!.best, done: !!s.dream!.done, payoff: s.dream!.done ? dr.payoff : `夢「${dr.name}」は、${s.dream!.best}%のところで物語を終えた。` } : undefined;
   const obit = `${c.home.name}出身。${job ? job.name + 'として働き、' : ''}${kids.length ? `${kids.length}人の子を育てた。` : ''}${p.business ? `${p.business.name}の創業者。` : ''}${ENDINGS[ending].text}${regrets ? `生前「もう一度やり直せるなら」と口にしたことが${regrets}度あったという。` : ''}`;
-  return { gen: s.gen, name: p.name, birthYear: p.birthYear, deathYear: s.world.year, age: p.age, cause: p.deathCause ?? '', ending, endingTitle: ENDINGS[ending].title, scores: sc, netWorth: Math.round(nw), highlights: pickHl, obituary: obit };
+  return { gen: s.gen, name: p.name, birthYear: p.birthYear, deathYear: s.world.year, age: p.age, cause: p.deathCause ?? '', ending, endingTitle: ENDINGS[ending].title, scores: sc, netWorth: Math.round(nw), highlights: pickHl, obituary: obit, dream };
 }
 export { money };

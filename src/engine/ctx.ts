@@ -1,3 +1,6 @@
+/** The choice currently being resolved (set by game.choose) so ripples can remember where they came from. */
+export let CUR_CHOICE: import('./types').ChoiceOrigin | null = null;
+export const setCurChoice = (o: import('./types').ChoiceOrigin | null) => { CUR_CHOICE = o; };
 import type { GameState, NPC, Role, Stat, Feelings, Echo } from './types';
 import { Rng, clamp } from './rng';
 import { jobById, JOBS, EDU_RANK } from '../data/jobs';
@@ -59,10 +62,11 @@ export class Ctx {
   note(n: NPC | undefined, t: string) { if (n) { n.notes.push(`${this.year}年: ${t}`); if (n.notes.length > 12) n.notes.shift(); } }
   log(text: string, important = false, kind = 'life') { this.s.log.push({ year: this.year, age: this.age, kind, text, important }); }
   news(text: string, kind = 'society', echoId?: string) { this.w.history.push({ year: this.year, kind, text, echoId }); }
-  later(id: string, min: number, max: number, npcId?: string, data?: any) { this.s.scheduled.push({ year: this.year + this.rng.int(min, max), id, npcId: npcId ?? this.npc?.id, data }); }
+  later(id: string, min: number, max: number, npcId?: string, data?: any) { this.s.scheduled.push({ year: this.year + this.rng.int(min, max), id, npcId: npcId ?? this.npc?.id, data: CUR_CHOICE ? { ...(data ?? {}), _o: CUR_CHOICE } : data }); }
+  moment(m: Omit<import('./types').Moment, 'year'>) { const l = this.s.moments ?? (this.s.moments = []); if (l.length < 6) l.push({ ...m, year: this.year }); if (this.s.yearMark) this.s.yearMark.notable = true; }
   echo(e: { key: string; cause: string; effect: string; target: Echo['target']; delay: [number, number]; magnitude?: number; npcId?: string }) {
     const ec: Echo = { id: `e${this.s.world.echoes.length + 1}_${this.year}`, year: this.year, gen: this.s.gen, cause: e.cause, effect: e.effect, target: e.target, key: e.key,
-      surfaceYear: this.year + this.rng.int(e.delay[0], e.delay[1]), surfaced: false, magnitude: e.magnitude ?? 1, npcId: e.npcId };
+      surfaceYear: this.year + this.rng.int(e.delay[0], e.delay[1]), surfaced: false, magnitude: e.magnitude ?? 1, npcId: e.npcId, origin: CUR_CHOICE ?? undefined };
     this.w.echoes.push(ec); return ec;
   }
   // careers
