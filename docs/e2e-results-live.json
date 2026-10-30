@@ -1,0 +1,242 @@
+{
+  "at": "2026-10-30T13:03:15.171Z",
+  "base": "https://gamebar777.github.io/ripple-years",
+  "results": [
+    {
+      "name": "mobile: title art loaded",
+      "pass": true,
+      "extra": "w=390"
+    },
+    {
+      "name": "mobile: tutorial shown",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: game started",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: event art loaded",
+      "pass": true,
+      "extra": "w=390 key=education"
+    },
+    {
+      "name": "mobile: first choice visible without scroll",
+      "pass": true,
+      "extra": "{\"first\":467,\"lim\":777,\"n\":4,\"last\":725}"
+    },
+    {
+      "name": "mobile: event art has ja alt",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: choice shows result",
+      "pass": true,
+      "extra": "(event edu_crossroads)"
+    },
+    {
+      "name": "mobile: years progress",
+      "pass": true,
+      "extra": "27歳"
+    },
+    {
+      "name": "mobile: saved to localStorage",
+      "pass": true,
+      "extra": "keys=2"
+    },
+    {
+      "name": "mobile: restore after reload",
+      "pass": true,
+      "extra": "高嶺 創 27歳"
+    },
+    {
+      "name": "mobile: chart rendered",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: export produces code",
+      "pass": true,
+      "extra": "len=22112"
+    },
+    {
+      "name": "mobile: life reaches review",
+      "pass": true,
+      "extra": "actions=192"
+    },
+    {
+      "name": "mobile: review art loaded",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: next generation starts",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: import restores",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: no horizontal overflow",
+      "pass": true,
+      "extra": "overflow=0"
+    },
+    {
+      "name": "mobile: /privacy.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: /terms.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: /about.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: /how-to-play.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: /faq.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "mobile: /changelog.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: title art loaded",
+      "pass": true,
+      "extra": "w=600"
+    },
+    {
+      "name": "desktop: tutorial shown",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: game started",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: event art loaded",
+      "pass": true,
+      "extra": "w=600 key=education"
+    },
+    {
+      "name": "desktop: first choice visible without scroll",
+      "pass": true,
+      "extra": "{\"first\":495,\"lim\":735,\"n\":4,\"last\":753}"
+    },
+    {
+      "name": "desktop: event art has ja alt",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: choice shows result",
+      "pass": true,
+      "extra": "(event edu_crossroads)"
+    },
+    {
+      "name": "desktop: years progress",
+      "pass": true,
+      "extra": "27歳"
+    },
+    {
+      "name": "desktop: saved to localStorage",
+      "pass": true,
+      "extra": "keys=2"
+    },
+    {
+      "name": "desktop: restore after reload",
+      "pass": true,
+      "extra": "高嶺 創 27歳"
+    },
+    {
+      "name": "desktop: chart rendered",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: export produces code",
+      "pass": true,
+      "extra": "len=22112"
+    },
+    {
+      "name": "desktop: life reaches review",
+      "pass": true,
+      "extra": "actions=192"
+    },
+    {
+      "name": "desktop: review art loaded",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: next generation starts",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: import restores",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: no horizontal overflow",
+      "pass": true,
+      "extra": "overflow=0"
+    },
+    {
+      "name": "desktop: /privacy.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: /terms.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: /about.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: /how-to-play.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: /faq.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "desktop: /changelog.html",
+      "pass": true,
+      "extra": ""
+    },
+    {
+      "name": "no JS errors",
+      "pass": true,
+      "extra": ""
+    }
+  ],
+  "errors": []
+}

@@ -1,7 +1,7 @@
 // E2E: run against `vite preview` (default http://localhost:4173). Usage: node scripts/e2e.mjs [baseUrl]
 import { chromium } from '@playwright/test';
 const BASE = process.argv[2] || 'http://localhost:4173';
-const OUT = 'docs/screenshots';
+const OUT = process.env.E2E_OUT || 'docs/screenshots'; import('node:fs').then(fs => fs.mkdirSync(OUT, { recursive: true }));
 const results = []; const errors = [];
 const ok = (name, cond, extra = '') => { results.push({ name, pass: !!cond, extra }); console.log(`${cond ? 'PASS' : 'FAIL'} ${name} ${extra}`); };
 async function playUntil(page, n) { // make n actions (choices or next-year)
@@ -88,5 +88,5 @@ await run('desktop', { width: 1280, height: 800 }, false);
 ok('no JS errors', errors.length === 0, errors.slice(0, 5).join(' | '));
 const fail = results.filter(r => !r.pass).length;
 console.log(`\n${results.length - fail}/${results.length} passed`);
-import('node:fs').then(fs => fs.writeFileSync('docs/e2e-results.json', JSON.stringify({ at: new Date().toISOString(), base: BASE, results, errors }, null, 2)));
+import('node:fs').then(fs => fs.writeFileSync((process.env.E2E_RESULTS || 'docs/e2e-results.json'), JSON.stringify({ at: new Date().toISOString(), base: BASE, results, errors }, null, 2)));
 process.exitCode = fail ? 1 : 0;
