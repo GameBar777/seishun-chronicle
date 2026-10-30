@@ -1,0 +1,10 @@
+
+ RUN  v5.0.5 /workspace/echoes-of-life
+
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  18:09:10
+   Duration  3.60s (import 97%, transform 2%, tests 1%)
+
+VITEST_EXIT 0

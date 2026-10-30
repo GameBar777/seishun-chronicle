@@ -1,0 +1,21 @@
+{
+  "name": "ripple-years",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "test": "vitest run",
+    "e2e": "node scripts/e2e.mjs",
+    "eventlist": "npx vite-node scripts/eventlist.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-node": "^6.0.0",
+    "vitest": "^5.0.5"
+  }
+}

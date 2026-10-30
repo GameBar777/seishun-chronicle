@@ -1,0 +1,40 @@
+PASS mobile: tutorial shown 
+PASS mobile: game started 
+PASS mobile: choice shows result (event edu_crossroads)
+PASS mobile: years progress 25歳
+PASS mobile: saved to localStorage keys=2
+PASS mobile: restore after reload 高嶺 創 25歳
+PASS mobile: chart rendered 
+PASS mobile: export produces code len=18368
+PASS mobile: life reaches review actions=181
+PASS mobile: next generation starts 
+PASS mobile: import restores 
+PASS mobile: no horizontal overflow overflow=0
+PASS mobile: /privacy.html 
+PASS mobile: /terms.html 
+PASS mobile: /about.html 
+PASS mobile: /how-to-play.html 
+PASS mobile: /faq.html 
+PASS mobile: /changelog.html 
+PASS desktop: tutorial shown 
+PASS desktop: game started 
+PASS desktop: choice shows result (event edu_crossroads)
+PASS desktop: years progress 25歳
+PASS desktop: saved to localStorage keys=2
+PASS desktop: restore after reload 高嶺 創 25歳
+PASS desktop: chart rendered 
+PASS desktop: export produces code len=18368
+PASS desktop: life reaches review actions=181
+PASS desktop: next generation starts 
+PASS desktop: import restores 
+PASS desktop: no horizontal overflow overflow=0
+PASS desktop: /privacy.html 
+PASS desktop: /terms.html 
+PASS desktop: /about.html 
+PASS desktop: /how-to-play.html 
+PASS desktop: /faq.html 
+PASS desktop: /changelog.html 
+PASS no JS errors 
+
+37/37 passed
+E2E_EXIT 0

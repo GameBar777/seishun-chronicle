@@ -1,0 +1,15 @@
+import type { EventDef } from '../../engine/eventTypes';
+import { education } from './education';
+import { career } from './career';
+import { moneyEvents } from './money';
+import { love } from './love';
+import { family } from './family';
+import { healthEvents } from './health';
+import { social } from './social';
+import { worldEvents } from './world';
+import { aging } from './aging';
+import { legacy } from './legacy';
+import { life } from './life';
+export const EVENTS: EventDef[] = [...education, ...career, ...moneyEvents, ...love, ...family, ...healthEvents, ...social, ...worldEvents, ...aging, ...legacy, ...life];
+const map = new Map(EVENTS.map(e => [e.id, e]));
+export const eventById = (id: string) => map.get(id);

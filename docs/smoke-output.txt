@@ -1,0 +1,14 @@
+lives 300 avg age 74.7 min 37 max 95
+maxLedgerErr 3.637978807091713e-12 {"year":2187,"age":62,"cashStart":0,"oneoff":0,"income":7742.356907021406,"spouseIncome":3610.001790628831,"tax":4893.332174872114,"living":6873.74352,"housing":2178.981,"education":1452.654,"debtInterest":388.70520799172033,"debtRepay":0,"borrowed":4046.3519972218764,"loans":0,"invDeposit":0,"invWithdraw":0,"invReturn":0,"cashEnd":0,"debtStart":48588.15099896504,"debtEnd":23870.31760479961,"forgiven":29152.89059937902,"investStart":0,"investEnd":0,"netWorth":-23870.31760479961} {
+  guardian: 53,
+  turbulent: 44,
+  comeback: 38,
+  town_changer: 84,
+  dreamer: 23,
+  lonely_rich: 25,
+  craftsman: 4,
+  wanderer: 23,
+  short_bright: 6
+}
+events 114 never seen: love_divorce_talk
+social_new_friend:1549 life_festival:1320 social_volunteer:1229 money_debt_trouble:1173 health_checkup:1160 world_election:1156 social_npc_goal:1037 social_neighbor:973 world_tech:959 career_job_hunt:816 life_lost_wallet:813 world_recession_fear:715
