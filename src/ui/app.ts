@@ -91,8 +91,8 @@ export class App {
     return `<main class="title"><figure class="title-art">${artImg('title', 'key', true)}</figure>
       <h1>${BRAND.name}<small>${BRAND.sub}</small></h1><p class="lead">${t('title.lead')}</p>
       <div class="stack">${cont}<button class="btn ${s ? '' : 'primary'}" data-act="setup" data-testid="new-life">${t('title.start')}</button>
-      <a class="btn ghost" href="/how-to-play.html">${t('title.how')}</a></div>
-      <footer class="foot"><a href="/about.html">このゲームについて</a>・<a href="/faq.html">FAQ</a>・<a href="/privacy.html">プライバシー</a>・<a href="/terms.html">利用規約</a></footer></main>`;
+      <a class="btn ghost" href="./how-to-play.html">${t('title.how')}</a></div>
+      <footer class="foot"><a href="./about.html">このゲームについて</a>・<a href="./faq.html">FAQ</a>・<a href="./privacy.html">プライバシー</a>・<a href="./terms.html">利用規約</a></footer></main>`;
   }
   vSetup() {
     return `<main class="setup"><h2>${t('title.start')}</h2>
@@ -195,7 +195,7 @@ export class App {
       <button class="btn" data-act="tab" data-arg="family" data-testid="tab-family">${t('tab.family')}</button>
       <button class="btn" data-act="tab" data-arg="awards" data-testid="tab-awards">${t('tab.awards')}</button>
       <button class="btn" data-act="tab" data-arg="settings" data-testid="tab-settings">${t('tab.settings')}</button>
-      <a class="btn ghost" href="/how-to-play.html">遊び方</a><a class="btn ghost" href="/about.html">このゲームについて</a></div></section>`;
+      <a class="btn ghost" href="./how-to-play.html">遊び方</a><a class="btn ghost" href="./about.html">このゲームについて</a></div></section>`;
   }
   vFamily() {
     const s = this.s!; const c = new Ctx(s);
@@ -225,7 +225,7 @@ export class App {
       <textarea id="io" rows="4" placeholder="ここにエクスポートしたコードを貼り付けてインポート" data-testid="io"></textarea>
       <div class="row2"><button class="btn" data-act="export" data-testid="export">${t('save.export')}</button><button class="btn" data-act="import" data-testid="import">${t('save.import')}</button></div>
       <button class="btn danger" data-act="reset">${t('save.reset')}</button></section>
-      <section class="card small"><a href="/about.html">このゲームについて</a>・<a href="/faq.html">FAQ</a>・<a href="/changelog.html">更新履歴</a>・<a href="/privacy.html">プライバシーポリシー</a>・<a href="/terms.html">利用規約</a></section>`;
+      <section class="card small"><a href="./about.html">このゲームについて</a>・<a href="./faq.html">FAQ</a>・<a href="./changelog.html">更新履歴</a>・<a href="./privacy.html">プライバシーポリシー</a>・<a href="./terms.html">利用規約</a></section>`;
   }
   vTutorial() {
     const k = (['tut.1', 'tut.2', 'tut.3', 'tut.4'] as const)[this.tutStep];
