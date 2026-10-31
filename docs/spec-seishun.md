@@ -24,3 +24,8 @@
 - BGM: src/sc/audio.ts の WebAudio 逐次合成。title / school（季節で移調）/ date / sad / confession / ending の6曲。
 - 主題歌「千日のプレリュード」: 作詞・作曲は本作オリジナル。歌声はなく、楽器演奏に歌詞を同期表示する（タイトル→🎵）。
 - サイドイベント: data/hevents2.ts（18本、id末尾 _sN）。エンディング判定の全イベント条件には含めない。
+
+## v1.2 演出強化
+- 立ち絵: public/img/ch/{id}_{n,h,s,o,a,b}.webp（640w）＋ -s.webp（360w、max-width:720pxで使用）。o=驚き a=怒り b=照れ。感情→表情: 嬉囁→h 照告→b 哀→s 怒嫉→a 驚→o 他→n。初表示時に全表情をプリロード。
+- CG: public/img/cg/{confess,ending,fireworks}.webp。告白（タイトルに「告白」または感情「告」）、エンディング、夏祭りデートで全画面表示→クリック/Enterで本編。
+- 音楽: 生成IRのConvolverリバーブ＋コンプ＋シェルフEQ、パン、対旋律（3度下、後半・サビ）、ドラムのフィル／クラッシュ／オープンハット、ベースの動き。主題歌は Aメロ8小節・Bメロ8小節・サビ16小節（インスト、歌唱なし）。

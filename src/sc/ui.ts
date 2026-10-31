@@ -30,7 +30,7 @@ function title() {
   stop(); audio.stopBgm(); S = null; setBg('key', { season: '春', weather: '晴れ', tod: 'day' });
   const startTitleBgm = () => { audio.resume(); audio.playBgm('title'); };
   document.addEventListener('pointerdown', startTitleBgm, { once: true });
-  app().innerHTML = `<div class="title"><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
+  app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌「${THEME_SONG.title}」</button><button id="t-help">遊び方</button></div>
   <p class="note">全156週（高校3年間）。1周の目安 2〜4時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
@@ -148,7 +148,20 @@ function scene() {
     if (v.kind === 'ending') return endingBox();
     showChoices(v.choices, i => { audio.se('select'); done(resolve(s, i)); });
   };
-  playLines(v.title, v.lines, choose, v.h);
+  const isConf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
+  const cg = v.kind === 'ending' ? 'ending' : (/告白/.test(v.title) || v.lines.some(l => l.emo === '告')) ? 'confess' : v.kind === 'date' && sc0?.data?.loc === 'festival' ? 'fireworks' : '';
+  const stageCls = isConf ? 'confess' : v.kind === 'date' ? 'date' : v.kind === 'ending' ? 'ending' : '';
+  const go = () => { playLines(v.title, v.lines, choose, v.h); if (stageCls) document.querySelector('.stage')?.classList.add(stageCls); };
+  if (cg) showCG(cg, v.title, go); else go();
+}
+export const CGS = ['confess', 'ending', 'fireworks'];
+function showCG(name: string, cap: string, after: () => void) {
+  audio.se('heart');
+  const el = document.createElement('div'); el.className = 'cg'; el.innerHTML = `<img src="${BASE}img/cg/${name}.webp" alt=""><div class="cgcap">${esc(cap)}</div><div class="hint">クリックで進む</div>`;
+  document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('on'));
+  let closed = false; const close = () => { if (closed) return; closed = true; el.classList.remove('on'); setTimeout(() => el.remove(), 600); document.removeEventListener('keydown', key); after(); };
+  const key = (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); close(); } };
+  setTimeout(() => { el.onclick = close; document.addEventListener('keydown', key); }, 500);
 }
 let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
@@ -175,15 +188,20 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
   next();
 }
 const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '💢', 哀: '💧', 驚: '❗', 嫉: '💦', 囁: '…', 告: '💓', 冷: '❄' } as any)[e] || '';
-const EXPR: Record<string, string> = { 嬉: 'h', 照: 'h', 告: 'h', 囁: 'h', 哀: 's', 怒: 's', 嫉: 's', 冷: 'n', 驚: 'n', 通常: 'n' };
+export const EXPR: Record<string, string> = { 嬉: 'h', 照: 'b', 告: 'b', 囁: 'h', 哀: 's', 怒: 'a', 嫉: 'a', 冷: 'n', 驚: 'o', 通常: 'n' };
+export const EXPR_FILES = ['n', 'h', 's', 'o', 'a', 'b'];
+const SMALL = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width:720px)').matches;
+const pSrc = (h: string, e: string) => `${BASE}img/ch/${h}_${e}${SMALL() ? '-s' : ''}.webp`;
+const preloaded = new Set<string>();
+function preloadExpr(h: string) { if (preloaded.has(h)) return; preloaded.add(h); for (const e of EXPR_FILES) { const im = new Image(); im.src = pSrc(h, e); } }
 function setExpr(h: string | undefined, emo: string) {
-  const img = document.getElementById('pimg') as HTMLImageElement | null; if (!img || !h) return; const src = `${BASE}img/ch/${h}_${EXPR[emo] || 'n'}.webp`;
+  const img = document.getElementById('pimg') as HTMLImageElement | null; if (!img || !h) return; const src = pSrc(h, EXPR[emo] || 'n');
   if (img.src.endsWith(src.replace(/^\./, ''))) { img.classList.remove('bounce'); void img.offsetWidth; img.classList.add('bounce'); return; }
   img.classList.add('swap'); setTimeout(() => { img.src = src; img.classList.remove('swap'); }, 120);
 }
 function portrait(h: string) {
-  const H = HMAP[h], x = S!.hs[h];
-  return `<div class="portrait"><img id="pimg" class="pimg" src="${BASE}img/ch/${h}_n.webp" alt="${H.sei}${H.mei}" onerror="this.style.display='none'"><div id="emo" class="emo"></div><div class="pi">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
+  const H = HMAP[h], x = S!.hs[h]; preloadExpr(h);
+  return `<div class="portrait"><div class="pwrap"><img id="pimg" class="pimg" src="${pSrc(h, 'n')}" alt="${H.sei}${H.mei}" onerror="this.style.display='none'"></div><div id="emo" class="emo"></div><div class="pi">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
 }
 function showChoices(ch: string[], pick: (i: number) => void) {
   const el = $('#ch'); el.innerHTML = ch.map((c, i) => `<button data-i="${i}"><b>${i + 1}</b> ${esc(c)}</button>`).join('');

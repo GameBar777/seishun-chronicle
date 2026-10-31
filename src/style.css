@@ -52,3 +52,28 @@ body{background:#1e1b2e}
 .portrait .pi{bottom:auto;top:30%;left:auto;right:calc(50% + 150px)}
 @media(max-width:720px){.portrait .pi{right:auto;left:6px;top:4px}.logo h1{font-size:2.2rem;white-space:nowrap}.logo{padding:8px 18px}}
 .box .name{color:#ffd1e8;font-weight:bold}
+/* v1.2 演出 */
+.pwrap{height:min(60vh,520px);aspect-ratio:640/1000;overflow:hidden;margin:0 auto;-webkit-mask-image:linear-gradient(#000 82%,transparent);mask-image:linear-gradient(#000 82%,transparent)}
+.pwrap .pimg{height:auto;width:100%;max-width:none}
+@media(max-width:720px){.pwrap{height:46vh}}
+.stage{animation:stageIn .5s ease both}@keyframes stageIn{from{opacity:0;transform:translateY(8px)}}
+.title{position:relative;overflow:hidden}.title .logo{animation:logoIn 1.4s cubic-bezier(.2,1.4,.4,1) both,float 5s ease-in-out 1.4s infinite}
+@keyframes logoIn{0%{opacity:0;transform:scale(.6) translateY(-30px);filter:blur(8px)}60%{opacity:1;filter:blur(0)}100%{transform:none}}
+.title .logo h1{background-size:200% 100%;animation:shine 4s linear infinite}@keyframes shine{to{background-position:-200% 0}}
+.title .menu button{animation:menuIn .5s ease both}.title .menu button:nth-child(2){animation-delay:.08s}.title .menu button:nth-child(3){animation-delay:.16s}.title .menu button:nth-child(4){animation-delay:.24s}.title .menu button:nth-child(5){animation-delay:.32s}.title .menu button:nth-child(6){animation-delay:.4s}
+@keyframes menuIn{from{opacity:0;transform:translateX(-16px)}}
+.rays{position:absolute;left:50%;top:-40%;width:160vmax;height:160vmax;margin-left:-80vmax;pointer-events:none;z-index:-1;background:repeating-conic-gradient(from 0deg,#fff6 0 6deg,transparent 6deg 18deg);-webkit-mask-image:radial-gradient(circle,#000 10%,transparent 55%);mask-image:radial-gradient(circle,#000 10%,transparent 55%);animation:spin 60s linear infinite;opacity:.7}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stage.confess::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,#ff6fa555 100%);animation:fadein 1.2s both;z-index:0}
+.stage.confess .pwrap{animation:zoomIn 3s ease both}@keyframes zoomIn{from{transform:scale(1)}to{transform:scale(1.07)}}
+.stage.confess::after{content:"♥ ♥ ♥";position:fixed;left:0;right:0;bottom:-40px;text-align:center;font-size:2rem;color:#ff7aa8;letter-spacing:30vw;opacity:.7;pointer-events:none;animation:hearts 6s ease-in infinite}
+@keyframes hearts{to{transform:translateY(-110vh);opacity:0}}
+.stage.date::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 30%,#fff3,transparent 70%);animation:fadein 1s both}
+@keyframes fadein{from{opacity:0}}
+.cg{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .6s;cursor:pointer}
+.cg.on{opacity:1}.cg img{width:100%;height:100%;object-fit:cover;animation:cgPan 12s ease-out both}
+@keyframes cgPan{from{transform:scale(1.12)}to{transform:scale(1)}}
+.cg .cgcap{position:absolute;left:0;right:0;bottom:12%;text-align:center;color:#fff;font-size:1.6rem;font-weight:bold;letter-spacing:.15em;text-shadow:0 2px 10px #000;animation:fadein 2s .8s both}
+.cg .hint{position:absolute;bottom:4%;right:4%;color:#fffc;font-size:.85rem;animation:blink 1.6s infinite}@keyframes blink{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.rays,.cg img,.stage.confess::after{animation:none}}
+.portrait .pi{writing-mode:horizontal-tb;white-space:nowrap;width:max-content;max-width:none}
