@@ -38,7 +38,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
-  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。田中はまだ声なし（端末の読み上げ）。</p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・田中・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
@@ -335,10 +335,10 @@ function loadDialog() {
 function settings() {
   const ja = hasJapaneseVoice();
   const r = (k: keyof VoiceSettings, label: string, min = 0, max = 1, step = 0.05) => `<label>${label}<input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${set[k]}"></label>`;
-  modal('音声・音量設定', `<p class="note">🎙 ヒロイン9人・芽衣・健太・真鍋先生：収録ボイス（ElevenLabs のAI音声）。<br>地の文・その他の人物：${voiceSupported() ? (ja ? '端末内蔵の読み上げ（Web Speech API）。' : '日本語音声が見つからないため文字のみ。') : 'このブラウザは読み上げ非対応のため文字のみ。'}</p>
+  modal('音声・音量設定', `<p class="note">🎙 ヒロイン9人・芽衣・健太・田中・真鍋先生：収録ボイス（ElevenLabs のAI音声）。<br>地の文・その他の人物：${voiceSupported() ? (ja ? '端末内蔵の読み上げ（Web Speech API）。' : '日本語音声が見つからないため文字のみ。') : 'このブラウザは読み上げ非対応のため文字のみ。'}</p>
   <label><input type="checkbox" id="st-auto" ${set.auto ? 'checked' : ''}> ボイスON</label> <label><input type="checkbox" id="st-nar" ${set.narrate ? 'checked' : ''}> 地の文も読み上げ</label>
   <div class="sliders">${r('master', '全体音量')}${r('voice', 'ボイス音量')}${r('bgm', 'BGM音量')}${r('se', '効果音音量')}${r('voiceRate', '声の速さ', 0.6, 1.6, 0.05)}${r('textSpeed', '文字送り（ms/文字・0で瞬時）', 0, 80, 5)}</div>
-  <h4>キャラ別音量</h4><div class="sliders">${HEROINES.map(H => `<label>${H.sei}${H.mei}<input type="range" data-c="${H.id}" min="0" max="1" step="0.05" value="${set.perChar[H.id] ?? 1}"><button class="vt" data-c="${H.id}">試聴</button></label>`).join('')}${[['@芽衣', '芽衣（妹）'], ['@健太', '健太'], ['@担任・真鍋', '真鍋先生']].map(([id, nm]) => `<label>${nm}<input type="range" data-c="${id}" min="0" max="1" step="0.05" value="${set.perChar[id] ?? 1}"></label>`).join('')}</div>`);
+  <h4>キャラ別音量</h4><div class="sliders">${HEROINES.map(H => `<label>${H.sei}${H.mei}<input type="range" data-c="${H.id}" min="0" max="1" step="0.05" value="${set.perChar[H.id] ?? 1}"><button class="vt" data-c="${H.id}">試聴</button></label>`).join('')}${[['@芽衣', '芽衣（妹）'], ['@健太', '健太'], ['@田中', '田中'], ['@担任・真鍋', '真鍋先生']].map(([id, nm]) => `<label>${nm}<input type="range" data-c="${id}" min="0" max="1" step="0.05" value="${set.perChar[id] ?? 1}"></label>`).join('')}</div>`);
   document.querySelectorAll<HTMLInputElement>('[data-k]').forEach(i => i.oninput = () => { (set as any)[i.dataset.k!] = +i.value; saveSettings(); });
   document.querySelectorAll<HTMLInputElement>('input[data-c]').forEach(i => i.oninput = () => { set.perChar[i.dataset.c!] = +i.value; saveSettings(); });
   document.querySelectorAll<HTMLButtonElement>('.vt').forEach(b => b.onclick = () => { const H = HMAP[b.dataset.c!]; stop(); unlockVoice(); const t = H.greet[1][0]; const vid = voiceId(H.id, t); if (!speak(H.id, t, '嬉', 1, { ...set, auto: true }, undefined, vid)) toast(hasClip(H.id, vid) ? '再生できませんでした' : 'ボイスを読み込み中です。少し待ってからもう一度'); });

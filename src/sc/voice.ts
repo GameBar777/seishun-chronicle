@@ -1,11 +1,11 @@
 // ボイス再生。
-// ・ヒロイン9人＋芽衣・健太・真鍋：ElevenLabs で事前生成した収録音声（public/voice/、静的ファイル）。
+// ・ヒロイン9人＋芽衣・健太・田中・真鍋：ElevenLabs で事前生成した収録音声（public/voice/、静的ファイル）。
 //   収録のない台詞（プレイヤー入力の引用など）は文字のみ。
 // ・それ以外（地の文・ちょい役）：ブラウザ標準の Web Speech API（端末内蔵の合成音声）。
 import type { Emo } from './types';
 import { HMAP, HEROINES } from './data/index';
 export interface VoiceSettings { master: number; voice: number; bgm: number; se: number; auto: boolean; textSpeed: number; voiceRate: number; narrate: boolean; perChar: Record<string, number> }
-export const defaultSettings = (): VoiceSettings => ({ master: 0.9, voice: 1, bgm: 0.35, se: 0.6, auto: true, textSpeed: 30, voiceRate: 1, narrate: false, perChar: Object.fromEntries([...HEROINES.map(h => h.id), '@芽衣', '@健太', '@担任・真鍋'].map(id => [id, 1])) });
+export const defaultSettings = (): VoiceSettings => ({ master: 0.9, voice: 1, bgm: 0.35, se: 0.6, auto: true, textSpeed: 30, voiceRate: 1, narrate: false, perChar: Object.fromEntries([...HEROINES.map(h => h.id), '@芽衣', '@健太', '@田中', '@担任・真鍋'].map(id => [id, 1])) });
 const EMO: Record<Emo, { p: number; r: number; v: number }> = {
   通常: { p: 0, r: 0, v: 1 }, 嬉: { p: 0.12, r: 0.06, v: 1 }, 照: { p: 0.08, r: -0.06, v: 0.85 }, 怒: { p: -0.12, r: 0.1, v: 1 }, 哀: { p: -0.12, r: -0.16, v: 0.75 },
   驚: { p: 0.2, r: 0.12, v: 1 }, 嫉: { p: -0.06, r: -0.04, v: 0.85 }, 囁: { p: 0.02, r: -0.2, v: 0.5 }, 告: { p: -0.04, r: -0.24, v: 0.8 }, 冷: { p: -0.15, r: 0.02, v: 0.9 },
@@ -16,7 +16,7 @@ export function loadVoices() { if (!voiceSupported()) return []; jaVoices = spee
 if (voiceSupported()) speechSynthesis.onvoiceschanged = () => loadVoices();
 export function hasJapaneseVoice() { return loadVoices().length > 0; }
 // ───── 収録ボイス ─────
-export const CAST_SLUG: Record<string, string> = { hinata: 'hinata', mio: 'mio', yura: 'yura', kaho: 'kaho', reika: 'reika', kotoha: 'kotoha', ruka: 'ruka', rin: 'rin', shizuku: 'shizuku', '@芽衣': 'mei', '@健太': 'kenta', '@担任・真鍋': 'manabe' };
+export const CAST_SLUG: Record<string, string> = { hinata: 'hinata', mio: 'mio', yura: 'yura', kaho: 'kaho', reika: 'reika', kotoha: 'kotoha', ruka: 'ruka', rin: 'rin', shizuku: 'shizuku', '@芽衣': 'mei', '@健太': 'kenta', '@担任・真鍋': 'manabe', '@田中': 'tanaka' };
 export const isCast = (who: string) => who in CAST_SLUG;
 let vbase = './'; let manifest: Set<string> | null = null; let manifestP: Promise<void> | null = null;
 let vEl: HTMLAudioElement | null = null; let vPlaying = false;
