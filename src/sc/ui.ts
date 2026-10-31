@@ -231,7 +231,7 @@ let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
   let i = 0;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
-  <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><button class="bl-btn" id="bl-open" aria-label="会話ログ">📜 ログ</button><div class="hint">クリック / Enter で進む</div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
+  <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint bl-row-hint"><button class="bl-btn" id="bl-open" aria-label="会話ログ">📜 ログ</button><span>クリック / Enter で進む</span></div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
   bindCmd(); preloadCgs(lines);
   const box = $('#box'); bindBacklog(box);
   const next = () => {
