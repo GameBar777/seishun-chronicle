@@ -31,3 +31,7 @@ export function rank(k: StatKey, v: number): string {
 }
 export function fmtDelta(x: Delta): string { return x.key === 'money' ? `${x.d > 0 ? '+' : '−'}${Math.abs(x.d).toLocaleString()}円` : `${x.d > 0 ? '+' : '−'}${Math.abs(x.d)}`; }
 export function weekCard(week: number) { const c = cal(week); const se = season(c.m); return { y: c.Y, m: c.m, day: c.day, wd: c.wd, n: c.n, week: week + 1, term: c.term, season: se, icon: ({ 春: '🌸', 夏: '🌻', 秋: '🍁', 冬: '❄️' } as Record<string, string>)[se] }; }
+/** 行動ログ1行の色分け：良い出来事は pos（緑）、悪い出来事は neg（赤）、それ以外は ''（既定色） */
+const NEG = /🤧|🩹|🤒|💥|🌀|📢|💔|💧|失敗|治らなかった|できない|ケガ|風邪|熱が|寝込|スランプ|落ち|下がった|減った|怒|嫌われ|振られ|ストレスが(?:溜|たま|増)|ダメ|不合格|赤点|遅刻|叱/;
+const POS = /✨|🎉|💕|♥|治った|成功|合格|上がった|増えた|アップ|仲良く|喜|褒め|優勝|入賞|回復|すっきり|リフレッシュ|もらった|1位/;
+export function logTone(line: string): 'pos' | 'neg' | '' { return /治った|完治|合格した|成功！/.test(line) && !/不合格|治らなかった/.test(line) ? 'pos' : NEG.test(line) ? 'neg' : POS.test(line) ? 'pos' : ''; }
