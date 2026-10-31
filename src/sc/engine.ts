@@ -83,7 +83,7 @@ export function parseLine(raw: string, s: GameState, ctxH?: string): Line {
   let name = '', color = '#b2bec3';
   if (HMAP[who]) { const H = HMAP[who]; const hs = s.hs[who]; name = hs.met || who === ctxH ? `${H.sei} ${H.mei}` : '？？？'; color = H.color; }
   else if (who === 'me') { name = `${s.setup.sei} ${s.setup.mei}`; color = '#0984e3'; }
-  else if (who.startsWith('@')) { name = who.slice(1); color = NPC_COLOR; }
+  else if (who.startsWith('@')) { name = who === '@田中' ? '井上' : who.slice(1); color = NPC_COLOR; }
   const speakerH = HMAP[who] ? who : hid;
   if (lineTap.fn) lineTap.fn(who, text, emo, ctxH);
   return { who, name, emo, text: render(text, s, speakerH, false), voice: render(text, s, speakerH, true), color, vid: voiceId(who, text) };
