@@ -10,8 +10,8 @@ export const bgUrl = (k: string) => k === 'key' && portraitKey() ? `${BASE}img/b
 export function guessBg(text: string, fallback = 'gate'): { bg: string; tod?: Tod } {
   const r: [RegExp, string, Tod?][] = [[/病院|お見舞い|病室/, 'hospital'], [/体育館/, 'gym'], [/河川敷|土手|川沿い/, 'river'], [/体育祭|運動会|球技大会|リレー|グラウンド|校庭/, 'ground', 'day'], [/文化祭/, 'classroom'], [/駅のホーム|早朝の駅|改札|駅で|ホームで/, 'station'],
     [/プール/, 'pool', 'day'], [/リビング|玄関|食卓|こたつ|台所|ソファ|夕食|我が家|居間/, 'living'], [/天文|星空|星を|流れ星|夜空/, 'observatory', 'night'], [/(?<!体育|文化|学園)祭|花火|浴衣|神社|初詣|縁日/, 'festival', 'night'], [/海|浜|水着|波/, 'sea'], [/屋上|夕焼け/, 'rooftop', 'evening'],
-    [/水族館/, 'aquarium'], [/遊園地|観覧車/, 'amuse'], [/カフェ|喫茶/, 'cafe'], [/ゲームセンター|カラオケ|モール|商店街|駅前/, 'town', 'evening'], [/美術館/, 'museum'], [/映画/, 'movie'], [/山道|山頂|登山|ハイキング/, 'mountain'], [/公園/, 'park'],
-    [/電話|部屋|自室|ベッド|夜、/, 'room', 'night'], [/教室|授業|図書|放課後|休み時間|隣の席|テスト|生徒会|部活|文化祭|体育祭/, 'classroom'], [/校門|入学|卒業|登校|桜/, 'gate']];
+    [/水族館/, 'aquarium'], [/遊園地|観覧車/, 'amuse'], [/カフェ|喫茶|ベーカリー|パン屋/, 'cafe'], [/ゲームセンター|カラオケ|モール|商店街|駅前/, 'town', 'evening'], [/美術館/, 'museum'], [/映画/, 'movie'], [/山道|山頂|登山|ハイキング/, 'mountain'], [/公園/, 'park'],
+    [/電話|部屋|自室|ベッド|夜、/, 'room', 'night'], [/教室|授業|図書|放課後|休み時間|昼休み|廊下|クラスメイト|ホームルーム|始業式|学期初日|隣の席|テスト|生徒会|部活|文化祭|体育祭/, 'classroom'], [/校門|入学|卒業|登校|桜/, 'gate']];
   for (const [re, bg, tod] of r) if (re.test(text)) return { bg, tod };
   return { bg: fallback };
 }
@@ -20,17 +20,29 @@ export const SCENE_BG: Record<string, string> = {
   d_y1_nov: 'ground', d_y2_kareha: 'ground', d_y3_june: 'ground', d_y3_nov: 'classroom', d_y3_jan: 'station', d_y1_after: 'classroom', d_y2_matsuri: 'town',
   d_y2_atokata: 'ground', d_y3_mendan: 'classroom', d_y3_yokou: 'gym', d_y1_akiyasumi: 'classroom', d_fr_t_fireworks: 'town', d_fr_t_center: 'station', sports_day: 'ground:day', d_y1_pool: 'pool:day', rumor_ghost: 'classroom:day', beach: 'sea:day', d_y3_amagumo: 'town:evening', rin_s2: 'town', shizuku_s4: 'observatory:day',
   kaho_meet: 'river', reika_1: 'rooftop', ruka_3: 'hospital', rin_1: 'hospital', rin_2: 'hospital', mio_s1: 'classroom', kaho_s1: 'ground', ruka_s2: 'station',
-  sister: 'living', exam_result: 'station', tournament: 'gym',
+  sister: 'living', d_sis_y3_autumn: 'living', exam_result: 'station', tournament: 'gym',
 };
 // その週の行動からの既定背景
 export const ACT_BG: Record<string, string> = { bun: 'room', ri: 'room', rest: 'living', hobby: 'room', art: 'room', fashion: 'town', club: 'ground', job: 'town', train: 'park', run: 'river', talk: 'classroom' };
-/** 背景決定：明示キー → 1行目の地の文（主人公名を除く）のキーワード → 行動 → 既定 */
-export function pickBg(id: string, firstN: string, names: string[], act: string | undefined, isSister: boolean): { bg: string; tod?: Tod } {
+/** 場面の文脈（タイトル・本文・日付の決まったイベントか・休み中か・ヒロインの場面か） */
+export type BgCtx = { text?: string; dated?: boolean; vacation?: boolean; heroine?: boolean };
+const SCHOOLW = /クラスメイト|学期|始業|終業|修了式|担任|先生|ホームルーム|昼休み|購買|廊下|休み時間|生徒会|同級生|クラス|下駄箱|昇降口|職員室|黒板|席替え|進路|三者面談|期末|中間/;
+const HOMEW = /芽衣|(?<!お)母さん|(?<!お)父さん|お袋|親父|家族|我が家|自宅|帰宅|リビング|食卓|晩ご飯|夕飯/;
+/** 背景決定：明示キー → 1行目の地の文（主人公名を除く）のキーワード → 場面の文脈（学校/家） → 行動 → 既定 */
+export function pickBg(id: string, firstN: string, names: string[], act: string | undefined, isSister: boolean, ctx: BgCtx = {}): { bg: string; tod?: Tod } {
   if (SCENE_BG[id]) { const [bg, tod] = SCENE_BG[id].split(':'); return tod ? { bg, tod: tod as Tod } : { bg }; }
   let t = firstN; for (const n of names) if (n) t = t.split(n).join('');
   const g = guessBg(t, ''); if (g.bg) return g;
   if (isSister) return { bg: 'living' };
-  return { bg: (act && ACT_BG[act]) || 'classroom' };
+  let all = (ctx.text || ''); for (const n of names) if (n) all = all.split(n).join('');
+  const head = all.slice(0, 120);
+  if (SCHOOLW.test(head) && !(ctx.vacation && !/部活|補習|講習/.test(head))) return { bg: 'classroom' };
+  if (HOMEW.test(head)) return { bg: 'living' };
+  // 学期中の日付の決まったイベントは学校、ヒロインの場面は家・自室にしない
+  if (ctx.dated) return { bg: ctx.vacation ? 'town' : 'classroom' };
+  const a = (act && ACT_BG[act]) || 'classroom';
+  if (ctx.heroine && (a === 'living' || a === 'room')) return { bg: ctx.vacation ? 'town' : 'classroom' };
+  return { bg: a };
 }
 /** 場面の天気：本文に天気の記述があればそれに従う。固定イベントで記述がなければ雨・雪を出さない */
 export function sceneWeather(text: string, base: string, fixed: boolean): string {
