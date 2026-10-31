@@ -27,8 +27,12 @@ export function boot() { audio.setVolumes(set.master, set.bgm, set.se); title();
 // ───────── タイトル ─────────
 function title() {
   stop(); audio.stopBgm(); S = null; setBg('key', { season: '春', weather: '晴れ', tod: 'day' });
-  const startTitleBgm = () => { audio.resume(); audio.playBgm('title'); };
-  document.addEventListener('pointerdown', startTitleBgm, { once: true });
+  if (!audio.songElement()?.loop) audio.stopSong();
+  void audio.titleSong(BASE).then(ok => { if (ok || S) return; const h = document.createElement('div'); h.className = 'tapstart'; h.textContent = '🔊 タップで主題歌スタート'; document.querySelector('.title')?.appendChild(h);
+    // iOS Safari は touchend/click をユーザー操作として扱うため複数イベントで解錠を試みる
+    const EVS = ['touchend', 'click', 'pointerup', 'keydown'];
+    const go = () => { if (!S) audio.unlockTitleSong(BASE); setTimeout(() => { if (audio.songPlaying() || audio.titleFallbackOn() || S) { EVS.forEach(e => document.removeEventListener(e, go, true)); h.remove(); } }, 300); };
+    EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
   <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約2〜3時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
@@ -45,13 +49,14 @@ function themeSong() {
   modal('🎵 主題歌', `<p class="note">提供音源（ボーカル入り）。歌詞は音声からの自動書き起こしのため、実際と異なる場合があります。</p>
   <div class="row"><button id="sg-play" class="primary">▶ 再生</button><button id="sg-stop">■ 停止</button><label><input type="checkbox" id="sg-loop"> ループ</label><label><input type="checkbox" id="sg-ly" checked> 歌詞を表示</label></div>
   <div class="lyrics">${SONG_LYRICS.map(([, l], i) => `<p data-i="${i}">${esc(l)}</p>`).join('')}</div><div class="bar"><i id="ly-bar"></i></div><p class="note">音量は「音声・音量設定」のBGM音量に連動します。</p>`);
-  const loopEl = $('#sg-loop') as HTMLInputElement, lyEl = $('#sg-ly') as HTMLInputElement;
-  const start = () => { const a = audio.playSong(BASE, { loop: loopEl.checked, onEnd: () => { if (!S) audio.playBgm('title'); } }); a.loop = loopEl.checked; };
-  $('#sg-play').onclick = start; $('#sg-stop').onclick = () => { audio.stopSong(); if (!S) audio.playBgm('title'); };
+  const loopEl = $('#sg-loop') as HTMLInputElement, lyEl = $('#sg-ly') as HTMLInputElement; loopEl.checked = true;
+  // タイトルで流れている主題歌をそのまま使う（二重再生しない）
+  const start = () => { const a = audio.songElement(); if (a) { a.loop = loopEl.checked; a.play().catch(() => { }); } else { audio.titleSong(BASE).then(() => { const b = audio.songElement(); if (b) b.loop = loopEl.checked; }); } };
+  $('#sg-play').onclick = () => { const a = audio.songElement(); if (a) a.currentTime = 0; start(); }; $('#sg-stop').onclick = () => { audio.songElement()?.pause(); };
   loopEl.onchange = () => { const a = audio.songElement(); if (a) a.loop = loopEl.checked; };
   lyEl.onchange = () => { (document.querySelector('.lyrics') as HTMLElement).style.display = lyEl.checked ? '' : 'none'; };
   start();
-  const tick = () => { const m = document.querySelector('.lyrics'); if (!m) { if (audio.songPlaying()) { audio.stopSong(); if (!S) audio.playBgm('title'); } return; }
+  const tick = () => { const m = document.querySelector('.lyrics'); if (!m) { const a = audio.songElement(); if (a) a.loop = true; if (!S && !audio.songPlaying()) audio.unlockTitleSong(BASE); return; }
     const a = audio.songElement(); const t = a ? a.currentTime : 0; let cur = -1; SONG_LYRICS.forEach(([s0], i) => { if (t >= s0) cur = i; });
     m.querySelectorAll('p').forEach((p, i) => p.classList.toggle('on', i === cur)); const on = m.querySelector('p.on') as HTMLElement | null; if (on) m.scrollTop = on.offsetTop - m.clientHeight / 2;
     const b = document.getElementById('ly-bar'); if (b && a && a.duration) b.style.width = Math.min(100, t / a.duration * 100) + '%'; requestAnimationFrame(tick); };
