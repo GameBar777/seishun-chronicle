@@ -18,7 +18,7 @@ export function guessBg(text: string, fallback = 'gate'): { bg: string; tod?: To
 // シーンIDごとの明示背景（キーワード推測より優先）
 export const SCENE_BG: Record<string, string> = {
   d_y1_nov: 'ground', d_y2_kareha: 'ground', d_y3_june: 'ground', d_y3_nov: 'classroom', d_y3_jan: 'station', d_y1_after: 'classroom', d_y2_matsuri: 'town',
-  d_y2_atokata: 'ground', d_y3_mendan: 'classroom', d_y3_yokou: 'gym', d_y1_akiyasumi: 'classroom', d_fr_t_fireworks: 'town', d_fr_t_center: 'station', sports_day: 'ground:day', d_y1_pool: 'pool:day', d_y3_amagumo: 'town:evening', rin_s2: 'town', shizuku_s4: 'observatory:day',
+  d_y2_atokata: 'ground', d_y3_mendan: 'classroom', d_y3_yokou: 'gym', d_y1_akiyasumi: 'classroom', d_fr_t_fireworks: 'town', d_fr_t_center: 'station', sports_day: 'ground:day', d_y1_pool: 'pool:day', rumor_ghost: 'classroom:day', beach: 'sea:day', d_y3_amagumo: 'town:evening', rin_s2: 'town', shizuku_s4: 'observatory:day',
   kaho_meet: 'river', reika_1: 'rooftop', ruka_3: 'hospital', rin_1: 'hospital', rin_2: 'hospital', mio_s1: 'classroom', kaho_s1: 'ground', ruka_s2: 'station',
   sister: 'living', exam_result: 'station', tournament: 'gym',
 };
