@@ -11,7 +11,7 @@ export interface Ev {
   cond: (s: GameState) => boolean;
   lines: string[]; choices: Choice[]; prio?: number; dyn?: (s: GameState) => Choice[]; dynLines?: (s: GameState) => string[];
 }
-export interface DateQ { q: string; a: [string, number][] }
+export interface DateQ { q: string; a: [string, number][]; nv?: boolean } // nv: テキストのみ（未ボイス）
 export interface Heroine {
   id: string; sei: string; mei: string; seiYomi: string; meiYomi: string; color: string;
   grade: string; birthday: [number, number]; look: string; personality: string; family: string;
