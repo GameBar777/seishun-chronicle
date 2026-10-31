@@ -8,7 +8,8 @@ import { SIDE_EVENTS } from './data/hevents2';
 import { SIDE_EVENTS2 } from './data/hevents3';
 import { DAILY as DAILY1, DAILY2, DAILY3, DAILY4 } from './data/daily';
 import { SISTER } from './data/sister';
-const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4, ...SISTER];
+import { FRIENDS } from './data/friends';
+const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4, ...SISTER, ...FRIENDS];
 const HEVENTS = [...HEV0, ...SIDE_EVENTS, ...SIDE_EVENTS2];
 import { CAL } from './data/calendar';
 import type { Ev, Eff, Choice } from './data/schema';
@@ -308,7 +309,7 @@ const OPENING = [
   'n:入学式。壇上では、生徒会の新入生代表として一人の少女が挨拶をしていた。',
   'mio:新入生代表、氷室澪です。本校の伝統に恥じぬよう、規律ある学校生活を——',
   '@健太:{S}、見ろよ。あれが噂の首席入学。氷室澪だってよ。……目が合ったら凍りそう',
-  'n:中学からの悪友、早乙女健太。女子の情報にだけはやたら詳しい。',
+  'n:中学からの親友、早乙女健太。顔よし性格よしで女子にも人気なのに、本人だけがそれに気づいていない。噂話と女子の情報にはやたら詳しく、相談にも乗ってくれるいいやつだ。',
   '@健太:困ったら俺に電話しろ。誰がお前をどう思ってるか、ちょっとくらいは教えてやるよ',
 ];
 const MEET_RIN = [
@@ -548,7 +549,7 @@ function valentine(s: GameState): Line[] {
     if (h.toki >= 65) { out.push(L(`h(照):……{C}。これ。……手作り、だから。義理じゃ、ないから`, H.id)); h.flags.push('honmei' + cal(s.week).Y); diary(s, `バレンタイン：${H.sei}${H.mei}から本命チョコ。`); }
     else if (h.toki >= 40 || h.friend >= 55) { out.push(L(`h(嬉):はい、{C}。……一応、渡しとく`, H.id)); diary(s, `バレンタイン：${H.sei}${H.mei}からチョコ。`); }
   }
-  if (!out.length) out.push(L('@健太:……お互い、ゼロだな。来年があるさ'), L('n:母からのチョコが、やけに沁みた。'));
+  if (!out.length) out.push(L('@健太:……元気出せよ。チョコの数で人の価値は決まんねえって'), L('n:そう言う健太の鞄から、可愛い包みがいくつも覗いていた。'), L('@田中:……早乙女、その鞄の中身、研究対象として提出しろ'), L('n:母からのチョコが、やけに沁みた。'));
   return out;
 }
 export function courseRequirement(s: GameState): { ok: boolean; text: string } {
@@ -595,7 +596,7 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
   const goods = ranked.filter(H => evaluate(s, H.id).good);
   const normals = ranked.filter(H => evaluate(s, H.id).normal);
   let id = 'bad', title = 'バッドエンド：誰もいない校門', h: string | undefined, body: string[] = [];
-  const pre = ['n:三月。星見ヶ丘学園、卒業式。', 'n:朝、いつもより三十分早く目が覚めた。制服の袖に腕を通すのも、今日が最後だ。', 'n:通学路の商店街では、顔なじみの店主たちが「おめでとう」と声をかけてくれた。', 'n:校門には「卒業証書授与式」の立て看板。その前で、家族連れが順番に写真を撮っている。', '@健太:{S}！ 遅えぞ！ ……って、俺が早すぎただけか', '@健太:……なあ。三年って、短かったな', 'n:教室に入ると、黒板いっぱいに後輩たちの寄せ書きが描かれていた。', '@担任・真鍋:全員そろったな。……今日は説教なしだ。胸張って、行ってこい', 'n:体育館に響く「仰げば尊し」。千日前に見上げた桜並木が、今日はまだ蕾だった。', 'n:名前を呼ばれ、壇上で卒業証書を受け取る。思っていたより、ずっと軽い紙だった。', 'n:けれど、その一枚の向こうに、千日分の放課後が詰まっている気がした。', 'n:昼休みの屋上。雨の日の昇降口。夏祭りの夜の、遠い太鼓の音。', 'n:テスト前の図書室。文化祭の準備で残った、夕暮れの教室。', 'n:式が終わり、最後のホームルーム。真鍋先生は、出席簿を閉じて黙ったまま窓の外を見ていた。', '@担任・真鍋:……お前らの担任で、よかったよ。以上！ 解散！', 'n:誰かが泣き出して、つられてみんなが笑った。', '@健太:{S}。……大学行っても、連絡しろよ。絶対だぞ', 'n:健太と拳をぶつけ合って、廊下に出る。', 'n:校舎の窓から、三月の光が斜めに差し込んでいた。', 'n:――そして。']
+  const pre = ['n:三月。星見ヶ丘学園、卒業式。', 'n:朝、いつもより三十分早く目が覚めた。制服の袖に腕を通すのも、今日が最後だ。', 'n:通学路の商店街では、顔なじみの店主たちが「おめでとう」と声をかけてくれた。', 'n:校門には「卒業証書授与式」の立て看板。その前で、家族連れが順番に写真を撮っている。', '@健太:{S}！ 遅えぞ！ ……って、俺が早すぎただけか', '@健太:……なあ。三年って、短かったな', '@田中:おーい！ 恋愛研究会、最後の活動報告だ！ ……結論！ 三年かけてわかったのは、俺らには何もわかんねえってことだ！', '@健太:それ、三年かけて言うことかよ', '@田中:……でもよ。お前らと馬鹿やった三年は、研究対象として最高だったぜ', 'n:教室に入ると、黒板いっぱいに後輩たちの寄せ書きが描かれていた。', '@担任・真鍋:全員そろったな。……今日は説教なしだ。胸張って、行ってこい', 'n:体育館に響く「仰げば尊し」。千日前に見上げた桜並木が、今日はまだ蕾だった。', 'n:名前を呼ばれ、壇上で卒業証書を受け取る。思っていたより、ずっと軽い紙だった。', 'n:けれど、その一枚の向こうに、千日分の放課後が詰まっている気がした。', 'n:昼休みの屋上。雨の日の昇降口。夏祭りの夜の、遠い太鼓の音。', 'n:テスト前の図書室。文化祭の準備で残った、夕暮れの教室。', 'n:式が終わり、最後のホームルーム。真鍋先生は、出席簿を閉じて黙ったまま窓の外を見ていた。', '@担任・真鍋:……お前らの担任で、よかったよ。以上！ 解散！', 'n:誰かが泣き出して、つられてみんなが笑った。', '@健太:{S}。……大学行っても、連絡しろよ。絶対だぞ', 'n:健太と拳をぶつけ合って、廊下に出る。', 'n:校舎の窓から、三月の光が斜めに差し込んでいた。', 'n:――そして。']
   if (goods.length) {
     const H = goods[0]; h = H.id;
     if (H.id === 'shizuku') { id = 'true'; title = '隠しトゥルーエンド：千日目の流れ星'; }
@@ -611,7 +612,7 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
     if (rivalH && s.hs[rivalH.id].friend >= 30) { id = 'rival:' + rivalH.id; h = rivalH.id; title = `${rivalH.sei}${rivalH.mei}と${rivalH.rivalName.split('（')[0]}のエンディング`; body = rivalH.endings.rival; }
     else if (friendH) { id = 'friend:' + friendH.id; h = friendH.id; title = `友情エンド：${friendH.sei}${friendH.mei}`; body = friendH.endings.friend; }
     else if (s.courseResult === '合格') { id = 'course'; title = '進路成功エンド：新しい春へ'; body = ['n:恋は実らなかった。けれど、手の中には合格通知がある。', '@健太:{S}、お前はよくやったよ。大学で彼女作れよな！', 'n:桜はまだ咲いていない。それでも、確かに春は来ていた。']; }
-    else { body = ['n:式が終わり、校門の前に一人で立った。', 'n:誰かを待っていたわけじゃない。……待っていてくれる人が、いなかっただけだ。', '@健太:……帰るか、{S}。ラーメンおごってやるよ']; }
+    else { body = ['n:式が終わり、校門の前に一人で立った。', 'n:誰かを待っていたわけじゃない。……待っていてくれる人が、いなかっただけだ。', '@健太:……帰るか、{S}。ラーメンおごってやるよ', '@田中:俺も行く！ 替え玉は研究会の経費で落とす！ ……経費、ないけど！']; }
   }
   const courseLine = s.course ? (s.courseResult === '合格' ? `n:【進路】${s.course}に合格。春から新しい生活が始まる。` : `n:【進路】${s.course}は不合格。……一年、もう一度挑戦することにした。`) : '';
   if (id.startsWith('good') || id === 'true' || id.startsWith('confess') || id.startsWith('normal')) { if (s.courseResult === '不合格') title += '／進路失敗'; }

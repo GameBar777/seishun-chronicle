@@ -21,7 +21,7 @@ async function one(l) {
   const text = (TAG[l.emo] || '') + l.say;
   for (let a = 0; a < 6; a++) {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${CAST[l.who]}?output_format=mp3_44100_128`, { method: 'POST', headers: { 'xi-api-key': KEY, 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: 'eleven_v3', language_code: 'ja', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }) });
-    if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); if (b.length < 2000) { await sleep(2000 * 2 ** a); continue; } writeFileSync(`${CACHE}/${l.id}.mp3.tmp`, b); renameSync(`${CACHE}/${l.id}.mp3.tmp`, `${CACHE}/${l.id}.mp3`); const c = +(r.headers.get('x-character-count') || [...text].length); used += c; appendFileSync(LOG, `${new Date().toISOString()}\t${l.id}\t${l.who}\t${c}\tok\n`); return true; }
+    if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); if (b.length < 2000) { await sleep(2000 * 2 ** a); continue; } writeFileSync(`${CACHE}/${l.id}.mp3.tmp`, b); renameSync(`${CACHE}/${l.id}.mp3.tmp`, `${CACHE}/${l.id}.mp3`); const c = +(r.headers.get('character-cost') || r.headers.get('x-character-count') || [...text].length); used += c; appendFileSync(LOG, `${new Date().toISOString()}\t${l.id}\t${l.who}\t${c}\tok\n`); return true; }
     const msg = (await r.text()).slice(0, 200);
     if (r.status === 429 || r.status >= 500) { await sleep(2000 * 2 ** a); continue; }
     appendFileSync(LOG, `${new Date().toISOString()}\t${l.id}\t${l.who}\t0\tERR ${r.status} ${msg.replace(/\s+/g, ' ')}\n`); return false;
