@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, sta
 const have = f => existsSync(f) && statSync(f).size > 2000; // 0 バイトの壊れたファイルは未生成扱い
 const env = readFileSync('/workspace/.secrets/elevenlabs.env', 'utf8');
 const KEY = env.match(/ELEVENLABS_API_KEY=(\S+)/)?.[1]; if (!KEY) throw new Error('no key');
-const CAST = { hinata: 'lhTvHflPVOqgSWyuWQry', mio: 'JTlYtJrcTzPC71hMLOxo', yura: 'KtSs8OSniRPofXnr5PeA', kaho: 'oAlEJuW30knHWhA6cF0e', reika: 'ngvNHfiCrXLPAHcTrZK1', kotoha: 'RWZ1lnBIIgPBTpyCnKn2', ruka: 'GxhGYQesaQaYKePCZDEC', rin: 'my3P6caXGLzHy2BLxEdS', shizuku: 'fUjY9K2nAIwlALOwSiwc', '@芽衣': 'yPWBURQS57P0VcJh4deb', '@健太': 'y3fpa8t4npoVDiU9o7Gc', '@担任・真鍋': 'AYFJOmHxRJdmf572TQ7R' };
+const CAST = { hinata: 'lhTvHflPVOqgSWyuWQry', mio: 'JTlYtJrcTzPC71hMLOxo', yura: 'KtSs8OSniRPofXnr5PeA', kaho: 'oAlEJuW30knHWhA6cF0e', reika: 'ngvNHfiCrXLPAHcTrZK1', kotoha: 'RWZ1lnBIIgPBTpyCnKn2', ruka: 'GxhGYQesaQaYKePCZDEC', rin: 'my3P6caXGLzHy2BLxEdS', shizuku: 'fUjY9K2nAIwlALOwSiwc', '@芽衣': 'yPWBURQS57P0VcJh4deb', '@健太': 'y3fpa8t4npoVDiU9o7Gc', '@担任・真鍋': 'AYFJOmHxRJdmf572TQ7R', '@田中': 'A4AyGcPAjb1pHgflyZZp' };
 export const TAG = { 通常: '', 嬉: '[cheerful] ', 照: '[shy] ', 怒: '[angry] ', 哀: '[sad] ', 驚: '[surprised] ', 嫉: '[sulky] ', 囁: '[whispers] ', 告: '[softly] ', 冷: '[coldly] ' };
 const CACHE = '/workspace/voice-cache'; mkdirSync(CACHE, { recursive: true });
 const LOG = new URL('./gen.log', import.meta.url);
