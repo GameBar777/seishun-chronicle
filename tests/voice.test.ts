@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
+import { DATEQ_EXTRA, DATE_R } from '../src/sc/data/dateq2';
+// テキストのみ（nv）の行は収録率の計算から除外
+const NV = new Set<string>([...Object.values(DATEQ_EXTRA).flat().map(q => q.q), ...Object.values(DATE_R).flat().map(r => r.replace(/^h(\([^)]*\))?:/, ''))]);
 import { voiceId, newGame, view, resolve, doWeek, actions, phone, lineTap } from '../src/sc/engine';
 import { HEROINES } from '../src/sc/data/index';
 import { CAST_SLUG } from '../src/sc/voice';
@@ -24,7 +27,7 @@ describe('収録ボイス', () => {
     const L = JSON.parse(readFileSync('scripts/voice/lines.json', 'utf8')) as { id: string; who: string }[];
     for (const l of L) if (ids.has(l.id)) expect(existsSync(`public/voice/${CAST_SLUG[l.who]}/${l.id}.mp3`)).toBe(true);
     let tot = 0, hit = 0;
-    lineTap.fn = (who, tpl) => { if (!(who in CAST_SLUG) || /前に「|この前の「|と言われたこと/.test(tpl) || !/[ぁ-ゖァ-ヺ一-龯々A-Za-z0-9]/.test(spoken(who, tpl))) return; tot++; if (ids.has(voiceId(who, tpl))) hit++; };
+    lineTap.fn = (who, tpl) => { if (!(who in CAST_SLUG) || NV.has(tpl.replace(/^h(\([^)]*\))?:/, '')) || /前に「|この前の「|と言われたこと/.test(tpl) || !/[ぁ-ゖァ-ヺ一-龯々A-Za-z0-9]/.test(spoken(who, tpl))) return; tot++; if (ids.has(voiceId(who, tpl))) hit++; };
     for (const seed of [90001, 90002, 90003]) {
       const s: any = newGame({ sei: '佐藤', mei: '翔', seiYomi: 'さとう', meiYomi: 'しょう', bm: 1, bd: 1, persona: '知的', look: '爽やか系', diff: 'NORMAL', seed } as any);
       let g = 0; const tgt = HEROINES[seed % 9].id;
