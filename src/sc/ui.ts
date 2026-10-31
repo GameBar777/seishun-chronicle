@@ -9,7 +9,9 @@ import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voi
 import { voiceId } from './engine';
 import * as audio from './audio';
 import { bgmForAct, bgmForScene } from './bgm';
-import { setBg, guessBg, pickBg, LOC_BG, type Tod } from './bg';
+import { setBg, guessBg, pickBg, LOC_BG, sceneWeather, type Tod } from './bg';
+import { CAL } from './data/calendar';
+const CAL_IDS = new Set(CAL.map(e => e.id));
 import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 import { backlog, backlogHtml } from './backlog';
 import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone, effectParts } from './progress';
@@ -17,7 +19,7 @@ import { replayClip } from './voice';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
 const seasonNow = () => S ? season(cal(S.week).m) : '春';
-function bgFor(key: string, tod?: Tod) { setBg(key, { season: seasonNow(), weather: S ? S.weather : '晴れ', tod }); }
+function bgFor(key: string, tod?: Tod, weather?: string) { setBg(key, { season: seasonNow(), weather: weather ?? (S ? S.weather : '晴れ'), tod }); }
 
 let S: GameState | null = null;
 let set: VoiceSettings = loadSettings();
@@ -194,8 +196,8 @@ function scene() {
   if (!v) return main();
   const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.map(l => l.text).join(' ');
   let sbg = '', stod: string | undefined;
-  if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod); }
-  else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod); }
+  if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
+  else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }
   const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
   const conf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
   const rivalSc = /wada|rival/.test(sc0?.id || '') || v.lines.some(l => /和田|ライバル/.test(l.who || ''));
