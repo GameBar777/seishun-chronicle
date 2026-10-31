@@ -128,9 +128,13 @@ export function parseLine(raw: string, s: GameState, ctxH?: string): Line {
 
 // ───────── 効果の適用 ─────────
 export interface Notice { text: string; important?: boolean }
+// 成長倍率：基本 GROW.base、GROW.knee を超えると逓減、ストレスで急減
+export const GROW = { base: 0.8, knee: 90, soft: 30, st0: 45, stK: 0.014, stMin: 0.25 };
+export function stressMult(st: number) { return st <= GROW.st0 ? 1 : Math.max(GROW.stMin, 1 - (st - GROW.st0) * GROW.stK); }
+export function statMult(s: GameState, cur: number) { return GROW.base * (cur <= GROW.knee ? 1 : 1 / (1 + (cur - GROW.knee) / GROW.soft)) * stressMult(s.stats.st); }
 export function gainStat(s: GameState, k: StatKey, v: number) {
   let d = v;
-  if (v > 0 && !['hp', 'st'].includes(k)) { if (s.slump > 0) d *= 0.5; if (s.stats.hp < 30) d *= 0.7; d *= DIFF[s.setup.diff].gain > 1 ? 1.1 : 1; }
+  if (v > 0 && !['hp', 'st'].includes(k)) { if (s.slump > 0) d *= 0.5; if (s.stats.hp < 30) d *= 0.7; d *= DIFF[s.setup.diff].gain > 1 ? 1.1 : 1; if (k !== 'moral' && k !== 'exp') d *= statMult(s, s.stats[k]); }
   const cap = ['hp', 'st'].includes(k) ? 100 : k === 'moral' ? 100 : 999;
   s.stats[k] = clamp(Math.round((s.stats[k] + d) * 10) / 10, 0, cap);
 }
@@ -229,6 +233,9 @@ export function doWeek(s: GameState, act: string, talkTo?: string): string[] {
   // 体調・ストレス
   if (s.stats.hp < 20 && chance(s, 0.5)) { s.sick = ri(s, 1, 2); res.push('🤒 無理がたたって熱が出た。しばらく休むことになりそうだ。'); diary(s, '体調を崩して寝込んだ。'); }
   if (['train', 'run', 'club'].includes(act) && s.club !== '帰宅部' && s.stats.hp < 35 && chance(s, 0.25)) { s.injury = 3; res.push('🩹 足をひねってケガをした。3週間は運動できない。'); diary(s, 'ケガをした。'); }
+  // ストレス：高いと寝込む・ヒロインの機嫌が下がる
+  if (s.sick === 0 && s.stats.st >= 70 && chance(s, (s.stats.st - 60) / 100)) { s.sick = ri(s, 1, 2); res.push('🤒 ストレスで体調を崩した。しばらく寝込むことになりそうだ。'); diary(s, 'ストレスで寝込んだ。'); }
+  if (s.stats.st >= 70) { for (const H of HEROINES) if (s.hs[H.id].met && !s.hs[H.id].withRival) applyH(s, H.id, { f: -1, t: -0.5 }, false); if (chance(s, 0.25)) res.push('😣 イライラが顔に出ているらしい。周りの態度が少しよそよそしい。'); }
   if (s.stats.st > 85 && s.slump === 0) { s.slump = 3; gainStat(s, 'st', -15); res.push('🌀 スランプに陥った……何をやっても身につかない（3週間、成長半減）'); diary(s, 'スランプに陥った。'); }
   else if (s.slump > 0) s.slump--;
   if (s.injury > 0 && act !== 'train') s.injury = Math.max(0, s.injury - 1);
@@ -553,6 +560,7 @@ function dateStart(s: GameState, sc: Scene, outfit: string): string[] {
   const out: string[] = [];
   if (outfit === H.outfit) { sc0 += 3; out.push(`h(照):その服、いいね。{C}に似合ってる`); } else if (outfit === 'カジュアル' && tierOf(h) >= 1) { sc0 -= 1; out.push('h:……いつもの格好だね'); } else out.push('h:……ふうん、そういう服なんだ');
   sc0 += Math.floor((s.stats.yo + OUTFITS[outfit].yo) / 80);
+  if (s.stats.st >= 70) { sc0 -= 2; out.push('n:……疲れが顔に出ていたのか、会話が少しぎこちなかった。'); }
   if (loc.outdoor && (s.weather === '雨' || s.weather === '雪')) { sc0 -= 3; out.push(`n:${s.weather}のせいで、${loc.name}はほとんど楽しめなかった。`); }
   if (loc.season && !loc.season.includes(cal(s.week).m)) sc0 -= 2;
   const repeat = h.lastLocs.slice(-3).filter(x => x === locId).length;
@@ -691,8 +699,8 @@ function valentine(s: GameState): Line[] {
 export function courseRequirement(s: GameState): { ok: boolean; text: string } {
   const st = s.stats, k = DIFF[s.setup.diff].thr;
   switch (s.course) {
-    case '国公立大学': return { ok: st.bun + st.ri >= 420 * k, text: '文系+理系 420以上' };
-    case '私立大学': return { ok: Math.max(st.bun, st.ri) >= 220 * k, text: '文系か理系 220以上' };
+    case '国公立大学': return { ok: st.bun + st.ri >= 390 * k, text: '文系+理系 390以上' };
+    case '私立大学': return { ok: Math.max(st.bun, st.ri) >= 200 * k, text: '文系か理系 200以上' };
     case '専門学校': return { ok: Math.max(st.gei, st.yo) >= 190 * k, text: '芸術か容姿 190以上' };
     case '就職': return { ok: st.kon >= 150 * k && st.moral >= 60, text: '根性150以上・モラル60以上' };
     default: return { ok: false, text: '進路未定' };
