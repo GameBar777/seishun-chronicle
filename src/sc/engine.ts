@@ -7,7 +7,8 @@ import { HEVENTS as HEV0 } from './data/hevents';
 import { SIDE_EVENTS } from './data/hevents2';
 import { SIDE_EVENTS2 } from './data/hevents3';
 import { DAILY as DAILY1, DAILY2, DAILY3, DAILY4 } from './data/daily';
-const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4];
+import { SISTER } from './data/sister';
+const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4, ...SISTER];
 const HEVENTS = [...HEV0, ...SIDE_EVENTS, ...SIDE_EVENTS2];
 import { CAL } from './data/calendar';
 import type { Ev, Eff, Choice } from './data/schema';
@@ -265,6 +266,8 @@ export function scheduleScenes(s: GameState) {
   if (metH.length && chance(s, 0.18) && s.queue.length === 0) s.queue.push({ kind: 'msg', id: 'encounter', h: pick(s, metH).id });
   // 健太の噂（ヒント）
   if (s.week % 9 === 4) s.queue.push({ kind: 'msg', id: 'rumor' });
+  // 妹・芽衣の恋愛相談（家での好感度ヒント）
+  if (s.week % 9 === 8 && s.week > 2) s.queue.push({ kind: 'msg', id: 'sister' });
 }
 
 // ───────── シーン表示 ─────────
@@ -332,8 +335,32 @@ function msgView(s: GameState, sc: Scene): View {
     const ls = [L(`n:${place}${H.sei}${H.mei}とばったり会った。（${c.m}月・${s.weather}）`), L(`h(${h.bomb ? '哀' : tierOf(h) ? '嬉' : '通常'}):${h.bomb ? H.bombLine : sc.data.g}`, sc.h)];
     return { kind: 'msg', title: '偶然の出会い', h: sc.h, lines: ls, choices: ['次へ'] };
   }
+  if (sc.id === 'sister') return { kind: 'msg', title: '芽衣の恋愛相談', lines: sisterLines(s).map(x => L(x)), choices: ['次へ'] };
   if (sc.id === 'rumor') return { kind: 'msg', title: '健太の情報', lines: rumorLines(s).map(x => L(x)), choices: ['次へ'] };
   return { kind: 'msg', title: '', lines: [], choices: ['次へ'] };
+}
+export function sisterLines(s: GameState): string[] {
+  const M = '@芽衣'; const out: string[] = [];
+  const Y = cal(s.week).Y;
+  out.push(pick(s, ['n:夜。リビングでテレビを見ていると、芽衣がプリンを片手に隣に座った。', 'n:夕食の後、芽衣が「で、最近どうなの」と身を乗り出してきた。', 'n:日曜の昼。芽衣が、こちらのスマホをのぞき込もうとしている。']));
+  const met = HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].toki - s.hs[a.id].toki);
+  if (!met.length) { out.push(`${M}:……お兄、女の子の知り合い、ひとりもいないの？ ……やば。まずは話しかけるとこからだよ`); return out; }
+  const src = Y >= 2 ? '学校で聞いたんだけど' : '友達のお姉ちゃん情報だけど';
+  for (const H of met.slice(0, 2)) {
+    const h = s.hs[H.id]; const t = h.toki; const nm = H.mei;
+    const mood = h.bomb > 0 ? `……${nm}さん、最近お兄の話になると黙っちゃうんだって。何かしたでしょ。早く連絡しなよ`
+      : t >= 70 ? `${nm}さん、お兄の名前が出ると真っ赤になるらしいよ。……これ、もう時間の問題じゃない？`
+      : t >= 50 ? `${nm}さん、お兄のこと「気になる」って言ってたらしい。……いいとこまで来てるよ`
+      : t >= 30 ? `${nm}さんにとって、お兄は「仲のいい友達」くらいかな。もう一押し、デートとか誘ってみたら？`
+      : t >= 15 ? `${nm}さん、お兄のこと「悪い人じゃない」くらいには思ってるみたい`
+      : `${nm}さん？ ……お兄のこと、まだ顔と名前が一致してるか怪しいレベルだよ`;
+    out.push(`${M}:${src}、${mood}`);
+  }
+  const top = met[0]; const hh = s.hs[top.id];
+  if (s.week - hh.lastContact > 6) out.push(`${M}:あと、${top.mei}さんとしばらく話してないでしょ。女の子は、放っておかれるのが一番こたえるんだからね`);
+  else if (s.stats.st > 120) out.push(`${M}:……てかお兄、顔疲れてるよ。たまには休みなよ`);
+  else out.push(pick(s, [`${M}:……情報料は、プリン一個ね。前払いで`, `${M}:べつに応援してるわけじゃないからね。お兄がフラれて落ち込むと、家が暗くなるから`, `${M}:誕生日、ちゃんとチェックしときなよ。女の子は覚えてるからね、そういうの`]));
+  return out;
 }
 export function rumorLines(s: GameState): string[] {
   const out: string[] = [];
@@ -577,7 +604,8 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
   }
   const courseLine = s.course ? (s.courseResult === '合格' ? `n:【進路】${s.course}に合格。春から新しい生活が始まる。` : `n:【進路】${s.course}は不合格。……一年、もう一度挑戦することにした。`) : '';
   if (id.startsWith('good') || id === 'true' || id.startsWith('confess') || id.startsWith('normal')) { if (s.courseResult === '不合格') title += '／進路失敗'; }
-  const lines = [...pre, ...body, ...(courseLine ? [courseLine] : []), ...recap(s)];
+  const sis = id === 'bad' ? ['n:家に帰ると、芽衣が玄関で待っていた。', '@芽衣:……おかえり、お兄。卒業おめでと。……今日は、お兄の好きなハンバーグだって'] : id === 'course' ? ['@芽衣:お兄、合格おめでと。……送辞、ちゃんと聞いてた？ ……泣いてないし'] : (id.startsWith('good') || id === 'true' || id.startsWith('confess')) ? ['n:その夜。家に帰ると、芽衣がにやにやしながら待ち構えていた。', '@芽衣:……で？ ……その顔、うまくいったんでしょ。……おめでと、お兄。情報料、高くつくからね'] : [];
+  const lines = [...pre, ...body, ...sis, ...(courseLine ? [courseLine] : []), ...recap(s)];
   s.ending = { id, title, h }; (s as any)._endLines = lines;
   diary(s, `卒業。エンディング「${title}」。`);
   return { id, title, h, lines };

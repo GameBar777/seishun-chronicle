@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newGame, view, resolve, doWeek, actions, phone, stage, judgeEnding, parseLine } from '../src/sc/engine';
+import { newGame, view, resolve, doWeek, actions, phone, stage, judgeEnding, parseLine, sisterLines } from '../src/sc/engine';
 import { LAST_WEEK, cal } from '../src/sc/time';
 import { HEROINES, HMAP, LOCATIONS } from '../src/sc/data/index';
 import { chatReply, classify } from '../src/sc/chat';
@@ -89,4 +89,9 @@ describe('voice', () => {
     expect(a.pitch).not.toBe(b.pitch); expect(voiceParams('hinata', '哀', 0, set).rate).toBeLessThan(a.rate);
   });
   it('content volume', () => { console.log('content', ALL_LINES_COUNT()); expect(ALL_LINES_COUNT().events).toBeGreaterThan(50); });
+  it('sister hint reflects affection and bombs', () => {
+    const s = newGame({ ...base, seed: 5 }); s.week = 20; Object.assign(s.hs.hinata, { met: true, toki: 75, bomb: 0, lastContact: 20 });
+    expect(sisterLines(s).join()).toContain('真っ赤'); s.hs.hinata.bomb = 2; expect(sisterLines(s).join()).toContain('黙っちゃう');
+    expect(sisterLines(s).every(l => /^(n|@芽衣):/.test(l))).toBe(true);
+  });
 });
