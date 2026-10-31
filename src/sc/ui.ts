@@ -152,7 +152,7 @@ function week(id: string, talkTo?: string) {
 }
 function call(mode: 'talk' | 'invite') {
   if (!S) return; const id = $<HTMLSelectElement>('#ph-h').value; const loc = $<HTMLSelectElement>('#ph-loc').value;
-  const lines = phone(S, id, mode, loc); bgFor('room', 'night'); audio.playBgm('date', -5); playLines('📱 電話', lines, () => main(), HMAP[id] ? id : undefined);
+  const lines = phone(S, id, mode, loc); bgFor('room', 'night'); audio.playBgm('date', -5); playLines('📱 電話', lines, () => main(), HMAP[id] || NPC_BY_ID[id] ? id : undefined);
 }
 function hud() {
   const s = S!, c = cal(s.week);
@@ -196,7 +196,7 @@ function showCG(name: string, cap: string, after: () => void) {
 let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
   let i = 0;
-  app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${HMAP[h].color}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
+  app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
   <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint">クリック / Enter で進む</div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
   bindCmd();
   const box = $('#box');
@@ -208,8 +208,8 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
     const tier = HMAP[L.who] && S ? tierOf(S.hs[L.who]) : 0;
     speak(L.who, L.voice, L.emo, tier, set, undefined, L.vid);
     for (const nx of lines.slice(i, i + 2)) preloadClip(nx.who, nx.vid);
-    const isH = !!HMAP[L.who];
-    if (isH) { showSpeaker(L.who); h = L.who; }
+    const isH = hasPortrait(L.who), pid = porId(L.who);
+    if (isH && pid) { showSpeaker(pid); h = pid; }
     const apply = () => { const em = document.getElementById('emo'); if (em && h && (isH || L.who === 'me')) { if (isH) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); if (L.emo === '嬉' || L.emo === '照' || L.emo === '告') heartPop('up'); else if (L.emo === '哀' || L.emo === '怒' || L.emo === '冷') heartPop('down'); } } if (isH) talking(true); };
     if (isH && document.getElementById('por')?.classList.contains('exit')) setTimeout(apply, 260); else apply();
     const t = L.who === 'n' || !L.name ? L.text : `「${L.text}」`;
@@ -231,19 +231,32 @@ function preloadExpr(h: string) { if (preloaded.has(h)) return; preloaded.add(h)
 function setExpr(h: string | undefined, emo: string) {
   const img = document.getElementById('pimg') as HTMLImageElement | null; if (!img || !h) return; const src = pSrc(h, EXPR[emo] || 'n');
   if (img.src.endsWith(src.replace(/^\./, ''))) { img.classList.remove('bounce'); void img.offsetWidth; img.classList.add('bounce'); return; }
-  img.classList.add('swap'); setTimeout(() => { img.src = src; const hr = document.getElementById('phair') as HTMLImageElement | null; if (hr) hr.src = src; img.classList.remove('swap'); }, 120);
+  const hr = img.parentElement?.querySelector('.phair') as HTMLImageElement | null; img.classList.add('swap'); setTimeout(() => { img.src = src; if (hr) hr.src = src; img.classList.remove('swap'); }, 120);
 }
+/** ヒロイン以外で立ち絵のある登場人物（話者キー → 画像ID） */
+export const NPC_PORTRAIT: Record<string, { id: string; color: string; name: () => string; sub: string }> = {
+  '@芽衣': { id: 'mei', color: '#e05a6d', name: () => `${S?.setup.sei ?? ''}芽衣`, sub: '妹' },
+  '@健太': { id: 'kenta', color: '#3d6fb6', name: () => '早乙女健太', sub: '親友・相談役' },
+  '@田中': { id: 'inoue', color: '#c8821e', name: () => '井上 暸', sub: '悪友・恋愛研究会会長' },
+  '@井上': { id: 'inoue', color: '#c8821e', name: () => '井上 暸', sub: '悪友・恋愛研究会会長' },
+};
+const NPC_BY_ID: Record<string, string> = Object.fromEntries(Object.entries(NPC_PORTRAIT).reverse().map(([k, v]) => [v.id, k]));
+const hasPortrait = (w: string) => !!HMAP[w] || !!NPC_PORTRAIT[w];
+const porId = (w: string) => HMAP[w] ? w : NPC_PORTRAIT[w]?.id;
+const porColor = (id: string) => HMAP[id]?.color ?? NPC_PORTRAIT[NPC_BY_ID[id]]?.color ?? '#888';
 function portrait(h: string) {
+  if (!HMAP[h]) { const N = NPC_PORTRAIT[NPC_BY_ID[h]]; preloadExpr(h); const src = pSrc(h, 'n');
+    return `<div class="portrait enter npc" id="por" data-h="${h}"><div class="pwrap"><div class="psway"><img id="pimg" class="pimg" src="${src}" alt="${N.name()}" onerror="this.style.display='none'"><img id="phair" class="phair" src="${src}" alt="" aria-hidden="true"></div></div><div id="emo" class="emo"></div><div class="pi" id="pinfo">${N.name()}<small>${N.sub}</small></div></div>`; }
   const H = HMAP[h], x = S!.hs[h]; preloadExpr(h);
   const src = pSrc(h, 'n');
   return `<div class="portrait enter" id="por" data-h="${h}"><div class="pwrap"><div class="psway"><img id="pimg" class="pimg" src="${src}" alt="${H.sei}${H.mei}" onerror="this.style.display='none'"><img id="phair" class="phair" src="${src}" alt="" aria-hidden="true"></div></div><div id="emo" class="emo"></div><div class="pi" id="pinfo">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
 }
 /** 話者が別のヒロインに変わったら立ち絵を入れ替える（退場→登場スライド） */
 function showSpeaker(h: string) {
-  const st = document.querySelector('.stage') as HTMLElement | null; if (!st || !S || !HMAP[h]) return;
+  const st = document.querySelector('.stage') as HTMLElement | null; if (!st || !S || !(HMAP[h] || NPC_BY_ID[h])) return;
   const cur = document.getElementById('por');
   if (cur && cur.dataset.h === h) return;
-  st.style.setProperty('--hc', HMAP[h].color);
+  st.style.setProperty('--hc', porColor(h));
   const put = () => { document.getElementById('por')?.remove(); st.querySelector('.sc-title')!.insertAdjacentHTML('afterend', portrait(h)); };
   if (cur) { cur.classList.add('exit'); setTimeout(put, 220); } else put();
 }
