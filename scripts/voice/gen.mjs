@@ -2,6 +2,7 @@
 // 使い方: node scripts/voice/gen.mjs [--limit N] [--only id1,id2] [--force]
 // 入力: scripts/voice/lines.json / 生音声キャッシュ: /workspace/voice-cache/<id>.mp3（リポジトリ外）
 // 再実行しても生成済みはスキップ（resume-safe）。429/5xx は指数バックオフで再試行。
+import { pron } from './pron.mjs';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, statSync, renameSync } from 'node:fs';
 const have = f => existsSync(f) && statSync(f).size > 2000; // 0 バイトの壊れたファイルは未生成扱い
 const env = readFileSync('/workspace/.secrets/elevenlabs.env', 'utf8');
@@ -14,11 +15,11 @@ const args = process.argv.slice(2); const lim = +(args[args.indexOf('--limit') +
 const only = args.includes('--only') ? new Set(args[args.indexOf('--only') + 1].split(',')) : null; const force = args.includes('--force');
 const lines = JSON.parse(readFileSync(new URL('./lines.json', import.meta.url), 'utf8'));
 const todo = lines.filter(l => (only ? only.has(l.id) : true) && (force || !have(`${CACHE}/${l.id}.mp3`))).slice(0, lim);
-const MAXCH = +(process.env.MAXCH || 80000); let used = 0; const planned = todo.reduce((a, l) => a + [...(TAG[l.emo] || '') + l.say].length, 0);
+const MAXCH = +(process.env.MAXCH || 80000); let used = 0; const planned = todo.reduce((a, l) => a + [...(TAG[l.emo] || '') + pron(l.say)].length, 0);
 console.log(`todo ${todo.length} lines, ~${planned} chars`); if (planned > MAXCH) { console.log('projected over budget; abort'); process.exit(2); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function one(l) {
-  const text = (TAG[l.emo] || '') + l.say;
+  const text = (TAG[l.emo] || '') + pron(l.say);
   for (let a = 0; a < 6; a++) {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${CAST[l.who]}?output_format=mp3_44100_128`, { method: 'POST', headers: { 'xi-api-key': KEY, 'content-type': 'application/json', accept: 'audio/mpeg' }, body: JSON.stringify({ text, model_id: 'eleven_v3', language_code: 'ja', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }) });
     if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); if (b.length < 2000) { await sleep(2000 * 2 ** a); continue; } writeFileSync(`${CACHE}/${l.id}.mp3.tmp`, b); renameSync(`${CACHE}/${l.id}.mp3.tmp`, `${CACHE}/${l.id}.mp3`); const c = +(r.headers.get('character-cost') || r.headers.get('x-character-count') || [...text].length); used += c; appendFileSync(LOG, `${new Date().toISOString()}\t${l.id}\t${l.who}\t${c}\tok\n`); return true; }
