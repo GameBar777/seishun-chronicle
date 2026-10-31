@@ -27,7 +27,8 @@ export function bgmForScene(c: SceneCtx): BgmKey {
     if (c.loc === 'cafe' || c.loc === 'library' || c.loc === 'movie' || c.loc === 'aquarium') return 'cafe';
     return 'date';
   }
-  if (/祭|花火|文化祭|体育祭|クリスマス|初詣|バレンタイン/.test(c.title)) return c.season === '冬' || /クリスマス|初詣|バレンタイン/.test(c.title) ? 'winter' : 'festival';
+  if (/体育祭|運動会|球技大会/.test(c.title)) return 'club';
+  if (/祭|花火|文化祭|クリスマス|初詣|バレンタイン/.test(c.title)) return c.season === '冬' || /クリスマス|初詣|バレンタイン/.test(c.title) ? 'winter' : 'festival';
   if (c.kind === 'event' || c.kind === 'msg' || c.kind === 'chat') {
     if (c.tod === 'night') return 'night';
     if (c.tod === 'evening') return 'tender';
