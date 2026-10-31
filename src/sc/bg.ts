@@ -8,11 +8,29 @@ const reduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-r
 const portraitKey = () => typeof innerWidth !== 'undefined' && innerHeight > innerWidth * 1.25;
 export const bgUrl = (k: string) => k === 'key' && portraitKey() ? `${BASE}img/bg/key-p.webp` : `${BASE}img/bg/${k}${small ? '-s' : ''}.webp`;
 export function guessBg(text: string, fallback = 'gate'): { bg: string; tod?: Tod } {
-  const r: [RegExp, string, Tod?][] = [[/天文|星空|星を|流れ星|夜空/, 'observatory', 'night'], [/祭|花火|浴衣|神社|初詣|縁日/, 'festival', 'night'], [/海|浜|水着|波/, 'sea'], [/屋上|夕焼け/, 'rooftop', 'evening'],
-    [/水族館/, 'aquarium'], [/遊園地|観覧車/, 'amuse'], [/カフェ|喫茶/, 'cafe'], [/ゲームセンター|カラオケ|モール|商店街|駅前/, 'town', 'evening'], [/美術館/, 'museum'], [/映画/, 'movie'], [/山|ハイキング/, 'mountain'], [/公園/, 'park'],
+  const r: [RegExp, string, Tod?][] = [[/病院|お見舞い|病室/, 'hospital'], [/体育館/, 'gym'], [/河川敷|土手|川沿い/, 'river'], [/グラウンド|校庭/, 'ground'], [/駅のホーム|早朝の駅|改札|駅で|ホームで/, 'station'],
+    [/リビング|玄関|食卓|こたつ|台所|ソファ|夕食|我が家|居間/, 'living'], [/天文|星空|星を|流れ星|夜空/, 'observatory', 'night'], [/祭|花火|浴衣|神社|初詣|縁日/, 'festival', 'night'], [/海|浜|水着|波/, 'sea'], [/屋上|夕焼け/, 'rooftop', 'evening'],
+    [/水族館/, 'aquarium'], [/遊園地|観覧車/, 'amuse'], [/カフェ|喫茶/, 'cafe'], [/ゲームセンター|カラオケ|モール|商店街|駅前/, 'town', 'evening'], [/美術館/, 'museum'], [/映画/, 'movie'], [/山道|山頂|登山|ハイキング/, 'mountain'], [/公園/, 'park'],
     [/電話|部屋|自室|ベッド|夜、/, 'room', 'night'], [/教室|授業|図書|放課後|休み時間|隣の席|テスト|生徒会|部活|文化祭|体育祭/, 'classroom'], [/校門|入学|卒業|登校|桜/, 'gate']];
   for (const [re, bg, tod] of r) if (re.test(text)) return { bg, tod };
   return { bg: fallback };
+}
+// シーンIDごとの明示背景（キーワード推測より優先）
+export const SCENE_BG: Record<string, string> = {
+  d_y1_nov: 'ground', d_y2_kareha: 'ground', d_y3_june: 'ground', d_y3_nov: 'classroom', d_y3_jan: 'station', d_y1_after: 'classroom', d_y2_matsuri: 'town',
+  d_y2_atokata: 'ground', d_y3_mendan: 'classroom', d_y3_yokou: 'gym', d_y1_akiyasumi: 'classroom', d_fr_t_fireworks: 'town', d_fr_t_center: 'station',
+  kaho_meet: 'river', reika_1: 'rooftop', ruka_3: 'hospital', rin_1: 'hospital', rin_2: 'hospital', mio_s1: 'classroom', kaho_s1: 'ground', ruka_s2: 'station',
+  sister: 'living', exam_result: 'station', tournament: 'gym',
+};
+// その週の行動からの既定背景
+export const ACT_BG: Record<string, string> = { bun: 'room', ri: 'room', rest: 'living', hobby: 'room', art: 'room', fashion: 'town', club: 'ground', job: 'town', train: 'park', run: 'river', talk: 'classroom' };
+/** 背景決定：明示キー → 1行目の地の文（主人公名を除く）のキーワード → 行動 → 既定 */
+export function pickBg(id: string, firstN: string, names: string[], act: string | undefined, isSister: boolean): { bg: string; tod?: Tod } {
+  if (SCENE_BG[id]) return { bg: SCENE_BG[id] };
+  let t = firstN; for (const n of names) if (n) t = t.split(n).join('');
+  const g = guessBg(t, ''); if (g.bg) return g;
+  if (isSister) return { bg: 'living' };
+  return { bg: (act && ACT_BG[act]) || 'classroom' };
 }
 export function fxFor(season: string, weather: string, tod: Tod, indoor: boolean): Fx {
   if (indoor) return season === '冬' ? 'none' : 'sparkle';
@@ -20,7 +38,7 @@ export function fxFor(season: string, weather: string, tod: Tod, indoor: boolean
   if (season === '春') return 'petal'; if (season === '秋') return 'leaf'; if (season === '冬') return 'snow';
   return tod === 'night' || tod === 'evening' ? 'firefly' : 'sparkle';
 }
-const INDOOR = new Set(['classroom', 'room', 'cafe', 'movie', 'museum', 'aquarium']);
+const INDOOR = new Set(['classroom', 'room', 'living', 'hospital', 'gym', 'cafe', 'movie', 'museum', 'aquarium']);
 export function setBg(key: string, opt: { season: string; weather: string; tod?: Tod }) {
   if (typeof document === 'undefined') return;
   small = innerWidth < 760;

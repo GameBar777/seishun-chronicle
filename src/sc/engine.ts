@@ -194,6 +194,7 @@ export function buyOutfit(s: GameState, o: string): boolean { const O = OUTFITS[
 
 /** 1週間を進める。sceneがあれば UI は先に queue を処理する */
 export function doWeek(s: GameState, act: string, talkTo?: string): string[] {
+  s.lastAct = act;
   if (s.ended || s.queue.length) return ['（先に進行中のイベントを終わらせてください）'];
   s.lastLog = [];
   const res: string[] = [];
