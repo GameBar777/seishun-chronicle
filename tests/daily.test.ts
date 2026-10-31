@@ -13,7 +13,7 @@ describe('daily scenes', () => {
   });
 });
 import { FRIENDS } from '../src/sc/data/friends';
-describe('friend scenes (健太・田中)', () => {
+describe('friend scenes (健太・井上)', () => {
   it('each has one week slot and no two friend scenes share a week', () => {
     const used = new Map<number, string>();
     for (const e of FRIENDS) {
@@ -22,7 +22,7 @@ describe('friend scenes (健太・田中)', () => {
     }
     expect(FRIENDS.filter(e => e.id.startsWith('d_fr_t_')).length).toBeGreaterThanOrEqual(25);
   });
-  it('田中 lines are original and non-creepy', () => {
+  it('井上 lines are original and non-creepy', () => {
     const txt = JSON.stringify(FRIENDS.map(e => [e.lines, e.choices.map(c => c.res)]));
     expect(txt).not.toMatch(/のぞ[きく]|覗き|盗撮|つけ回|尾行|銀時|万事屋|新八|神楽/);
   });
