@@ -2,10 +2,13 @@ import type { GameState, Setup, HState, StatKey, Scene, Difficulty, Club, Job, C
 import { STAGES } from './types';
 import { rand, ri, pick, chance } from './rng';
 import { cal, LAST_WEEK, season, fmtDate } from './time';
-import { HEROINES, HMAP, LOCATIONS, OUTFITS, CLUBS, JOBS } from './data/index';
+import { HEROINES, HMAP, LOCATIONS, OUTFITS, CLUBS, JOBS, DATE_FLAVOR } from './data/index';
 import { HEVENTS as HEV0 } from './data/hevents';
 import { SIDE_EVENTS } from './data/hevents2';
-const HEVENTS = [...HEV0, ...SIDE_EVENTS];
+import { SIDE_EVENTS2 } from './data/hevents3';
+import { DAILY as DAILY1, DAILY2, DAILY3, DAILY4 } from './data/daily';
+const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4];
+const HEVENTS = [...HEV0, ...SIDE_EVENTS, ...SIDE_EVENTS2];
 import { CAL } from './data/calendar';
 import type { Ev, Eff, Choice } from './data/schema';
 
@@ -117,7 +120,7 @@ export function applyEff(s: GameState, e: Eff | undefined, ctxH?: string) {
     else if (!s.flags.includes(e.flag)) s.flags.push(e.flag);
   }
   if (id && s.hs[id]) {
-    applyH(s, id, { f: e.f, t: e.t, tr: e.tr, h: e.h, pt: e.pt ?? 1, rival: e.rival });
+    applyH(s, id, { f: e.f, t: e.t, tr: e.tr, h: e.h, pt: e.pt ?? 1, rival: e.rival }, !e.nc);
     if (e.hflag && !s.hs[id].flags.includes(e.hflag)) s.hs[id].flags.push(e.hflag);
     if (e.mem) s.hs[id].mem.push({ week: s.week, ...e.mem });
   }
@@ -231,7 +234,7 @@ function explode(s: GameState, id: string, res: string[]) {
 }
 
 // ───────── イベントのスケジューリング ─────────
-const ALL_EV: Ev[] = [...CAL, ...HEVENTS];
+const ALL_EV: Ev[] = [...CAL, ...DAILY, ...HEVENTS];
 export const EVMAP: Record<string, Ev> = Object.fromEntries(ALL_EV.map(e => [e.id, e]));
 const AUTO_MEET: Record<string, (s: GameState) => boolean> = { mio: s => s.week >= 0, rin: s => s.week >= 1 };
 export function scheduleScenes(s: GameState) {
@@ -239,7 +242,7 @@ export function scheduleScenes(s: GameState) {
   // 自動の出会い
   if (!s.seen.includes('meet_rin') && !s.queue.some(q => q.id === 'meet_rin')) { s.queue.push({ kind: 'event', id: 'meet_rin' }); }
   // カレンダー
-  for (const e of CAL) if (!s.seen.includes(e.id) && !s.queue.some(q => q.id === e.id) && e.cond(s)) s.queue.push({ kind: 'event', id: e.id });
+  for (const e of [...CAL, ...DAILY]) if (!s.seen.includes(e.id) && !s.queue.some(q => q.id === e.id) && e.cond(s)) s.queue.push({ kind: 'event', id: e.id });
   // テスト
   const exam = (c.m === 5 && c.n === 3) || (c.m === 7 && c.n === 2) || (c.m === 10 && c.n === 3) || (c.m === 12 && c.n === 1) || (c.m === 2 && c.n === 4 && c.Y <= 2);
   if (exam) s.queue.push({ kind: 'msg', id: 'exam' });
@@ -361,7 +364,7 @@ export function dateView(s: GameState, sc: Scene): View {
   const H = HMAP[sc.h!], h = s.hs[sc.h!], loc = LOCATIONS[sc.data.loc];
   const L = (x: string) => parseLine(x, s, sc.h);
   const step = sc.step!;
-  if (step === 0) return { kind: 'date', title: `デート：${loc.name}`, h: sc.h, lines: [L(`n:日曜日。${loc.name}の前で待ち合わせ。天気は${s.weather}。`), L(`h(${tierOf(h) ? '嬉' : '通常'}):お待たせ、{C}。`), L('n:今日の服装は——')], choices: s.outfits.map(o => o) };
+  if (step === 0) return { kind: 'date', title: `デート：${loc.name}`, h: sc.h, lines: [L(`n:日曜日。${loc.name}の前で待ち合わせ。天気は${s.weather}。`), L(`h(${tierOf(h) ? '嬉' : '通常'}):お待たせ、{C}。`), ...(DATE_FLAVOR[sc.data.loc] ? [L(DATE_FLAVOR[sc.data.loc].arrive[s.week % 3])] : []), L('n:今日の服装は——')], choices: s.outfits.map(o => o) };
   if (step >= 1 && step <= 3) {
     const q = H.dateQ[sc.data.order[step - 1]];
     const lines = [L(`h:${q.q}`)];
@@ -402,6 +405,7 @@ function dateEnd(s: GameState, sc: Scene) {
     [`h(嬉):{C}、今日すっごく楽しかった！`, 'n:帰り道、彼女はずっと笑っていた。'],
     [`h(照):……帰りたくないな、なんて。{C}、また誘ってね`, 'n:別れ際、彼女は何度も振り返って手を振った。'],
   ][grade];
+  if (DATE_FLAVOR[sc.data.loc]) lines.push(DATE_FLAVOR[sc.data.loc].leave[s.week % 2]);
   lines.push(...msg);
   applyH(s, sc.h!, { f: [-3, 3, 6, 9][grade], t: [-4, 2, 6, 10][grade], tr: [-2, 1, 3, 5][grade], h: -35, pt: grade });
   h.dates++; h.lastLocs.push(sc.data.loc); if (h.lastLocs.length > 6) h.lastLocs.shift();
@@ -450,7 +454,7 @@ export function resolve(s: GameState, idx: number): Line[] {
     if (first === '@sports:') return sportsResolve(s);
     if (first === '@valentine:') return valentine(s);
     if (first === '@exam:') return examResolve(s);
-    applyEff(s, ch.eff, e.h);
+    applyEff(s, /_s[345]$/.test(e.id) && ch.eff ? { ...ch.eff, nc: true } : ch.eff, e.h);
     return ch.res.map(x => L(x, e.h || ch.eff?.to));
   }
   if (sc.kind === 'msg' || sc.kind === 'chat') { s.queue.shift(); return []; }
@@ -553,7 +557,7 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
   const goods = ranked.filter(H => evaluate(s, H.id).good);
   const normals = ranked.filter(H => evaluate(s, H.id).normal);
   let id = 'bad', title = 'バッドエンド：誰もいない校門', h: string | undefined, body: string[] = [];
-  const pre = ['n:三月。星見ヶ丘学園、卒業式。', 'n:体育館に響く「仰げば尊し」。千日前に見上げた桜並木が、今日はまだ蕾だった。'];
+  const pre = ['n:三月。星見ヶ丘学園、卒業式。', 'n:朝、いつもより三十分早く目が覚めた。制服の袖に腕を通すのも、今日が最後だ。', 'n:通学路の商店街では、顔なじみの店主たちが「おめでとう」と声をかけてくれた。', 'n:校門には「卒業証書授与式」の立て看板。その前で、家族連れが順番に写真を撮っている。', '@健太:{S}！ 遅えぞ！ ……って、俺が早すぎただけか', '@健太:……なあ。三年って、短かったな', 'n:教室に入ると、黒板いっぱいに後輩たちの寄せ書きが描かれていた。', '@担任・真鍋:全員そろったな。……今日は説教なしだ。胸張って、行ってこい', 'n:体育館に響く「仰げば尊し」。千日前に見上げた桜並木が、今日はまだ蕾だった。', 'n:名前を呼ばれ、壇上で卒業証書を受け取る。思っていたより、ずっと軽い紙だった。', 'n:けれど、その一枚の向こうに、千日分の放課後が詰まっている気がした。', 'n:昼休みの屋上。雨の日の昇降口。夏祭りの夜の、遠い太鼓の音。', 'n:テスト前の図書室。文化祭の準備で残った、夕暮れの教室。', 'n:式が終わり、最後のホームルーム。真鍋先生は、出席簿を閉じて黙ったまま窓の外を見ていた。', '@担任・真鍋:……お前らの担任で、よかったよ。以上！ 解散！', 'n:誰かが泣き出して、つられてみんなが笑った。', '@健太:{S}。……大学行っても、連絡しろよ。絶対だぞ', 'n:健太と拳をぶつけ合って、廊下に出る。', 'n:校舎の窓から、三月の光が斜めに差し込んでいた。', 'n:――そして。']
   if (goods.length) {
     const H = goods[0]; h = H.id;
     if (H.id === 'shizuku') { id = 'true'; title = '隠しトゥルーエンド：千日目の流れ星'; }

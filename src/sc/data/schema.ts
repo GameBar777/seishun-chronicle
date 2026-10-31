@@ -3,7 +3,7 @@ export interface Eff {
   f?: number; t?: number; tr?: number; h?: number; pt?: number;
   stats?: Partial<Record<StatKey, number>>; money?: number;
   flag?: string; hflag?: string; mem?: { kind: Memory['kind']; text: string };
-  others?: { f?: number; t?: number }; rival?: number; to?: string; // to: target heroine override
+  others?: { f?: number; t?: number }; rival?: number; to?: string; nc?: boolean; // nc: 接触扱いにしない（日常シーンの顔出し） to: target heroine override
 }
 export interface Choice { label: string; eff?: Eff; res: string[]; need?: (s: GameState) => boolean }
 export interface Ev {
