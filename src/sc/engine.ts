@@ -23,7 +23,17 @@ export const DIFF: Record<Difficulty, { gain: number; hurt: number; thr: number;
 export const PERSONAS: Record<string, Partial<Record<StatKey, number>>> = {
   '熱血': { un: 12, kon: 12 }, '知的': { bun: 12, ri: 12 }, '優しい': { moral: 15, kon: 5 }, 'クール': { yo: 15, ri: 5 }, '芸術家肌': { gei: 18 }, 'お調子者': { yo: 6, un: 6, moral: -5 },
 };
-export interface Line { who: string; name: string; emo: Emo; text: string; voice: string; color: string }
+export interface Line { who: string; name: string; emo: Emo; text: string; voice: string; color: string; vid?: string }
+/** 収録ボイスのID：話者＋差し込み前の台本テキストのハッシュ（scripts/voice-*.ts と共通） */
+export function voiceId(who: string, tpl: string): string {
+  const str = who + '|' + tpl; let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+}
+/** 台本収集用フック（ゲーム本体では未使用） */
+export const lineTap: { fn?: (who: string, tpl: string, emo: Emo, ctxH?: string) => void } = {};
 export interface View { kind: Scene['kind']; title: string; h?: string; lines: Line[]; choices: string[] }
 
 // ───────── 基本 ─────────
@@ -74,7 +84,8 @@ export function parseLine(raw: string, s: GameState, ctxH?: string): Line {
   else if (who === 'me') { name = `${s.setup.sei} ${s.setup.mei}`; color = '#0984e3'; }
   else if (who.startsWith('@')) { name = who.slice(1); color = NPC_COLOR; }
   const speakerH = HMAP[who] ? who : hid;
-  return { who, name, emo, text: render(text, s, speakerH, false), voice: render(text, s, speakerH, true), color };
+  if (lineTap.fn) lineTap.fn(who, text, emo, ctxH);
+  return { who, name, emo, text: render(text, s, speakerH, false), voice: render(text, s, speakerH, true), color, vid: voiceId(who, text) };
 }
 
 // ───────── 効果の適用 ─────────

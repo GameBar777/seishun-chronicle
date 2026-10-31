@@ -5,7 +5,8 @@ import { newGame, view, resolve, doWeek, actions, phone, stage, tierOf, setJob, 
 import { cal, fmtDate, LAST_WEEK, season } from './time';
 import { chatReply, SUGGEST } from './chat';
 import { exportSave, importSave, store } from './save';
-import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName } from './voice';
+import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName, initVoice, unlockVoice, preloadClip, isSpeaking, hasClip } from './voice';
+import { voiceId } from './engine';
 import * as audio from './audio';
 import { setBg, guessBg, LOC_BG, type Tod } from './bg';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
@@ -15,6 +16,8 @@ function bgFor(key: string, tod?: Tod) { setBg(key, { season: seasonNow(), weath
 
 let S: GameState | null = null;
 let set: VoiceSettings = loadSettings();
+void initVoice(BASE);
+if (typeof document !== 'undefined') { const u = () => { unlockVoice(); ['pointerdown', 'keydown', 'touchend'].forEach(e => document.removeEventListener(e, u, true)); }; ['pointerdown', 'keydown', 'touchend'].forEach(e => document.addEventListener(e, u, true)); }
 let chatCount = 0;
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -35,7 +38,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
-  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約2〜3時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約2〜3時間。ヒロイン・芽衣・健太・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
@@ -203,7 +206,8 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
     const L = lines[i++]; stop();
     $('#nm').textContent = L.name; $('#nm').style.color = L.color; $('#tx').className = 'text ' + (L.who === 'n' ? 'narr' : '');
     const tier = HMAP[L.who] && S ? tierOf(S.hs[L.who]) : 0;
-    speak(L.who, L.voice, L.emo, tier, set);
+    speak(L.who, L.voice, L.emo, tier, set, undefined, L.vid);
+    for (const nx of lines.slice(i, i + 2)) preloadClip(nx.who, nx.vid);
     const isH = !!HMAP[L.who];
     if (isH) { showSpeaker(L.who); h = L.who; }
     const apply = () => { const em = document.getElementById('emo'); if (em && h && (isH || L.who === 'me')) { if (isH) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); if (L.emo === '嬉' || L.emo === '照' || L.emo === '告') heartPop('up'); else if (L.emo === '哀' || L.emo === '怒' || L.emo === '冷') heartPop('down'); } } if (isH) talking(true); };
@@ -248,7 +252,7 @@ function talking(on: boolean) {
   clearInterval(talkTimer); const w = () => document.querySelector('.pwrap');
   if (!on) { w()?.classList.remove('talk'); return; }
   w()?.classList.add('talk');
-  talkTimer = setInterval(() => { const sp = typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking; if (!typing && !sp) { w()?.classList.remove('talk'); clearInterval(talkTimer); } }, 200);
+  talkTimer = setInterval(() => { const sp = isSpeaking(); if (!typing && !sp) { w()?.classList.remove('talk'); clearInterval(talkTimer); } }, 200);
 }
 function heartPop(kind: 'up' | 'down') {
   const p = document.getElementById('por'); if (!p) return;
@@ -331,13 +335,13 @@ function loadDialog() {
 function settings() {
   const ja = hasJapaneseVoice();
   const r = (k: keyof VoiceSettings, label: string, min = 0, max = 1, step = 0.05) => `<label>${label}<input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${set[k]}"></label>`;
-  modal('音声・音量設定', `<p class="note">${voiceSupported() ? (ja ? '✅ 日本語の読み上げ音声が使えます（端末内蔵・Web Speech API）。' : '⚠ 日本語音声が見つかりません。文字のみ表示になります。') : '⚠ このブラウザは読み上げ非対応です。文字のみ表示になります。'}　※AI音声ではありません。</p>
-  <label><input type="checkbox" id="st-auto" ${set.auto ? 'checked' : ''}> ボイス自動再生</label> <label><input type="checkbox" id="st-nar" ${set.narrate ? 'checked' : ''}> 地の文も読み上げ</label>
+  modal('音声・音量設定', `<p class="note">🎙 ヒロイン9人・芽衣・健太・真鍋先生：収録ボイス（ElevenLabs のAI音声）。<br>地の文・その他の人物：${voiceSupported() ? (ja ? '端末内蔵の読み上げ（Web Speech API）。' : '日本語音声が見つからないため文字のみ。') : 'このブラウザは読み上げ非対応のため文字のみ。'}</p>
+  <label><input type="checkbox" id="st-auto" ${set.auto ? 'checked' : ''}> ボイスON</label> <label><input type="checkbox" id="st-nar" ${set.narrate ? 'checked' : ''}> 地の文も読み上げ</label>
   <div class="sliders">${r('master', '全体音量')}${r('voice', 'ボイス音量')}${r('bgm', 'BGM音量')}${r('se', '効果音音量')}${r('voiceRate', '声の速さ', 0.6, 1.6, 0.05)}${r('textSpeed', '文字送り（ms/文字・0で瞬時）', 0, 80, 5)}</div>
-  <h4>キャラ別音量</h4><div class="sliders">${HEROINES.map(H => `<label>${H.sei}${H.mei}<input type="range" data-c="${H.id}" min="0" max="1" step="0.05" value="${set.perChar[H.id] ?? 1}"><button class="vt" data-c="${H.id}">試聴</button></label>`).join('')}</div>`);
+  <h4>キャラ別音量</h4><div class="sliders">${HEROINES.map(H => `<label>${H.sei}${H.mei}<input type="range" data-c="${H.id}" min="0" max="1" step="0.05" value="${set.perChar[H.id] ?? 1}"><button class="vt" data-c="${H.id}">試聴</button></label>`).join('')}${[['@芽衣', '芽衣（妹）'], ['@健太', '健太'], ['@担任・真鍋', '真鍋先生']].map(([id, nm]) => `<label>${nm}<input type="range" data-c="${id}" min="0" max="1" step="0.05" value="${set.perChar[id] ?? 1}"></label>`).join('')}</div>`);
   document.querySelectorAll<HTMLInputElement>('[data-k]').forEach(i => i.oninput = () => { (set as any)[i.dataset.k!] = +i.value; saveSettings(); });
   document.querySelectorAll<HTMLInputElement>('input[data-c]').forEach(i => i.oninput = () => { set.perChar[i.dataset.c!] = +i.value; saveSettings(); });
-  document.querySelectorAll<HTMLButtonElement>('.vt').forEach(b => b.onclick = () => { const H = HMAP[b.dataset.c!]; stop(); speak(H.id, H.greet[1][0].replace(/\{[SMC]\}/g, ''), '嬉', 1, { ...set, auto: true }); });
+  document.querySelectorAll<HTMLButtonElement>('.vt').forEach(b => b.onclick = () => { const H = HMAP[b.dataset.c!]; stop(); unlockVoice(); const t = H.greet[1][0]; const vid = voiceId(H.id, t); if (!speak(H.id, t, '嬉', 1, { ...set, auto: true }, undefined, vid)) toast(hasClip(H.id, vid) ? '再生できませんでした' : 'ボイスを読み込み中です。少し待ってからもう一度'); });
   $<HTMLInputElement>('#st-auto').onchange = e => { set.auto = (e.target as HTMLInputElement).checked; saveSettings(); };
   $<HTMLInputElement>('#st-nar').onchange = e => { set.narrate = (e.target as HTMLInputElement).checked; saveSettings(); };
 }
