@@ -9,6 +9,15 @@ const shot = n => p.screenshot({ path: 'docs/screenshots/seishun-' + n + '.png' 
 p.on('pageerror', e => errs.push(e.message));
 try {
   await p.goto('http://localhost:4637' + (process.env.BASE_PATH || '/')); await p.waitForTimeout(1500); await shot('title'); await p.click('#t-song'); await p.waitForTimeout(800); await shot('theme'); await p.click('.modal button'); await p.click('#t-new'); await p.click('#s-go');
+  // 収録ボイス：プロローグ最初のひなたの台詞で mp3 が鳴るか
+  const voiceResp = []; p.on('response', r => { if (r.url().includes('/voice/')) voiceResp.push([r.status(), r.url().split('/voice/')[1]]); });
+  await p.waitForTimeout(400); for (let k = 0; k < 6 && !(await p.evaluate(() => (window).__voiceLast)); k++) { await p.click('#box'); await p.waitForTimeout(300); }
+  await p.waitForTimeout(1500);
+  const vl = await p.evaluate(() => ({ last: (window).__voiceLast, played: (window).__voicePlayed }));
+  console.log('voice:', JSON.stringify(vl), 'voice responses:', JSON.stringify(voiceResp.slice(0, 5)));
+  if (!vl.last || !/\/voice\/(hinata|kenta|mio)\/[0-9a-f]{16}\.mp3$/.test(vl.last)) throw new Error('voice src missing');
+  if (!vl.played) throw new Error('voice did not start playing');
+  if (voiceResp.some(([s]) => s >= 400)) throw new Error('voice 404');
   let ev = 0; const adv = async () => { for (let i = 0; i < 80; i++) { if (ev < 3 && await p.$('.pimg')) { await p.waitForTimeout(1300); await shot('event' + ev++); } if (await p.$('.acts')) return; const c = await p.$('#ch button[data-i]'); if (c) { await c.click(); continue; } const ce = await p.$('#ce'); if (ce) { await ce.click(); continue; } await p.click('#box'); await p.waitForTimeout(20); } };
   await p.evaluate(() => { localStorage.setItem('seishun:set', JSON.stringify({ textSpeed: 0, auto: false })); });
   for (let w = 0; w < 6; w++) { await adv(); await p.click('.act[data-a="bun"]'); }
