@@ -1,3 +1,4 @@
+import { DATEQ_EXTRA, DATE_R } from './data/dateq2';
 import type { GameState, Setup, HState, StatKey, Scene, Difficulty, Club, Job, Course, Emo } from './types';
 import { STAGES } from './types';
 import { rand, ri, pick, chance } from './rng';
@@ -219,7 +220,7 @@ export function doWeek(s: GameState, act: string, talkTo?: string): string[] {
   if (s.injury > 0 && act !== 'train') s.injury = Math.max(0, s.injury - 1);
   gainStat(s, 'hp', 3); // 自然回復
   weeklyHeroines(s, res);
-  if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: shuffle(s, [0, 1, 2, 3, 4]).slice(0, 3) } }); s.dateBooked = null; }
+  if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: dateOrder(s, d.h) } }); s.dateBooked = null; }
   // 次の週へ
   s.week++; s.phoneUsed = false;
   s.weather = rollWeather(s);
@@ -429,13 +430,20 @@ export function rumorLines(s: GameState): string[] {
 }
 
 // ───────── デート ─────────
+// デートの質問：既存＋追加（追加分はテキストのみ）。まだ聞かれていない質問を優先
+export const dqs = (H: { id: string; dateQ: any[] }) => [...H.dateQ, ...(DATEQ_EXTRA[H.id] || [])];
+export function dateOrder(s: GameState, hid: string): number[] {
+  const n = dqs(HMAP[hid]).length, f = s.hs[hid].flags; const idx = Array.from({ length: n }, (_, i) => i);
+  const fresh = shuffle(s, idx.filter(i => !f.includes(`dq:${i}`))), old = shuffle(s, idx.filter(i => f.includes(`dq:${i}`)));
+  return [...fresh, ...old].slice(0, 3);
+}
 export function dateView(s: GameState, sc: Scene): View {
   const H = HMAP[sc.h!], h = s.hs[sc.h!], loc = LOCATIONS[sc.data.loc];
   const L = (x: string) => parseLine(x, s, sc.h);
   const step = sc.step!;
   if (step === 0) return { kind: 'date', title: `デート：${loc.name}`, h: sc.h, lines: [L(`n:日曜日。${loc.name}の前で待ち合わせ。天気は${s.weather}。`), L(`h(${tierOf(h) ? '嬉' : '通常'}):お待たせ、{C}。`), ...(DATE_FLAVOR[sc.data.loc] ? [L(DATE_FLAVOR[sc.data.loc].arrive[s.week % 3])] : []), L('n:今日の服装は——')], choices: s.outfits.map(o => o) };
   if (step >= 1 && step <= 3) {
-    const q = H.dateQ[sc.data.order[step - 1]];
+    const q = dqs(H)[sc.data.order[step - 1]];
     const lines = [L(`h:${q.q}`)];
     if (step === 2 && sc.data.enc) lines.unshift(...sc.data.enc.map((x: string) => parseLine(x, s, sc.h)));
     return { kind: 'date', title: `デート：${loc.name}（${step}/3）`, h: sc.h, lines, choices: q.a.map(a => a[0]) };
@@ -531,8 +539,8 @@ export function resolve(s: GameState, idx: number): Line[] {
     const H = HMAP[sc.h!];
     if (sc.step === 0) { const outs = dateStart(s, sc, s.outfits[idx] || 'カジュアル'); sc.step = 1; return outs.map(x => L(x, sc.h)); }
     if (sc.step! >= 1 && sc.step! <= 3) {
-      const q = H.dateQ[sc.data.order[sc.step! - 1]]; const a = q.a[idx]; sc.data.score += a[1];
-      const r = a[1] >= 3 ? 'h(嬉):……うん。そういうとこ、いいと思う' : a[1] >= 1 ? 'h:ふふ、そっか' : a[1] >= 0 ? 'h:……ふうん' : 'h(冷):……そう';
+      const q = dqs(H)[sc.data.order[sc.step! - 1]]; const a = q.a[idx]; const hq = s.hs[sc.h!]; const k = `dq:${sc.data.order[sc.step! - 1]}`; if (!hq.flags.includes(k)) hq.flags.push(k); sc.data.score += a[1];
+      const R = DATE_R[sc.h!]; const r = R ? R[a[1] >= 3 ? 0 : a[1] >= 1 ? 1 : a[1] >= 0 ? 2 : 3] : a[1] >= 3 ? 'h(嬉):……うん。そういうとこ、いいと思う' : a[1] >= 1 ? 'h:ふふ、そっか' : a[1] >= 0 ? 'h:……ふうん' : 'h(冷):……そう';
       sc.step!++; if (sc.step === 4) dateEnd(s, sc);
       return [L(r, sc.h)];
     }
