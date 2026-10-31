@@ -98,3 +98,34 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
   .setup .row{flex-wrap:wrap;gap:6px}.setup label{display:flex;flex-wrap:wrap;align-items:center;white-space:nowrap;max-width:100%}
   .setup select,.setup input{max-width:100%;min-width:0}.panel{box-sizing:border-box;max-width:100%}
 }
+/* ── v1.4 立ち絵の常時表示・アニメ ── */
+.psway{position:relative;transform-origin:50% 100%;animation:breathe 4.6s ease-in-out infinite,sway 9s ease-in-out infinite}
+@keyframes sway{25%{rotate:.5deg}75%{rotate:-.5deg}}
+.pwrap .pimg{animation:none;display:block}
+.pimg.bounce{animation:bounce .35s ease}
+.phair{position:absolute;left:0;top:0;width:100%;height:auto;pointer-events:none;transform-origin:50% 26%;
+ -webkit-mask-image:linear-gradient(#000 0,#000 14%,transparent 30%);mask-image:linear-gradient(#000 0,#000 14%,transparent 30%);animation:hair 3.4s ease-in-out infinite}
+.pimg.bounce+.phair{animation:bounce .35s ease,hair 3.4s ease-in-out .35s infinite}
+@keyframes hair{50%{transform:skewX(.9deg) translateX(.6px)}}
+.pwrap.talk .psway{animation:breathe 4.6s ease-in-out infinite,sway 9s ease-in-out infinite,talk .26s ease-in-out infinite}
+@keyframes talk{50%{translate:0 -1.5px;scale:1.004}}
+.portrait.enter{animation:pin .38s cubic-bezier(.2,1.2,.4,1) both}.portrait.exit{animation:pout .22s ease-in both}
+@keyframes pin{from{opacity:0;transform:translateX(40px)}}@keyframes pout{to{opacity:0;transform:translateX(-40px)}}
+.portrait.react-up .pwrap{animation:hop .5s ease}.portrait.react-down .pwrap{animation:sink .6s ease}
+@keyframes hop{30%{transform:translateY(-14px)}60%{transform:translateY(0)}80%{transform:translateY(-4px)}}@keyframes sink{40%{transform:translateY(6px) scale(.99)}}
+.pfx{position:absolute;left:50%;top:18%;font-size:2rem;color:#ff5e98;pointer-events:none;animation:fx 1.2s ease-out forwards;text-shadow:0 2px 6px #0004}
+.pfx.down{color:#74b9ff}@keyframes fx{from{opacity:0;transform:translate(-50%,10px) scale(.6)}20%{opacity:1}to{opacity:0;transform:translate(-50%,-60px) scale(1.2)}}
+.box{max-height:30vh;overflow:auto}
+/* 週画面の周囲の人物 */
+.crowd{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:4px;margin:6px 0 4px;min-height:230px}
+.cwl{position:absolute;left:6px;top:4px;z-index:2;background:#ffffffd9;padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:bold;color:#6c5ce7}
+.cw{background:none;border:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;animation:pin .5s cubic-bezier(.2,1.2,.4,1) var(--d) both}
+.cwimg{display:block;width:170px;height:240px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 80%,transparent);mask-image:linear-gradient(#000 80%,transparent)}
+.cwimg img{width:100%;display:block;filter:drop-shadow(0 4px 10px #0005);transform-origin:50% 100%;animation:breathe 4.6s ease-in-out var(--ph) infinite,sway 8s ease-in-out var(--ph) infinite}
+.cw:hover .cwimg img{animation:hop .5s ease}
+.cwn{margin-top:-18px;position:relative;background:#fff;border:2px solid var(--hc);border-radius:12px;padding:1px 10px;font-weight:bold;font-size:.85rem}.cwn small{margin-left:4px;font-weight:normal;color:#666}
+@media(max-width:720px){.crowd{min-height:0}.cwimg{width:31vw;height:min(44vw,30dvh)}.cwl{font-size:.7rem}
+ .pwrap{height:min(44dvh,46vh)}.box{max-height:26dvh;font-size:.92rem;padding:8px 10px}.stage{min-height:calc(100dvh - 150px)}}
+@media (prefers-reduced-motion:reduce){.psway,.phair,.cwimg img,.pwrap.talk .psway{animation:none}}
+@media(max-width:720px){#app:has(.stage) .hud .stats{display:none}.portrait .pi{top:40px}}
+@media(min-width:721px){.cwimg{width:200px;height:290px}}
