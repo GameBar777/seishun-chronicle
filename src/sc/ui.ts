@@ -43,7 +43,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-cg">🖼 CGモード</button><button id="t-help">遊び方</button></div>
-  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><span class="credit">音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://soundeffect-lab.info/" target="_blank" rel="noopener">効果音ラボ</a>・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><span class="credit">音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://otologic.jp/" target="_blank" rel="noopener">OtoLogic</a>（CC BY 4.0）・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();

@@ -1,4 +1,4 @@
-// BGM・効果音：実音源ファイル（魔王魂・効果音ラボ。docs/audio-credits.md）を場面ごとに再生。
+// BGM・効果音：実音源ファイル（魔王魂・OtoLogic。docs/audio-credits.md）を場面ごとに再生。
 // 下の WebAudio 合成曲は、ファイルの読み込みに失敗したときのフォールバック専用。
 import { BGM_KEYS, SE_KEYS, type BgmKey, type SeKey } from './bgm';
 let ctx: AudioContext | null = null, bgmGain: GainNode | null = null, seGain: GainNode | null = null, timer: any = null, noise: AudioBuffer | null = null;
