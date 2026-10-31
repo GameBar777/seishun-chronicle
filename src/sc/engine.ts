@@ -376,13 +376,22 @@ const ALL_EV: Ev[] = [...CAL, ...DAILY, ...HEVENTS];
 export const EVMAP: Record<string, Ev> = Object.fromEntries(ALL_EV.map(e => [e.id, e]));
 const AUTO_MEET: Record<string, (s: GameState) => boolean> = { mio: s => s.week >= 0, rin: s => s.week >= 1 };
 // 1週のシーンは最大2件。必須（カレンダー・テスト・大会・誕生日・デート・エンディング）は常に出し、残りは最大4週まで後回し
-const TRANS = ['――その日の放課後。', '――数日後。', '――週の終わり。', '――その夜。', '――翌日の昼休み。', '――帰り道。'];
+// 前の場面と同じ日とは限らないので「その日の」「翌日の」は使わない（前の場面が海・休日でも矛盾しない）
+const TRANS = ['――ある日の放課後。', '――数日後。', '――週の終わり。', '――ある夜。', '――別の日の昼休み。', '――ある日の帰り道。'];
+const NONSCHOOL = /海|夏休み|冬休み|春休み|休日|日曜|土曜|旅行|遊園地|水族館|動物園|映画|初詣|元日|正月|お盆|帰省|祭り|花火/;
+const VACATION = (m: number, n: number) => m === 8 || (m === 7 && n >= 4) || (m === 12 && n >= 4) || (m === 1 && n === 1) || (m === 3 && n >= 4);
+/** 保存済みの古いつなぎ文も含めて、場面と時期に合うつなぎ文を返す */
+export function transFix(tr: string, text: string, m = 6, n = 2): string {
+  const t = tr.replace('その日の放課後', 'ある日の放課後').replace('翌日の昼休み', '別の日の昼休み').replace('その夜', 'ある夜').replace('――帰り道', '――ある日の帰り道');
+  if (/放課後|昼休み|帰り道/.test(t) && (VACATION(m, n) || NONSCHOOL.test(text.slice(0, 80)))) return '――別の日。';
+  return transOk(t, text) ? t : '――別の日。';
+}
 /** つなぎの一文が続く場面の本文と矛盾しないか（「その夜」→昼のプール開き 等を防ぐ） */
 const NIGHTW = /夜|部屋|(?<!体育|文化|学園)祭|花火|浴衣|神社|初詣|縁日|星空|天文/;
 const TIMEW = /朝|昼|午前|午後|授業|体育|プール|夜|夕|放課後|帰り|下校|式|ホームルーム|HR/;
 export function transOk(tr: string, text: string): boolean {
   if (/数日後|週の終わり/.test(tr)) return true;
-  if (/その夜/.test(tr)) return /夜|星空|花火|月明/.test(text.slice(0, 60)) && !/朝|昼|午前|授業|体育|プール|式|教室|終業|始業/.test(text.slice(0, 60));
+  if (/その夜|ある夜/.test(tr)) return /夜|星空|花火|月明/.test(text.slice(0, 60)) && !/朝|昼|午前|授業|体育|プール|式|教室|終業|始業/.test(text.slice(0, 60));
   const free = !TIMEW.test(text.slice(0, 60)) && !NIGHTW.test(text);
   if (/放課後/.test(tr)) return free || (/放課後|部活|夕/.test(text.slice(0, 60)) && !NIGHTW.test(text));
   if (/昼休み/.test(tr)) return free || (/昼休み|昼食|弁当/.test(text.slice(0, 60)) && !NIGHTW.test(text));
@@ -462,7 +471,7 @@ function scheduleRaw(s: GameState) {
 export function view(s: GameState): View | null {
   const v = view0(s); const tr = s.queue[0]?.tr;
   if (v && s.course === '就職') { v.title = jobN(v.title, s.course); v.lines = v.lines.map(l => l.who === 'n' ? { ...l, text: jobN(l.text, s.course) } : l); }
-  if (v && tr) { const body = v.title + ' ' + v.lines.map(l => l.text).join(' '); v.lines = [parseLine('n:' + (transOk(tr, body) ? tr : '――数日後。'), s, v.h), ...v.lines]; }
+  if (v && tr) { const body = v.title + ' ' + v.lines.map(l => l.text).join(' '); const c = cal(s.week); v.lines = [parseLine('n:' + transFix(tr, body, c.m, c.n), s, v.h), ...v.lines]; }
   return v;
 }
 function view0(s: GameState): View | null {
