@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newGame, doWeek, resolve, actions, view, EVMAP, isDated, SCHOOLDAY } from '../src/sc/engine';
+import { newGame, doWeek, resolve, actions, view, EVMAP, isDated, SCHOOLDAY, transFix } from '../src/sc/engine';
 import { cal, LAST_WEEK } from '../src/sc/time';
 
 // [本文・タイトルのキーワード, 開始(月,日), 終了(月,日)]：日本の高校の年間行事に合わせた許容期間
@@ -48,4 +48,29 @@ describe('イベントの時系列', () => {
   it('全152週×多数シードで、日付の決まった行事が遅れて出ず・期間内で・休み中に学校の場面が出ない', () => {
     expect(simulate(25)).toEqual([]);
   }, 60000);
+});
+
+describe('海・休み中・学外の場面のつなぎ文', () => {
+  const OLD = ['――その日の放課後。', '――翌日の昼休み。', '――その夜。', '――帰り道。', '――ある日の放課後。', '――別の日の昼休み。', '――ある日の帰り道。'];
+  const ALL = Object.values(EVMAP);
+  it('海の場面はすべて冒頭で夏休み・休日だとわかる', () => {
+    for (const e of ALL) {
+      if (!/海/.test(e.title)) continue;
+      const first = (e.lines ?? []).find(l => l.startsWith('n:')) ?? '';
+      if (e.lines) expect(first, e.id).toMatch(/夏休み|冬休み|日曜|土曜|休日|八月/);
+    }
+  });
+  it('保存済みの古いつなぎ文（翌日の昼休み 等）も、海・休み中の場面の前では「別の日」に直る', () => {
+    for (const e of ALL) {
+      const body = e.title + ' ' + (e.lines ?? []).join(' ');
+      const off = /海|夏休み|冬休み|春休み|休日|日曜|旅行|花火/.test(body.slice(0, 80));
+      for (const tr of OLD) {
+        const fixed = transFix(tr, body, off ? 6 : 6, 2);
+        expect(fixed, `${e.id} ${tr}`).not.toMatch(/その日|翌日|その夜/);
+        if (off) expect(fixed, `${e.id} ${tr}`).not.toMatch(/放課後|昼休み|帰り道/);
+        expect(transFix(tr, body, 8, 2), `${e.id} ${tr} (8月)`).not.toMatch(/放課後|昼休み|帰り道|その日|翌日/);
+      }
+    }
+    expect(transFix('――翌日の昼休み。', EVMAP.d_fr_t_beach.title + ' ' + EVMAP.d_fr_t_beach.lines!.join(' '), 8, 2)).toBe('――別の日。');
+  });
 });
