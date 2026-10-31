@@ -90,6 +90,19 @@ export const CAREER: [string, string, string][] = [
   ['合格祈願。……一番高いやつ', '必勝祈願。……一番高いやつ', '合格祈願。……一番高いやつ'],
   ['手の中には合格通知', '手の中には内定通知', '手の中には合格通知'],
 ];
+// 就職コースのタイトル・地の文（ボイスなし）だけを採用試験向けに言い換える
+export const JOB_N: [string, string][] = [
+  ['受験直前の教室', '採用試験直前の教室'], ['受験直前の研究会', '採用試験直前の研究会'], ['受験と恋の両立論', '就活と恋の両立論'], ['受験生の連休', '就活生の連休'], ['受験生の夏休み', '就活生の夏休み'],
+  ['受験当日の朝。駅のホームは、同じ制服の受験生でいっぱいだった。', '採用試験当日の朝。駅のホームは、同じ制服の受験生や就活生でいっぱいだった。'],
+  ['「センター試験まであと○日」の数字が書かれている', '「センター試験まであと○日」の数字。……就職組の自分には、来月の採用試験が待っている'],
+  ['試験当日の朝。手が冷たい。', '採用試験当日の朝。面接室の前の廊下で、手が冷たい。'], ['三年間のすべてが、この一日に問われる。', '三年間のすべてが、この面接に問われる。'],
+  ['受験直前の研究会本部に', '採用試験直前の研究会本部に'], ['受験生の初夏。', '就活生の初夏。'], ['受験までの日数', '受験や採用試験までの日数'],
+];
+export function jobN(text: string, course?: string): string {
+  if (course !== '就職') return text; if (text === '受験') return '採用試験';
+  for (const [a, b] of JOB_N) if (text.includes(a)) text = text.split(a).join(b);
+  return text;
+}
 export function career(text: string, course: string): string {
   const col = course === '就職' ? 1 : course === '専門学校' ? 2 : 0; if (!col) return text;
   for (const r of CAREER) if (text.includes(r[0])) text = text.split(r[0]).join(r[col]);
@@ -343,6 +356,7 @@ function scheduleRaw(s: GameState) {
 // ───────── シーン表示 ─────────
 export function view(s: GameState): View | null {
   const v = view0(s); const tr = s.queue[0]?.tr;
+  if (v && s.course === '就職') { v.title = jobN(v.title, s.course); v.lines = v.lines.map(l => l.who === 'n' ? { ...l, text: jobN(l.text, s.course) } : l); }
   if (v && tr) v.lines = [parseLine('n:' + tr, s, v.h), ...v.lines];
   return v;
 }
