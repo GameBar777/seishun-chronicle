@@ -77,3 +77,24 @@ body{background:#1e1b2e}
 .cg .hint{position:absolute;bottom:4%;right:4%;color:#fffc;font-size:.85rem;animation:blink 1.6s infinite}@keyframes blink{50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.rays,.cg img,.stage.confess::after{animation:none}}
 .portrait .pi{writing-mode:horizontal-tb;white-space:nowrap;width:max-content;max-width:none}
+/* v1.3.1 iPhone 対応 */
+html,body{min-height:100dvh}
+body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+#bg[data-key=key-p] .bgimg{background-position:center top;animation:none;inset:0;transform:none}
+@media (max-width:720px){
+  .title{min-height:calc(100dvh - 20px);box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom))}
+  .title .logo{padding:6px 16px;background:#ffffffd9}.title .logo small{font-size:.7rem}.logo h1{font-size:1.8rem;margin:.05em 0}.logo p{font-size:.9rem;margin:0}
+  .title .menu{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:none;width:100%;margin:0;padding-bottom:8px}
+  .title .menu button{padding:9px 4px;font-size:.85rem;background:#ffffffe6;min-height:40px}
+  .title .menu button#t-new{grid-column:1/-1;font-size:1rem}
+  .rays{opacity:.18;top:-70%;-webkit-mask-image:radial-gradient(circle,#000 4%,transparent 28%);mask-image:radial-gradient(circle,#000 4%,transparent 28%)}
+  .modal .mbox{max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;width:calc(100vw - 16px)}
+  #app{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+}
+@media (max-width:720px){
+  .title{justify-content:flex-start}.title .menu{margin-top:auto}
+  .title .note{font-size:.68rem;margin:4px 0 0;padding:4px 8px;background:#ffffffb0;border-radius:8px}
+  .title .menu button#t-cont{font-size:.78rem}
+  .setup .row{flex-wrap:wrap;gap:6px}.setup label{display:flex;flex-wrap:wrap;align-items:center;white-space:nowrap;max-width:100%}
+  .setup select,.setup input{max-width:100%;min-width:0}.panel{box-sizing:border-box;max-width:100%}
+}

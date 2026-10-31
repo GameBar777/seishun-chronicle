@@ -34,3 +34,8 @@
 
 ## v1.3 主題歌
 - public/audio/theme.{mp3,ogg}（ユーザー提供・ボーカル入り・173.8秒）。audio.playSong/stopSong（HTMLAudio、音量＝master×bgm×1.7）。タイトルの🎵プレイヤーとエンディングで再生。歌詞は faster-whisper（medium、ローカル）での自動書き起こしを時刻付きで表示（切替可）。旧・合成主題歌（THEME_SONG）はコードに残すが未使用。
+
+## v1.3.1 iPhone 対応
+- 縦長画面用キービジュアル key-p.webp（9人を2段構成）、100dvh・safe-area・viewport-fit=cover。
+- タイトルメニューを2列化し下部に配置、光線を弱めた。設定画面フォームの横はみ出しを修正。
+- scripts/mobile-audit.mjs（SE/14/Pro Max、Safariバー分を差し引いた高さ）→ docs/screenshots/mobile/。

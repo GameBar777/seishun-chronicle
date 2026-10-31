@@ -31,7 +31,7 @@ function title() {
   document.addEventListener('pointerdown', startTitleBgm, { once: true });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
-  <p class="note">全156週（高校3年間）。1周の目安 2〜4時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約2〜3時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
