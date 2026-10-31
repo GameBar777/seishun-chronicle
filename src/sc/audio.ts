@@ -28,6 +28,24 @@ export function playSong(base: string, opts: { loop?: boolean; onEnd?: () => voi
   a.src = `${base}${SONG_FILE}.${ogg ? 'ogg' : 'mp3'}`; a.loop = !!opts.loop; a.volume = songVol; a.onended = () => { songEl = null; opts.onEnd?.(); };
   songEl = a; a.play().catch(() => { }); return a;
 }
+let fadeT: any = null;
+/** 主題歌をフェードアウトして停止 */
+export function fadeSong(ms = 900) {
+  const a = songEl; if (!a) return; songEl = null; a.onended = null; clearInterval(fadeT); const v0 = a.volume, t0 = performance.now();
+  fadeT = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / ms); a.volume = Math.max(0, v0 * (1 - k)); if (k >= 1) { clearInterval(fadeT); a.pause(); } }, 40);
+}
+let titleFallback = false;
+export const titleFallbackOn = () => titleFallback;
+/** タイトル画面：主題歌をループ再生。自動再生が拒否されたら false（最初のタップで unlockTitleSong）。読み込み失敗時は合成BGMへ */
+export function titleSong(base: string): Promise<boolean> {
+  if (titleFallback) { playBgm('title'); return Promise.resolve(true); }
+  if (songEl && songEl.loop && !songEl.paused) return Promise.resolve(true);
+  if (songEl && songEl.loop) return songEl.play().then(() => true, () => false);
+  const a = playSong(base, { loop: true }); a.loop = true;
+  a.onerror = () => { if (songEl === a) { songEl = null; titleFallback = true; playBgm('title'); } };
+  return a.play().then(() => true, () => false);
+}
+export function unlockTitleSong(base: string) { resume(); if (titleFallback) return playBgm('title'); const a = songEl; if (a) a.play().catch(() => { }); else void titleSong(base); }
 export function stopSong() { if (songEl) { songEl.onended = null; songEl.pause(); songEl = null; } }
 export const songPlaying = () => !!songEl && !songEl.paused;
 export const songElement = () => songEl;
@@ -103,7 +121,7 @@ function drum(kind: 'k' | 's' | 'h' | 'o' | 'c' | 't', t: number, vel = 1, tune 
 let playing = '', startAt = 0;
 export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onEnd?: () => void; horizon?: number } = {}) {
   const horizon = opts.horizon ?? .15;
-  if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; if (songEl && !opts.horizon) stopSong(); stopBgm(); playing = key;
+  if (songEl && !opts.horizon) fadeSong(); if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; stopBgm(); playing = key;
   const song = name === 'theme' ? songOfTheme() : (SONGS[name] || SONGS.school);
   const c = ctx!, step = 60 / song.bpm / 2; let slot = 0, next = c.currentTime + .08; startAt = next; const total = song.chords.length * 8; const loop = opts.loop ?? name !== 'theme';
   const bars = song.mel.map(b => parseBar(b, song.minor));
