@@ -24,13 +24,13 @@ export const CAL: Ev[] = [
   { id: 'gw', title: 'ゴールデンウィーク', cond: s => C(s).m === 5 && C(s).n === 1 && C(s).Y === 1, lines: ['n:ゴールデンウィーク。家族は親戚の家に出かけていった。'],
     choices: [{ label: '家で一日中勉強', eff: { stats: { bun: 4, ri: 4, st: 6 } }, res: ['n:やりきった。少し肩が凝った。'] }, { label: '商店街をぶらつく', eff: { stats: { st: -8 }, to: 'hinata', f: 3 }, res: ['hinata(嬉):あ、{C}くん！ ちょうどいいとこに。荷物運び手伝って！'] }, { label: '寝て過ごす', eff: { stats: { hp: 15, st: -10 } }, res: ['n:最高の休日だった。'] }] },
   // ── 6月 ──
-  { id: 'sports_day', title: '体育祭', cond: s => C(s).m === 6 && C(s).n === 1, dynLines: s => [`n:${C(s).Y}年目の体育祭。快晴。クラス対抗リレーのアンカーを誰がやるかで揉めている。`],
+  { id: 'sports_day', title: '体育祭', cond: s => C(s).m === 9 && C(s).n === 4, dynLines: s => [`n:${C(s).Y}年目の体育祭。快晴。クラス対抗リレーのアンカーを誰がやるかで揉めている。`],
     lines: [], choices: [
       { label: 'アンカーに立候補する', eff: { stats: { kon: 3 } }, res: ['@sports:'] },
       { label: '応援団で声を張る', eff: { stats: { kon: 2, st: -4 }, others: { f: 1 } }, res: ['n:喉が枯れるまで叫んだ。クラスは三位だった。'] },
       { label: '日陰で見学', eff: { stats: { hp: 3 } }, res: ['n:誰かが走り、誰かが転び、誰かが泣いていた。それを少し離れて見ていた。'] }] },
   // ── 7月 ──
-  { id: 'summer_start', title: '夏休みの始まり', cond: s => C(s).m === 7 && C(s).n === 4, dynLines: s => [`n:終業式。${C(s).Y === 3 ? '高校最後の夏休み。受験生の夏でもある。' : '待ちに待った夏休みだ。'}`, '@健太:海行こうぜ海！ 夏祭りもあるし、花火大会もあるし！'],
+  { id: 'summer_start', title: '夏休みの始まり', cond: s => C(s).m === 7 && C(s).n === 3, dynLines: s => [`n:終業式。${C(s).Y === 3 ? '高校最後の夏休み。受験生の夏でもある。' : '待ちに待った夏休みだ。'}`, '@健太:海行こうぜ海！ 夏祭りもあるし、花火大会もあるし！'],
     lines: [], choices: [{ label: '夏の計画を立てる', eff: { stats: { st: -5 } }, res: ['n:カレンダーに丸をつけた。夏祭り、海、花火。'] }, { label: '夏期講習に申し込む', eff: { stats: { bun: 3, ri: 3, st: 5 }, money: -10000 }, need: s => s.money >= 10000, res: ['n:講習代一万円。親に半分出してもらった。'] }] },
   // ── 8月 ──
   { id: 'summer_fes', title: '夏祭り', cond: s => C(s).m === 8 && C(s).n === 1, dynLines: s => [`n:汐見川の夏祭り。${C(s).Y}年目の夏。浴衣姿の同級生がちらほら見える。誰かを誘おうか。`], lines: [], choices: [], dyn: invite('夏祭り', 6, 4) },
@@ -47,7 +47,7 @@ export const CAL: Ev[] = [
   { id: 'art_event', title: '芸術鑑賞会', cond: s => C(s).m === 11 && C(s).n === 2, dynLines: s => [`n:芸術鑑賞会。今年の演目は${['オーケストラ', '能楽', '現代演劇'][C(s).Y - 1]}だ。`], lines: [],
     choices: [{ label: '真剣に鑑賞する', eff: { stats: { gei: 5, bun: 2 } }, res: ['n:胸の奥で、何かが静かに震えた。'] }, { label: '寝る', eff: { stats: { hp: 5, moral: -2 } }, res: ['n:いびきをかいて先生に怒られた。'] }] },
   // ── 12月 ──
-  { id: 'christmas', title: 'クリスマス', cond: s => C(s).m === 12 && C(s).n === 4, dynLines: s => [`n:クリスマス・イブ。${C(s).Y === 3 ? '受験直前だけれど、' : ''}街はイルミネーションで輝いている。`], lines: [], choices: [], dyn: invite('クリスマス', 10, 4) },
+  { id: 'christmas', title: 'クリスマス', cond: s => C(s).m === 12 && C(s).day >= 18 && C(s).day <= 24, dynLines: s => [`n:クリスマス・イブ。${C(s).Y === 3 ? '受験直前だけれど、' : ''}街はイルミネーションで輝いている。`], lines: [], choices: [], dyn: invite('クリスマス', 10, 4) },
   // ── 1月 ──
   { id: 'new_year', title: '初詣', cond: s => C(s).m === 1 && C(s).n === 1, dynLines: s => [`n:元旦。${C(s).Y === 3 ? '合格祈願' : '新しい一年'}のために、汐見神社へ。`], lines: [], choices: [], dyn: invite('初詣', 6, 5) },
   { id: 'hatsuuri', title: '初売り', cond: s => C(s).m === 1 && C(s).n === 2 && C(s).Y <= 2, lines: ['n:駅前モールの初売り。福袋の列ができている。'],

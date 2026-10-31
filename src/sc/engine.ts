@@ -400,7 +400,13 @@ export function transOk(tr: string, text: string): boolean {
 }
 const CAL_IDS = new Set(CAL.map(e => e.id)); const MAX_WK = 2;
 const mustScene = (q: Scene) => q.kind === 'date' || q.kind === 'ending' || CAL_IDS.has(q.id) || ['opening', 'exam', 'tournament', 'birthday', 'meet_rin', 'wada_intro', 'wada'].includes(q.id);
-const prio = (q: Scene) => mustScene(q) ? 0 : q.kind === 'event' && !q.id.startsWith('d_') ? 1 : q.kind === 'event' ? 2 : 3;
+// 日付の決まったイベント（カレンダー・日常・友人・芽衣）。週がずれたら出さずに捨てる（8/23に終業式、を防ぐ）
+const DATED = new Set([...CAL, ...DAILY].map(e => e.id));
+/** 学校のある日の場面か（休み中には出さない） */
+export const SCHOOLDAY = /終業式|始業式|授業|ホームルーム|昼休み|教室|担任|購買|放課後|クラスメイト|登校|朝練/;
+export const schoolDay = (e: Ev) => SCHOOLDAY.test(e.title + ' ' + e.lines.filter(l => l.startsWith('n:')).slice(0, 2).join(' '));
+export const isDated = (id: string) => DATED.has(id);
+const prio = (q: Scene) => mustScene(q) ? 0 : q.kind === 'event' && DATED.has(q.id) ? 1 : q.kind === 'event' ? 2 : 3;
 // ランダムなセリフは一巡するまで繰り返さない
 export function pickL<T>(s: GameState, a: T[]): T {
   const seen = (s.seenL ||= []); const key = (x: T) => typeof x === 'string' ? x.slice(0, 40) : JSON.stringify(x).slice(0, 40);
@@ -410,7 +416,7 @@ export function pickL<T>(s: GameState, a: T[]): T {
 }
 export function scheduleScenes(s: GameState) {
   const pre = s.queue.length;
-  const later = (s.later || []).filter(l => s.week - l.w <= 4 && !s.seen.includes(l.q.id)); s.later = [];
+  const later = (s.later || []).filter(l => s.week - l.w <= 4 && !s.seen.includes(l.q.id) && !(DATED.has(l.q.id) && !(EVMAP[l.q.id]?.cond(s))) && !(cal(s.week).vacation && EVMAP[l.q.id] && schoolDay(EVMAP[l.q.id]))); s.later = [];
   scheduleRaw(s);
   const fresh = [...later.map(l => l.q), ...s.queue.splice(pre)].filter((q, i, a) => a.findIndex(x => x.id === q.id && x.h === q.h) === i);
   const sorted = fresh.map((q, i) => ({ q, i })).sort((a, b) => prio(a.q) - prio(b.q) || a.i - b.i).map(x => x.q);
@@ -455,7 +461,7 @@ function scheduleRaw(s: GameState) {
   }
   // 個別イベント（1週1件。前回から3週以上）
   const lastH = Number(s.flags.find(f => f.startsWith('lastHE:'))?.slice(7) ?? -99);
-  const cands = HEVENTS.filter(e => !s.seen.includes(e.id) && !s.queue.some(q => q.id === e.id) && e.cond(s) && (e.id.endsWith('_meet') || s.week - lastH >= 3) && !(e.h && s.hs[e.h].flags.includes('exploded') && /_[34]$/.test(e.id) && s.week - (s.hs[e.h].lastContact) < 6));
+  const cands = HEVENTS.filter(e => !s.seen.includes(e.id) && !(c.vacation && schoolDay(e)) && !s.queue.some(q => q.id === e.id) && e.cond(s) && (e.id.endsWith('_meet') || s.week - lastH >= 3) && !(e.h && s.hs[e.h].flags.includes('exploded') && /_[34]$/.test(e.id) && s.week - (s.hs[e.h].lastContact) < 6));
   cands.sort((a, b) => (b.prio || 0) - (a.prio || 0));
   if (cands.length) { s.queue.push({ kind: 'event', id: cands[0].id }); }
   // 街での偶然の遭遇
