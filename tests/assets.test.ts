@@ -9,6 +9,7 @@ describe('assets & music', () => {
     for (const c of ['confess', 'ending', 'fireworks']) expect(existsSync(`public/img/cg/${c}.webp`)).toBe(true);
     for (const k of Object.keys(LOCATIONS)) { const bg = LOC_BG[k]; expect(bg).toBeTruthy(); expect(existsSync(`public/img/bg/${bg}.webp`)).toBe(true); expect(existsSync(`public/img/bg/${bg}-s.webp`)).toBe(true); }
     expect(existsSync('public/thumbnail.png')).toBe(true);
+    for (const x of ['mp3', 'ogg']) expect(existsSync(`public/audio/theme.${x}`)).toBe(true);
   });
   it('music parses', () => {
     expect(parseBar('1 - 3 0 5 - - 8').length).toBe(4);

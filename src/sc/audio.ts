@@ -20,7 +20,18 @@ function initGraph() {
   noise = c.createBuffer(1, c.sampleRate * 1.5, c.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 }
 function panTo(p: number): AudioNode { if (!(ctx as any).createStereoPanner) return music!; const n = ctx!.createStereoPanner(); n.pan.value = p; n.connect(music!); return n; }
-export function setVolumes(master: number, bgm: number, se: number) { if (!ensure()) return; bgmGain!.gain.value = master * bgm * 0.85; seGain!.gain.value = master * se * 0.25; }
+// ── 主題歌（ユーザー提供の音源ファイル。HTMLAudio で再生）──
+let songEl: HTMLAudioElement | null = null, songVol = .55;
+export const SONG_FILE = 'audio/theme';
+export function playSong(base: string, opts: { loop?: boolean; onEnd?: () => void } = {}) {
+  stopBgm(); stopSong(); const a = new Audio(); const ogg = a.canPlayType('audio/ogg; codecs=vorbis') && !a.canPlayType('audio/mpeg');
+  a.src = `${base}${SONG_FILE}.${ogg ? 'ogg' : 'mp3'}`; a.loop = !!opts.loop; a.volume = songVol; a.onended = () => { songEl = null; opts.onEnd?.(); };
+  songEl = a; a.play().catch(() => { }); return a;
+}
+export function stopSong() { if (songEl) { songEl.onended = null; songEl.pause(); songEl = null; } }
+export const songPlaying = () => !!songEl && !songEl.paused;
+export const songElement = () => songEl;
+export function setVolumes(master: number, bgm: number, se: number) { songVol = Math.min(1, master * bgm * 1.7); if (songEl) songEl.volume = songVol; if (!ensure()) return; bgmGain!.gain.value = master * bgm * 0.85; seGain!.gain.value = master * se * 0.25; }
 
 // ── 曲データ：度数（長音階 1=主音, 8=1オクターブ上, b=半音下げ）、'-'=伸ばす、0=休符。1小節＝8分音符8つ
 type Song = { bpm: number; root: number; minor?: boolean; chords: string[]; mel: string[]; drums: 0 | 1 | 2; lead: 'bell' | 'piano' | 'flute'; pad?: boolean; arp?: boolean };
@@ -92,7 +103,7 @@ function drum(kind: 'k' | 's' | 'h' | 'o' | 'c' | 't', t: number, vel = 1, tune 
 let playing = '', startAt = 0;
 export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onEnd?: () => void; horizon?: number } = {}) {
   const horizon = opts.horizon ?? .15;
-  if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; stopBgm(); playing = key;
+  if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; if (songEl && !opts.horizon) stopSong(); stopBgm(); playing = key;
   const song = name === 'theme' ? songOfTheme() : (SONGS[name] || SONGS.school);
   const c = ctx!, step = 60 / song.bpm / 2; let slot = 0, next = c.currentTime + .08; startAt = next; const total = song.chords.length * 8; const loop = opts.loop ?? name !== 'theme';
   const bars = song.mel.map(b => parseBar(b, song.minor));

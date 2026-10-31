@@ -31,3 +31,6 @@
 - 音楽: 生成IRのConvolverリバーブ＋コンプ＋シェルフEQ、パン、対旋律（3度下、後半・サビ）、ドラムのフィル／クラッシュ／オープンハット、ベースの動き。主題歌は Aメロ8小節・Bメロ8小節・サビ16小節（インスト、歌唱なし）。
 - 音の検証: `node scripts/render-audio.mjs [出力先]`（vite dev を 4637 で起動しておく）で全7曲を OfflineAudioContext で WAV に書き出す。2026-10-31 計測: ピーク −5〜−8dBFS、RMS −26〜−28dB、クリップ0、無音は末尾の残響のみ、中域中心の帯域バランス。
 - プレイ時間: tests の playtime モデル（400字/分＋クリック・選択・週メニュー・会話）で1周 約2.3時間（電話・自由会話を多くすると延びる）。
+
+## v1.3 主題歌
+- public/audio/theme.{mp3,ogg}（ユーザー提供・ボーカル入り・173.8秒）。audio.playSong/stopSong（HTMLAudio、音量＝master×bgm×1.7）。タイトルの🎵プレイヤーとエンディングで再生。歌詞は faster-whisper（medium、ローカル）での自動書き起こしを時刻付きで表示（切替可）。旧・合成主題歌（THEME_SONG）はコードに残すが未使用。

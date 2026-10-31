@@ -8,7 +8,6 @@ import { exportSave, importSave, store } from './save';
 import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName } from './voice';
 import * as audio from './audio';
 import { setBg, guessBg, LOC_BG, type Tod } from './bg';
-import { THEME_SONG, themeLyricTimes } from './audio';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
 const seasonNow = () => S ? season(cal(S.week).m) : '春';
@@ -31,7 +30,7 @@ function title() {
   const startTitleBgm = () => { audio.resume(); audio.playBgm('title'); };
   document.addEventListener('pointerdown', startTitleBgm, { once: true });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
-  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌「${THEME_SONG.title}」</button><button id="t-help">遊び方</button></div>
+  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
   <p class="note">全156週（高校3年間）。1周の目安 2〜4時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
@@ -40,12 +39,22 @@ function title() {
   $('#t-help').onclick = () => modal('遊び方', helpText());
   $('#t-song').onclick = () => themeSong();
 }
+const SONG_LYRICS: [number, string][] = [[0, '止まらない この鼓動 今 走り出す'], [13, '迷い込んだ この世界で 答えを探してた'], [20, '小さな光 見つけた時 君が笑ってた'], [27, 'もう一歩 踏み出せば 変わり始める'], [34, '輝いて Shine again'], [37, '何度でも立ち上がれ'], [41, '涙さえ 超えてゆける'], [46, '君となら 走り出せ'], [50, '今すぐに 未来を掴みに行こう'], [56, '響いてるこの想い どこまでも'], [64, '不安だってあるけれど 止まれはしないから'], [71, '繋いだ手を離さないで 前を向いていく'], [78, '遠くでも届くまで 歌い続ける'], [85, '輝いて Shine again 何度でも立ち上がれ'], [92, '壊れその夜の先に 光がある'], [99.5, '止まらないこの鼓動 明日へ繋いで行こう'], [106.7, '変わらないこの想い 抱きしめて'], [113.8, 'どんな未来でも'], [118.8, '君となら行ける'], [124.8, '輝いて Shine again'], [127.8, '限界を超えていけ'], [131.8, '涙さえ力になる'], [136.8, '信じてる'], [138.8, '走り出せ 今すぐに'], [142.8, '新しい空の下 終わらない'], [148.1, 'この歌を届けよう'], [157.3, 'また光る未来へ']];
 function themeSong() {
-  audio.resume(); const { lines, total } = themeLyricTimes();
-  modal(`🎵 主題歌「${THEME_SONG.title}」`, `<p class="note">作詞・作曲：本作オリジナル。歌声なし（インストゥルメンタル）で、歌詞を表示します。</p><div class="lyrics">${lines.map((l, i) => `<p data-i="${i}">${esc(l.text)}</p>`).join('')}</div><div class="bar"><i id="ly-bar"></i></div>`);
-  audio.playBgm('theme', 0, { loop: false, onEnd: () => { if (!S) audio.playBgm('title'); } });
-  const tick = () => { const m = document.querySelector('.lyrics'); if (!m) { if (audio.nowPlaying().startsWith('theme')) audio.playBgm('title'); return; } const t = audio.bgmTime(); let cur = -1; lines.forEach((l, i) => { if (t >= l.t) cur = i; });
-    m.querySelectorAll('p').forEach((p, i) => p.classList.toggle('on', i === cur)); const on = m.querySelector('p.on') as HTMLElement | null; if (on) m.scrollTop = on.offsetTop - m.clientHeight / 2; const b = document.getElementById('ly-bar'); if (b) b.style.width = Math.min(100, t / total * 100) + '%'; requestAnimationFrame(tick); };
+  audio.resume();
+  modal('🎵 主題歌', `<p class="note">提供音源（ボーカル入り）。歌詞は音声からの自動書き起こしのため、実際と異なる場合があります。</p>
+  <div class="row"><button id="sg-play" class="primary">▶ 再生</button><button id="sg-stop">■ 停止</button><label><input type="checkbox" id="sg-loop"> ループ</label><label><input type="checkbox" id="sg-ly" checked> 歌詞を表示</label></div>
+  <div class="lyrics">${SONG_LYRICS.map(([, l], i) => `<p data-i="${i}">${esc(l)}</p>`).join('')}</div><div class="bar"><i id="ly-bar"></i></div><p class="note">音量は「音声・音量設定」のBGM音量に連動します。</p>`);
+  const loopEl = $('#sg-loop') as HTMLInputElement, lyEl = $('#sg-ly') as HTMLInputElement;
+  const start = () => { const a = audio.playSong(BASE, { loop: loopEl.checked, onEnd: () => { if (!S) audio.playBgm('title'); } }); a.loop = loopEl.checked; };
+  $('#sg-play').onclick = start; $('#sg-stop').onclick = () => { audio.stopSong(); if (!S) audio.playBgm('title'); };
+  loopEl.onchange = () => { const a = audio.songElement(); if (a) a.loop = loopEl.checked; };
+  lyEl.onchange = () => { (document.querySelector('.lyrics') as HTMLElement).style.display = lyEl.checked ? '' : 'none'; };
+  start();
+  const tick = () => { const m = document.querySelector('.lyrics'); if (!m) { if (audio.songPlaying()) { audio.stopSong(); if (!S) audio.playBgm('title'); } return; }
+    const a = audio.songElement(); const t = a ? a.currentTime : 0; let cur = -1; SONG_LYRICS.forEach(([s0], i) => { if (t >= s0) cur = i; });
+    m.querySelectorAll('p').forEach((p, i) => p.classList.toggle('on', i === cur)); const on = m.querySelector('p.on') as HTMLElement | null; if (on) m.scrollTop = on.offsetTop - m.clientHeight / 2;
+    const b = document.getElementById('ly-bar'); if (b && a && a.duration) b.style.width = Math.min(100, t / a.duration * 100) + '%'; requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
 }
 function helpText() {
@@ -228,9 +237,9 @@ function chatBox(h: string) {
   $<HTMLInputElement>('#ci').focus();
 }
 function endingBox() {
-  const e = judgeEnding(S!);
+  const e = judgeEnding(S!); audio.playSong(BASE, { loop: false });
   $('#ch').innerHTML = `<div class="panel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。</p><div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-s">最終セーブ文字列</button></div></div>`;
-  $('#e-t').onclick = () => { resolve(S!, 0); store.save('auto', S!); try { localStorage.removeItem('seishun:slotauto'); } catch { } title(); };
+  $('#e-t').onclick = () => { audio.stopSong(); resolve(S!, 0); store.save('auto', S!); try { localStorage.removeItem('seishun:slotauto'); } catch { } title(); };
   $('#e-s').onclick = () => modal('SAVE', `<textarea readonly class="savestr">${exportSave(S!)}</textarea>`);
 }
 
