@@ -187,7 +187,7 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
   box.onclick = next; document.onkeydown = e => { if ((e.target as HTMLElement)?.tagName === 'INPUT') return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } };
   next();
 }
-const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '💢', 哀: '💧', 驚: '❗', 嫉: '💦', 囁: '…', 告: '💓', 冷: '❄' } as any)[e] || '';
+const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '💢', 哀: '💧', 驚: '❗', 嫉: '💦', 囁: '…', 告: '💓', 冷: '😶' } as any)[e] || '';
 export const EXPR: Record<string, string> = { 嬉: 'h', 照: 'b', 告: 'b', 囁: 'h', 哀: 's', 怒: 'a', 嫉: 'a', 冷: 'n', 驚: 'o', 通常: 'n' };
 export const EXPR_FILES = ['n', 'h', 's', 'o', 'a', 'b'];
 const SMALL = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width:720px)').matches;

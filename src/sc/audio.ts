@@ -4,21 +4,23 @@ const hz = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 let rev: ConvolverNode | null = null, revSend: GainNode | null = null, music: GainNode | null = null;
 function ensure() {
   if (ctx) return ctx; const AC = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext; if (!AC) return null;
-  ctx = new AC(); const c = ctx!; bgmGain = c.createGain(); seGain = c.createGain(); music = c.createGain(); music.gain.value = 1;
+  ctx = new AC(); initGraph(); return ctx;
+}
+function initGraph() {
+  const c = ctx!; bgmGain = c.createGain(); seGain = c.createGain(); music = c.createGain(); music.gain.value = 1;
   // マスター：ローシェルフ＋コンプ／リバーブ（生成したインパルス応答）
-  const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3.5; comp.attack.value = .01; comp.release.value = .25;
-  const warm = c.createBiquadFilter(); warm.type = 'lowshelf'; warm.frequency.value = 220; warm.gain.value = 2.5;
-  const air = c.createBiquadFilter(); air.type = 'highshelf'; air.frequency.value = 7000; air.gain.value = -3;
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = .01; comp.release.value = .25;
+  const warm = c.createBiquadFilter(); warm.type = 'lowshelf'; warm.frequency.value = 220; warm.gain.value = -3;
+  const air = c.createBiquadFilter(); air.type = 'highshelf'; air.frequency.value = 7000; air.gain.value = 3;
   rev = c.createConvolver(); const len = c.sampleRate * 2.6, ir = c.createBuffer(2, len, c.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2) * (i < c.sampleRate * .012 ? i / (c.sampleRate * .012) : 1); }
-  rev.buffer = ir; revSend = c.createGain(); revSend.gain.value = .32; const revOut = c.createGain(); revOut.gain.value = .55;
-  music.connect(warm); warm.connect(air); air.connect(bgmGain); music.connect(revSend); revSend.connect(rev); rev.connect(revOut); revOut.connect(bgmGain);
+  rev.buffer = ir; revSend = c.createGain(); revSend.gain.value = .38; const revOut = c.createGain(); revOut.gain.value = .55;
+  music.connect(warm); warm.connect(air); air.connect(bgmGain); const rhp = c.createBiquadFilter(); rhp.type = 'highpass'; rhp.frequency.value = 350; music.connect(rhp); rhp.connect(revSend); revSend.connect(rev); rev.connect(revOut); revOut.connect(bgmGain);
   bgmGain.connect(comp); comp.connect(c.destination); seGain.connect(c.destination);
   noise = c.createBuffer(1, c.sampleRate * 1.5, c.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  return ctx;
 }
 function panTo(p: number): AudioNode { if (!(ctx as any).createStereoPanner) return music!; const n = ctx!.createStereoPanner(); n.pan.value = p; n.connect(music!); return n; }
-export function setVolumes(master: number, bgm: number, se: number) { if (!ensure()) return; bgmGain!.gain.value = master * bgm * 0.62; seGain!.gain.value = master * se * 0.25; }
+export function setVolumes(master: number, bgm: number, se: number) { if (!ensure()) return; bgmGain!.gain.value = master * bgm * 0.85; seGain!.gain.value = master * se * 0.25; }
 
 // ── 曲データ：度数（長音階 1=主音, 8=1オクターブ上, b=半音下げ）、'-'=伸ばす、0=休符。1小節＝8分音符8つ
 type Song = { bpm: number; root: number; minor?: boolean; chords: string[]; mel: string[]; drums: 0 | 1 | 2; lead: 'bell' | 'piano' | 'flute'; pad?: boolean; arp?: boolean };
@@ -77,10 +79,10 @@ function pad(notes: number[], t: number, len: number, bright = 1200) {
   lp.connect(music!);
   notes.forEach((n, i) => [-8, 8].forEach(dt => { const o = ctx!.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(n); o.detune.value = dt; const pn = (ctx as any).createStereoPanner ? ctx!.createStereoPanner() : null; const g = ctx!.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(.013, t + .5); g.gain.setValueAtTime(.013, t + len - .3); g.gain.linearRampToValueAtTime(0.0001, t + len + .2); o.connect(g); if (pn) { pn.pan.value = (dt > 0 ? .5 : -.5) * (i % 2 ? 1 : .6); g.connect(pn); pn.connect(lp); } else g.connect(lp); o.start(t); o.stop(t + len + .3); }));
 }
-function bass(n: number, t: number, len: number, peak = .3) { const lp = ctx!.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.connect(music!); tone('triangle', hz(n), t, len, peak, lp, .006); tone('sine', hz(n), t, len, peak * .7, lp, .006); tone('sawtooth', hz(n), t, len * .5, peak * .12, lp, .006); }
+function bass(n: number, t: number, len: number, peak = .2) { const lp = ctx!.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(music!); tone('triangle', hz(n), t, len, peak, lp, .006); tone('sine', hz(n), t, len, peak * .7, lp, .006); tone('sawtooth', hz(n), t, len * .5, peak * .12, lp, .006); }
 function drum(kind: 'k' | 's' | 'h' | 'o' | 'c' | 't', t: number, vel = 1, tune = 0) {
   const c = ctx!;
-  if (kind === 'k') { const o = c.createOscillator(), g = env(t, .55 * vel, .002, .3); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + .18); o.connect(g); g.connect(music!); o.start(t); o.stop(t + .35); return; }
+  if (kind === 'k') { const o = c.createOscillator(), g = env(t, .38 * vel, .002, .26); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + .18); o.connect(g); g.connect(music!); o.start(t); o.stop(t + .35); return; }
   if (kind === 't') { const o = c.createOscillator(), g = env(t, .3 * vel, .002, .25); o.frequency.setValueAtTime(220 - tune * 30, t); o.frequency.exponentialRampToValueAtTime(110 - tune * 15, t + .2); o.connect(g); g.connect(panTo(.4 - tune * .3)); o.start(t); o.stop(t + .3); return; }
   if (kind === 's') { const o = c.createOscillator(), g0 = env(t, .12 * vel, .001, .08); o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(160, t + .08); o.connect(g0); g0.connect(music!); o.start(t); o.stop(t + .12); }
   const s = c.createBufferSource(); s.buffer = noise; const f = c.createBiquadFilter();
@@ -88,13 +90,14 @@ function drum(kind: 'k' | 's' | 'h' | 'o' | 'c' | 't', t: number, vel = 1, tune 
   f.type = cfg[0]; f.frequency.value = cfg[1]; const g = env(t, cfg[2] * vel, .001, cfg[3]); s.connect(f); f.connect(g); g.connect(kind === 'h' || kind === 'o' ? panTo(.3) : music!); s.start(t); s.stop(t + cfg[3] + .1);
 }
 let playing = '', startAt = 0;
-export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onEnd?: () => void } = {}) {
+export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onEnd?: () => void; horizon?: number } = {}) {
+  const horizon = opts.horizon ?? .15;
   if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; stopBgm(); playing = key;
   const song = name === 'theme' ? songOfTheme() : (SONGS[name] || SONGS.school);
   const c = ctx!, step = 60 / song.bpm / 2; let slot = 0, next = c.currentTime + .08; startAt = next; const total = song.chords.length * 8; const loop = opts.loop ?? name !== 'theme';
   const bars = song.mel.map(b => parseBar(b, song.minor));
   const sched = () => {
-    while (next < c.currentTime + .15) {
+    while (next < c.currentTime + horizon) {
       const bi = Math.floor(slot / 8) % song.chords.length, si = slot % 8, root = song.root + transpose, chord = (CH[song.chords[bi]] || CH.I).map(x => x + root);
       const sw = si % 2 === 1 && song.drums === 1 ? step * .12 : 0, t = next + sw; // 軽いスウィング
       const phrase = bi % 8, fill = phrase === 7, inChorus = song.chords.length >= 16 && bi >= song.chords.length - 16;
@@ -102,7 +105,7 @@ export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onE
       if (si === 3 && song.drums) bass(chord[0] - 24, t, step * .8, .2);
       if (si === 4) bass(chord[song.minor ? 0 : 2] - 24 - (song.minor ? 0 : 12), next, step * 2.5, .24);
       if (si === 6 && song.drums === 2) bass(chord[1] - 24, t, step * 1.5, .2);
-      if (song.arp) { const pat = [0, 1, 2, 1, 3 % chord.length, 2, 1, 2]; tone('sine', hz(chord[pat[si] % chord.length] + 12), t, step * 1.4, .042, panTo(si % 2 ? .45 : -.45)); }
+      if (song.arp) { const pat = [0, 1, 2, 1, 3 % chord.length, 2, 1, 2]; tone('sine', hz(chord[pat[si] % chord.length] + 12), t, step * 1.4, .06, panTo(si % 2 ? .7 : -.7)); }
       if (!song.arp && (si === 2 || si === 6)) chord.forEach((n, k) => tone('triangle', hz(n), t, step * 1.2, .04, panTo(k * .3 - .3)));
       if (song.drums) {
         if (bi === 0 && si === 0 && slot > 0 || (inChorus && bi === song.chords.length - 16 && si === 0)) drum('c', next, .8);
@@ -114,15 +117,26 @@ export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onE
         }
       } else if (song.pad && si === 0 && phrase % 4 === 0) drum('c', next, .25);
       for (const nt of bars[bi % bars.length]) if (nt.at === si) {
-        lead(song.lead, root + 12 + nt.semi, next, step * nt.len, 1, -.08);
+        lead(song.lead, root + 12 + nt.semi, next, step * nt.len, 1.35, -.1);
         // 対旋律：3度下（スケール内）をサビ・後半のみ薄く重ねる
-        if ((inChorus || phrase >= 4) && nt.len >= 2) { const d = song.minor ? MIN : MAJ; const deg = ((nt.semi % 12) + 12) % 12; const idx = d.reduce((bst, v, k) => Math.abs(v - deg) < Math.abs(d[bst] - deg) ? k : bst, 0); const low = d[(idx + 5) % 7] - (idx + 5 >= 7 ? 0 : 12); lead(song.lead === 'bell' ? 'flute' : 'bell', root + 12 + nt.semi - deg + low, next + .01, step * nt.len, .45, .35); }
+        if ((inChorus || phrase >= 4) && nt.len >= 2) { const d = song.minor ? MIN : MAJ; const deg = ((nt.semi % 12) + 12) % 12; const idx = d.reduce((bst, v, k) => Math.abs(v - deg) < Math.abs(d[bst] - deg) ? k : bst, 0); const low = d[(idx + 5) % 7] - (idx + 5 >= 7 ? 0 : 12); lead(song.lead === 'bell' ? 'flute' : 'bell', root + 12 + nt.semi - deg + low, next + .01, step * nt.len, .55, .55); }
       }
       slot++; next += step;
-      if (slot >= total && !loop) { const end = opts.onEnd; setTimeout(() => { stopBgm(); end?.(); }, 2500); clearInterval(timer); timer = null; return; }
+      if (slot >= total && !loop) { const end = opts.onEnd; if (horizon < 1) setTimeout(() => { stopBgm(); end?.(); }, 2500); clearInterval(timer); timer = null; return; }
     }
   };
   sched(); timer = setInterval(sched, 25);
+}
+/** 検証用：曲を OfflineAudioContext で1周レンダリング（ゲーム本体では未使用） */
+export async function renderBgm(name: string, sampleRate = 44100): Promise<AudioBuffer> {
+  const song = name === 'theme' ? songOfTheme() : (SONGS[name] || SONGS.school); const sec = song.chords.length * 4 * 60 / song.bpm + 3;
+  const prev = [ctx, bgmGain, seGain, music, rev, revSend, noise, playing, timer] as const; stopBgm();
+  ctx = new OfflineAudioContext(2, Math.ceil(sec * sampleRate), sampleRate) as any; bgmGain = null; const off = ctx as any as OfflineAudioContext;
+ 
+  initGraph(); bgmGain!.gain.value = .85 * .8;
+  playBgm(name, 0, { loop: false, horizon: 1e9 }); if (timer) { clearInterval(timer); timer = null; }
+  const buf = await off.startRendering();
+  [ctx, bgmGain, seGain, music, rev, revSend, noise] = prev as any; playing = ''; timer = null; return buf;
 }
 export const bgmTime = () => ctx ? ctx.currentTime - startAt : 0;
 export const nowPlaying = () => playing;

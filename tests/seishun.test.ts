@@ -7,7 +7,8 @@ import { exportSave, importSave } from '../src/sc/save';
 import { voiceParams, defaultSettings } from '../src/sc/voice';
 import { ALL_LINES_COUNT } from './helpers';
 const base = { sei: '相沢', mei: '悠斗', seiYomi: 'あいざわ', meiYomi: 'ゆうと', bm: 4, bd: 10, persona: '優しい', look: '爽やか系', diff: 'NORMAL' as const };
-function drain(s: any, pickFn = (n: number, v: any) => 0) { let g = 0; while (s.queue.length && g++ < 50) { const v = view(s)!; expect(v.lines.length + v.choices.length).toBeGreaterThan(0); resolve(s, Math.min(v.choices.length - 1, pickFn(v.choices.length, v))); } }
+function drain(s: any, pickFn = (n: number, v: any) => 0) { let g = 0; while (s.queue.length && g++ < 50) { const v = view(s)!; tally.lines += v.lines.length; tally.chars += v.lines.reduce((a: number, l: any) => a + l.text.length, 0); if (v.choices.length) tally.choices++; expect(v.lines.length + v.choices.length).toBeGreaterThan(0); resolve(s, Math.min(v.choices.length - 1, pickFn(v.choices.length, v))); } }
+export const tally = { chars: 0, lines: 0, choices: 0, chats: 0 };
 function play(seed: number, strategy: 'focus' | 'idle', diff: any = 'NORMAL') {
   const s = newGame({ ...base, seed, diff }); let guard = 0; const target = 'hinata';
   while (!s.ended && guard++ < 400) {
@@ -21,13 +22,20 @@ function play(seed: number, strategy: 'focus' | 'idle', diff: any = 'NORMAL') {
     const plan = strategy === 'idle' ? 'rest' : s.stats.hp < 40 ? 'rest' : s.stats.st > 70 ? 'hobby' : ['bun', 'ri', 'talk', 'train', 'bun', 'ri', 'art', 'fashion'][s.week % 8];
     const a = acts.find(x => x.id === plan) ? plan : 'rest';
     doWeek(s, a, a === 'talk' ? target : undefined);
-    if (a === 'talk') { while (s.queue[0]?.kind !== 'chat' && s.queue.length) drain1(s); if (s.queue[0]?.kind === 'chat') { chatReply(s, target, '今日もかわいいね'); chatReply(s, target, 'パン'); resolve(s, 0); } }
+    if (a === 'talk') { while (s.queue[0]?.kind !== 'chat' && s.queue.length) drain1(s); if (s.queue[0]?.kind === 'chat') { tally.chats++; chatReply(s, target, '今日もかわいいね'); chatReply(s, target, 'パン'); resolve(s, 0); } }
   }
   return s;
 }
 function drain1(s: any) { const v = view(s)!; resolve(s, 0); void v; }
 
 describe('青春クロニクル engine', () => {
+  it('playtime model: one focused run ≈ 2.5–5h', () => {
+    Object.assign(tally, { chars: 0, lines: 0, choices: 0, chats: 0 }); const s = play(11, 'focus');
+    // 読む速度 400字/分＋1行1.2秒のクリック、選択1回8秒、週メニュー10秒、会話1回60秒（3往復の入力）
+    const sec = tally.chars / 400 * 60 + tally.lines * 1.2 + tally.choices * 8 + LAST_WEEK * 10 + tally.chats * 60;
+    console.log('playtime', JSON.stringify({ ...tally, weeks: s.week, hours: +(sec / 3600).toFixed(2) }));
+    expect(sec / 3600).toBeGreaterThan(2); expect(sec / 3600).toBeLessThan(6);
+  });
   it('8+1 heroines with full profiles and ≥5 date questions', () => {
     expect(HEROINES.length).toBe(9);
     for (const H of HEROINES) { expect(H.dateQ.length).toBeGreaterThanOrEqual(5); expect(H.call.length).toBe(3); expect(H.endings.good.length).toBeGreaterThan(1); }
