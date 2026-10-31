@@ -80,3 +80,9 @@ export function speak(who: string, text: string, emo: Emo, tier: number, set: Vo
 }
 /** 名前の試聴（読み仮名がちゃんと発音されるか確認） */
 export function testName(yomi: string, set: VoiceSettings) { stop(); return speak('n', `${yomi}くん、おはよう！`, '嬉', 0, { ...set, auto: true, narrate: true }); }
+/** ログからの再生（自動再生設定に関係なく、収録ボイスを1本鳴らす） */
+export function replayClip(who: string, vid: string | undefined, set: VoiceSettings): boolean {
+  if (!hasClip(who, vid)) return false; stop();
+  const vol = set.master * set.voice * (set.perChar[who] ?? 1);
+  return playClip(who, vid!, Math.max(vol, 0.05));
+}
