@@ -10,6 +10,8 @@ import { voiceId } from './engine';
 import * as audio from './audio';
 import { setBg, guessBg, LOC_BG, type Tod } from './bg';
 import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
+import { backlog, backlogHtml } from './backlog';
+import { replayClip } from './voice';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
 const seasonNow = () => S ? season(cal(S.week).m) : '春';
@@ -229,9 +231,9 @@ let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
   let i = 0;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
-  <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint">クリック / Enter で進む</div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
+  <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><button class="bl-btn" id="bl-open" aria-label="会話ログ">📜 ログ</button><div class="hint">クリック / Enter で進む</div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
   bindCmd(); preloadCgs(lines);
-  const box = $('#box');
+  const box = $('#box'); bindBacklog(box);
   const next = () => {
     if (typing) { clearInterval(typing); typing = null; $('#tx').textContent = lines[i - 1].text; return; }
     if (i >= lines.length) { box.onclick = null; document.onkeydown = null; stop(); talking(false); after(); return; }
@@ -247,13 +249,36 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
     const apply = () => { const em = document.getElementById('emo'); if (em && h && (isH || L.who === 'me')) { if (isH) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); if (L.emo === '嬉' || L.emo === '照' || L.emo === '告') heartPop('up'); else if (L.emo === '哀' || L.emo === '怒' || L.emo === '冷') heartPop('down'); } } if (isH) talking(true); };
     if (isH && document.getElementById('por')?.classList.contains('exit')) setTimeout(apply, 260); else apply();
     const t = L.who === 'n' || !L.name ? L.text : `「${L.text}」`;
+    backlog.line(L.who === 'n' ? '' : L.name, L.text, { color: L.color, who: L.who, vid: L.vid, narr: L.who === 'n' || !L.name });
     if (set.textSpeed <= 0) { $('#tx').textContent = t; return; }
     let k = 0; $('#tx').textContent = '';
     typing = setInterval(() => { k++; $('#tx').textContent = t.slice(0, k); if (k >= t.length) { clearInterval(typing); typing = null; } }, set.textSpeed);
     lines[i - 1] = { ...L, text: t };
   };
-  box.onclick = next; document.onkeydown = e => { if ((e.target as HTMLElement)?.tagName === 'INPUT') return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } };
+  box.onclick = next; document.onkeydown = e => { if ((e.target as HTMLElement)?.tagName === 'INPUT' || document.getElementById('backlog')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } };
   next();
+}
+// ───────── 会話ログ ─────────
+function bindBacklog(box: HTMLElement) {
+  const btn = document.getElementById('bl-open'); if (btn) btn.onclick = e => { e.stopPropagation(); openBacklog(); };
+  const st = document.querySelector('.stage') as HTMLElement | null;
+  if (st) st.onwheel = e => { if (e.deltaY < -10 && !document.getElementById('backlog')) { e.preventDefault(); openBacklog(); } };
+  let y0 = -1; box.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  box.addEventListener('touchend', e => { const dy = e.changedTouches[0].clientY - y0; if (y0 >= 0 && dy > 60) { e.preventDefault(); openBacklog(); } y0 = -1; });
+}
+export function openBacklog() {
+  if (document.getElementById('backlog')) return;
+  const d = document.createElement('div'); d.id = 'backlog'; d.className = 'backlog'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', '会話ログ');
+  const ent = backlog.all();
+  d.innerHTML = `<div class="bl-box"><div class="bl-head"><b>📜 会話ログ</b><small>${ent.length}件（このセッションのみ・最大300）</small><button id="bl-x" aria-label="閉じる">×</button></div><div class="bl-list" id="bl-list">${backlogHtml(ent, (w, v) => !!w && hasClip(w, v))}</div></div>`;
+  document.body.appendChild(d);
+  const list = d.querySelector('#bl-list') as HTMLElement; list.scrollTop = list.scrollHeight;
+  const close = () => { d.remove(); window.removeEventListener('keydown', key, true); };
+  const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } else if (e.key === 'Enter' || e.key === ' ' || /^[0-9]$/.test(e.key)) { e.stopPropagation(); } };
+  window.addEventListener('keydown', key, true);
+  d.onclick = e => { e.stopPropagation(); if (e.target === d) close(); };
+  (d.querySelector('#bl-x') as HTMLElement).onclick = close;
+  d.querySelectorAll<HTMLElement>('.bl-play').forEach(b => b.onclick = () => { const x = ent[+b.dataset.bi!]; if (x?.who) replayClip(x.who, x.vid, set); });
 }
 const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '💢', 哀: '💧', 驚: '❗', 嫉: '💦', 囁: '…', 告: '💓', 冷: '😶' } as any)[e] || '';
 export const EXPR: Record<string, string> = { 嬉: 'h', 照: 'b', 告: 'b', 囁: 'h', 哀: 's', 怒: 'a', 嫉: 'a', 冷: 'n', 驚: 'o', 通常: 'n' };
@@ -308,8 +333,9 @@ function heartPop(kind: 'up' | 'down') {
 }
 function showChoices(ch: string[], pick: (i: number) => void) {
   const el = $('#ch'); el.innerHTML = ch.map((c, i) => `<button data-i="${i}"><b>${i + 1}</b> ${esc(c)}</button>`).join('');
+  const pk = pick; pick = (i: number) => { backlog.choice(ch[i]); pk(i); };
   el.querySelectorAll<HTMLButtonElement>('button').forEach(b => b.onclick = () => pick(+b.dataset.i!));
-  document.onkeydown = e => { if ((e.target as HTMLElement)?.tagName === 'INPUT') return; const n = +e.key; if (n >= 1 && n <= ch.length) pick(n - 1); };
+  document.onkeydown = e => { if ((e.target as HTMLElement)?.tagName === 'INPUT' || document.getElementById('backlog')) return; const n = +e.key; if (n >= 1 && n <= ch.length) pick(n - 1); };
   numberPick = pick; numberMax = ch.length;
 }
 let numberPick: ((i: number) => void) | null = null, numberMax = 0;

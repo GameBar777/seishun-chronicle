@@ -147,3 +147,17 @@ body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:non
 .cgth.locked{cursor:default;color:#888}.cgth.locked span{position:static;background:none;font-size:1rem}
 .cg.cgview{z-index:60}.cg.cgview img{object-fit:contain;animation:none}
 @media (prefers-reduced-motion:reduce){#cgl .cgimg{animation:none}}
+/* 会話ログ */
+.bl-btn{position:absolute;top:6px;right:8px;background:#ffffff1f;color:#fff;border:1px solid #ffffff55;border-radius:999px;font-size:.75rem;padding:3px 10px;cursor:pointer;z-index:3}
+.bl-btn:hover{background:#ffffff40}
+.backlog{position:fixed;inset:0;background:#000a;z-index:20;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.bl-box{background:#1e2229f5;color:#fff;border:2px solid #fd79a8;border-radius:14px;width:min(760px,94vw);height:min(80vh,80dvh);display:flex;flex-direction:column;box-shadow:0 8px 30px #0008}
+.bl-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #ffffff22}.bl-head small{opacity:.6;font-size:.72rem;flex:1}
+.bl-head button{background:none;border:0;color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;min-width:44px;min-height:44px}
+.bl-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:8px 14px 14px}
+.bl-row{padding:7px 0;border-bottom:1px dashed #ffffff18}.bl-name{font-weight:bold;font-size:.82rem;margin-bottom:2px}
+.bl-line{display:flex;gap:8px;align-items:flex-start}.bl-text{flex:1;line-height:1.7;white-space:pre-wrap}.bl-narr .bl-text{color:#dfe6e9;font-style:italic}
+.bl-play{flex:none;background:#fd79a8;color:#fff;border:0;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:.8rem}
+.bl-choice{color:#ffeaa7}.bl-choice .bl-mark{font-size:.72rem;background:#ffeaa733;border-radius:6px;padding:1px 6px;margin-right:8px}
+.bl-empty{opacity:.6;text-align:center;padding:30px 0}
+@media(max-width:720px){.bl-box{width:100vw;height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);border-radius:10px}.bl-text{font-size:.92rem}}
