@@ -3,7 +3,9 @@ import { STAGES } from './types';
 import { rand, ri, pick, chance } from './rng';
 import { cal, LAST_WEEK, season, fmtDate } from './time';
 import { HEROINES, HMAP, LOCATIONS, OUTFITS, CLUBS, JOBS } from './data/index';
-import { HEVENTS } from './data/hevents';
+import { HEVENTS as HEV0 } from './data/hevents';
+import { SIDE_EVENTS } from './data/hevents2';
+const HEVENTS = [...HEV0, ...SIDE_EVENTS];
 import { CAL } from './data/calendar';
 import type { Ev, Eff, Choice } from './data/schema';
 
@@ -539,7 +541,7 @@ const SPECIAL: Record<string, (s: GameState) => boolean> = {
 };
 export const HIDDEN_CONDITIONS = SPECIAL;
 export function evaluate(s: GameState, id: string) {
-  const h = s.hs[id], k = DIFF[s.setup.diff].thr; const evs = HEVENTS.filter(e => e.h === id && !e.id.endsWith('_meet'));
+  const h = s.hs[id], k = DIFF[s.setup.diff].thr; const evs = HEVENTS.filter(e => e.h === id && !e.id.endsWith('_meet') && !/_s\d$/.test(e.id));
   const allEv = evs.every(e => s.seen.includes(e.id));
   const good = h.met && !h.withRival && h.toki >= 78 * k && h.friend >= 55 && h.trust >= 55 && allEv && SPECIAL[id](s) && h.bomb === 0;
   const normal = h.met && !h.withRival && h.toki >= 58 * k && h.friend >= 45;

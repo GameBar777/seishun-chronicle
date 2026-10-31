@@ -16,3 +16,11 @@
 - 音声：src/sc/voice.ts。Web Speech API（ja-JP）。キャラ別の高さと速さ、感情による変化、「……」で間を取る、名前は読み仮名で読み上げ。設定は全体・ボイス・BGM・効果音・キャラ別の音量、自動再生、地の文の読み上げ、文字送りと声の速さ。BGMと効果音は WebAudio で生成
 - セーブ：オートセーブ（localStorage）と、`SEISHUN1:<チェックサム>:<base64>` の文字列でのSAVE/LOAD
 - 分量：イベント62件、台詞などの文章 約1,050行（tests/helpers.ts の集計）
+
+## v1.1 アセット・音楽
+- 背景: public/img/bg/*.webp（1024w）と *-s.webp（640w、画面幅760px未満で使用）。src/sc/bg.ts が場所・本文から背景を選び、季節・天気・時間帯に応じた canvas パーティクル、視差、色調を付ける。prefers-reduced-motion を尊重。
+- 立ち絵: public/img/ch/{id}_{n|h|s}.webp。感情タグ 嬉/照/告/囁→h、哀/怒/嫉→s、それ以外→n。
+- 画像はすべて本作のために画像生成AIで作ったオリジナル。既存作品の模倣はしていない。
+- BGM: src/sc/audio.ts の WebAudio 逐次合成。title / school（季節で移調）/ date / sad / confession / ending の6曲。
+- 主題歌「千日のプレリュード」: 作詞・作曲は本作オリジナル。歌声はなく、楽器演奏に歌詞を同期表示する（タイトル→🎵）。
+- サイドイベント: data/hevents2.ts（18本、id末尾 _sN）。エンディング判定の全イベント条件には含めない。

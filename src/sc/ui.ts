@@ -7,6 +7,12 @@ import { chatReply, SUGGEST } from './chat';
 import { exportSave, importSave, store } from './save';
 import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName } from './voice';
 import * as audio from './audio';
+import { setBg, guessBg, LOC_BG, type Tod } from './bg';
+import { THEME_SONG, themeLyricTimes } from './audio';
+const BASE = (import.meta as any).env?.BASE_URL ?? '/';
+const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
+const seasonNow = () => S ? season(cal(S.week).m) : '春';
+function bgFor(key: string, tod?: Tod) { setBg(key, { season: seasonNow(), weather: S ? S.weather : '晴れ', tod }); }
 
 let S: GameState | null = null;
 let set: VoiceSettings = loadSettings();
@@ -21,15 +27,26 @@ export function boot() { audio.setVolumes(set.master, set.bgm, set.se); title();
 
 // ───────── タイトル ─────────
 function title() {
-  stop(); audio.stopBgm(); S = null;
+  stop(); audio.stopBgm(); S = null; setBg('key', { season: '春', weather: '晴れ', tod: 'day' });
+  const startTitleBgm = () => { audio.resume(); audio.playBgm('title'); };
+  document.addEventListener('pointerdown', startTitleBgm, { once: true });
   app().innerHTML = `<div class="title"><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
-  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-help">遊び方</button></div>
+  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌「${THEME_SONG.title}」</button><button id="t-help">遊び方</button></div>
   <p class="note">全156週（高校3年間）。1周の目安 2〜4時間。音声は端末内蔵の読み上げ機能（Web Speech API）で、AI音声ではありません。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
   $('#t-set').onclick = () => settings();
   $('#t-help').onclick = () => modal('遊び方', helpText());
+  $('#t-song').onclick = () => themeSong();
+}
+function themeSong() {
+  audio.resume(); const { lines, total } = themeLyricTimes();
+  modal(`🎵 主題歌「${THEME_SONG.title}」`, `<p class="note">作詞・作曲：本作オリジナル。歌声なし（インストゥルメンタル）で、歌詞を表示します。</p><div class="lyrics">${lines.map((l, i) => `<p data-i="${i}">${esc(l.text)}</p>`).join('')}</div><div class="bar"><i id="ly-bar"></i></div>`);
+  audio.playBgm('theme', 0, { loop: false, onEnd: () => { if (!S) audio.playBgm('title'); } });
+  const tick = () => { const m = document.querySelector('.lyrics'); if (!m) { if (audio.nowPlaying().startsWith('theme')) audio.playBgm('title'); return; } const t = audio.bgmTime(); let cur = -1; lines.forEach((l, i) => { if (t >= l.t) cur = i; });
+    m.querySelectorAll('p').forEach((p, i) => p.classList.toggle('on', i === cur)); const on = m.querySelector('p.on') as HTMLElement | null; if (on) m.scrollTop = on.offsetTop - m.clientHeight / 2; const b = document.getElementById('ly-bar'); if (b) b.style.width = Math.min(100, t / total * 100) + '%'; requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
 }
 function helpText() {
   return `<p>毎週「電話（任意・1回）」→「平日の行動を1つ」選ぶと1週間が進みます。行動で能力が伸び、ヒロインとの出会い・イベントが起きます。</p>
@@ -67,7 +84,7 @@ function setup() {
 function main() {
   if (!S) return title();
   store.save('auto', S);
-  audio.playBgm(season(cal(S.week).m));
+  audio.playBgm('school', TRANS[seasonNow()] || 0); bgFor(S.week % 2 ? 'classroom' : 'gate', 'day');
   if (S.queue.length) return scene();
   if (S.ended) return title();
   const s = S, c = cal(s.week);
@@ -105,7 +122,7 @@ function week(id: string, talkTo?: string) {
 }
 function call(mode: 'talk' | 'invite') {
   if (!S) return; const id = $<HTMLSelectElement>('#ph-h').value; const loc = $<HTMLSelectElement>('#ph-loc').value;
-  const lines = phone(S, id, mode, loc); playLines('📱 電話', lines, () => main());
+  const lines = phone(S, id, mode, loc); bgFor('room', 'night'); audio.playBgm('date', -5); playLines('📱 電話', lines, () => main(), HMAP[id] ? id : undefined);
 }
 function hud() {
   const s = S!, c = cal(s.week);
@@ -120,7 +137,11 @@ function hud() {
 function scene() {
   const s = S!; const v = view(s);
   if (!v) return main();
-  if (v.kind === 'ending') audio.playBgm('春');
+  const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.map(l => l.text).join(' ');
+  if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; bgFor(LOC_BG[loc] || 'park', loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'); }
+  else if (v.kind === 'ending') bgFor('gate', 'day'); else { const g = guessBg(txt, 'classroom'); bgFor(g.bg, g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day')); }
+  const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
+  audio.playBgm(v.kind === 'ending' ? 'ending' : v.kind === 'date' ? 'date' : /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告') ? 'confession' : sadN >= 2 || /💣|爆弾|噂/.test(txt) ? 'sad' : 'school', v.kind === 'event' || v.kind === 'chat' || v.kind === 'msg' ? TRANS[seasonNow()] || 0 : 0);
   const done = (lines: Line[]) => { if (lines.length) playLines(v.title, lines, () => main()); else main(); };
   const choose = () => {
     if (v.kind === 'chat') return chatBox(v.h!);
@@ -143,7 +164,7 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
     $('#nm').textContent = L.name; $('#nm').style.color = L.color; $('#tx').className = 'text ' + (L.who === 'n' ? 'narr' : '');
     const tier = HMAP[L.who] && S ? tierOf(S.hs[L.who]) : 0;
     speak(L.who, L.voice, L.emo, tier, set);
-    const em = $('#emo'); if (em) em.textContent = emoIcon(L.emo);
+    const em = $('#emo'); if (em && (!h || L.who === h)) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); }
     const t = L.who === 'n' || !L.name ? L.text : `「${L.text}」`;
     if (set.textSpeed <= 0) { $('#tx').textContent = t; return; }
     let k = 0; $('#tx').textContent = '';
@@ -154,9 +175,15 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
   next();
 }
 const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '💢', 哀: '💧', 驚: '❗', 嫉: '💦', 囁: '…', 告: '💓', 冷: '❄' } as any)[e] || '';
+const EXPR: Record<string, string> = { 嬉: 'h', 照: 'h', 告: 'h', 囁: 'h', 哀: 's', 怒: 's', 嫉: 's', 冷: 'n', 驚: 'n', 通常: 'n' };
+function setExpr(h: string | undefined, emo: string) {
+  const img = document.getElementById('pimg') as HTMLImageElement | null; if (!img || !h) return; const src = `${BASE}img/ch/${h}_${EXPR[emo] || 'n'}.webp`;
+  if (img.src.endsWith(src.replace(/^\./, ''))) { img.classList.remove('bounce'); void img.offsetWidth; img.classList.add('bounce'); return; }
+  img.classList.add('swap'); setTimeout(() => { img.src = src; img.classList.remove('swap'); }, 120);
+}
 function portrait(h: string) {
   const H = HMAP[h], x = S!.hs[h];
-  return `<div class="portrait" style="background:${H.color}"><div class="ini">${H.mei[0]}</div><div id="emo" class="emo"></div><div class="pi">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
+  return `<div class="portrait"><img id="pimg" class="pimg" src="${BASE}img/ch/${h}_n.webp" alt="${H.sei}${H.mei}" onerror="this.style.display='none'"><div id="emo" class="emo"></div><div class="pi">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
 }
 function showChoices(ch: string[], pick: (i: number) => void) {
   const el = $('#ch'); el.innerHTML = ch.map((c, i) => `<button data-i="${i}"><b>${i + 1}</b> ${esc(c)}</button>`).join('');
