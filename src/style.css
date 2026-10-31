@@ -192,3 +192,5 @@ body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:non
 .log .lg.pos{color:#13803d;font-weight:700}.log .lg.neg{color:#c62828;font-weight:700}
 .lgd{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.lgc{font-size:.8rem;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
 .lgc.pos{color:#13803d;background:#e6f6ec}.lgc.neg{color:#c62828;background:#fdecec}
+/* v1.11.2 行動ボタンの効果説明の色分け */
+.act small .ef{font-weight:700}.act small .ef.pos{color:#13803d}.act small .ef.neg{color:#c62828}.act:disabled small .ef{color:inherit;font-weight:inherit}
