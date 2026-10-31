@@ -11,6 +11,7 @@ import * as audio from './audio';
 import { setBg, guessBg, LOC_BG, type Tod } from './bg';
 import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 import { backlog, backlogHtml } from './backlog';
+import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap } from './progress';
 import { replayClip } from './voice';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
@@ -150,9 +151,13 @@ function act(id: string) {
 }
 function week(id: string, talkTo?: string) {
   if (!S) return; audio.se('select');
+  const before = snap(S);
   const res = doWeek(S, id, talkTo); S.lastLog = res; chatCount = 0;
   if (res.some(r => r.includes('💥'))) audio.se('bomb');
+  const after = snap(S);
   main();
+  if (after.week !== before.week) weekFlip(before.week, after.week, () => showDelta(before, after));
+  else showDelta(before, after);
 }
 function call(mode: 'talk' | 'invite') {
   if (!S) return; const id = $<HTMLSelectElement>('#ph-h').value; const loc = $<HTMLSelectElement>('#ph-loc').value;
@@ -364,10 +369,11 @@ function endingBox() {
 }
 
 // ───────── コマンド ─────────
-function cmdBar() { return `<div class="cmd"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS RELATION SCHEDULE DIARY HELP"><button id="cmd-go">実行</button><button id="b-set">⚙</button><button id="b-title">タイトル</button></div>`; }
+function cmdBar() { return `<div class="cmd"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS RELATION SCHEDULE DIARY HELP"><button id="cmd-go">実行</button><button id="b-st" title="ステータス">📊</button><button id="b-set">⚙</button><button id="b-title">タイトル</button></div>`; }
 function bindCmd() {
   const run = () => { const v = $<HTMLInputElement>('#cmd').value.trim(); $<HTMLInputElement>('#cmd').value = ''; command(v); };
   $('#cmd-go').onclick = run; $<HTMLInputElement>('#cmd').onkeydown = e => { if (e.key === 'Enter') run(); };
+  $('#b-st').onclick = () => { if (S) modal('STATUS', statusHtml()); };
   $('#b-set').onclick = settings; $('#b-title').onclick = () => { if (confirm('タイトルに戻りますか？（オートセーブ済み）')) title(); };
 }
 export function command(raw: string) {
@@ -390,8 +396,29 @@ export function command(raw: string) {
     default: return toast('不明なコマンド：HELP で一覧');
   }
 }
+// ───────── 週替わり・パラメータ変化 ─────────
+const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function calPage(w: number, cls: string) { const c = weekCard(w); return `<div class="wf-page ${cls}"><div class="wf-top">${c.y}年生・${c.term}</div><div class="wf-m">${c.m}<small>月</small></div><div class="wf-d">${c.day}<small>日（${c.wd}）</small></div><div class="wf-w">${c.icon} 第${c.week}週</div></div>`; }
+export function weekFlip(from: number, to: number, done: () => void) {
+  document.getElementById('wflip')?.remove();
+  const d = document.createElement('div'); d.id = 'wflip'; d.className = 'wflip' + (reduced() ? ' rm' : '');
+  d.innerHTML = `<div class="wf-cal" style="background-image:url(${BASE}img/calendar.webp)"><div class="wf-sheet">${calPage(to, 'new')}${calPage(from, 'old')}</div></div><div class="wf-skip">タップでスキップ</div>`;
+  document.body.appendChild(d); audio.se('select');
+  let fin = false; const end = () => { if (fin) return; fin = true; d.classList.add('out'); setTimeout(() => { d.remove(); done(); }, 220); };
+  d.onclick = e => { e.stopPropagation(); end(); };
+  setTimeout(end, reduced() ? 900 : 1800);
+}
+export function showDelta(a: Snap, b: Snap) {
+  const ds = diffStats(a, b), hs = diffHearts(a, b); if (!ds.length && !hs.length) return;
+  document.getElementById('dpanel')?.remove();
+  const p = document.createElement('div'); p.id = 'dpanel'; p.className = 'dpanel'; p.setAttribute('role', 'status');
+  p.innerHTML = `<div class="dp-h">今週の変化</div><div class="dp-list">${ds.map((x, i) => `<span class="dp ${x.good ? 'up' : 'down'}" style="animation-delay:${i * 90}ms">${x.d > 0 ? '▲' : '▼'} ${esc(x.label)} <b>${fmtDelta(x)}</b></span>`).join('')}${hs.map((x, i) => { const H = HMAP[x.id]; return `<span class="dp heart ${x.dir}" style="animation-delay:${(ds.length + i) * 90}ms;--hc:${H?.color || '#fd79a8'}">${x.dir === 'down' ? '💧' : x.dir === 'new' ? '✨' : '♥'} ${esc(H?.mei || x.id)}${x.dir === 'new' ? ' と出会った' : ''}</span>`; }).join('')}</div>`;
+  document.body.appendChild(p); p.onclick = () => p.remove();
+  setTimeout(() => p.classList.add('out'), 4200); setTimeout(() => p.remove(), 4700);
+}
 function statusHtml() {
-  const s = S!; return `<table>${(Object.keys(STAT_LABEL) as StatKey[]).map(k => `<tr><th>${STAT_LABEL[k]}</th><td>${Math.round(s.stats[k])}</td></tr>`).join('')}<tr><th>所持金</th><td>${s.money}円</td></tr><tr><th>部活</th><td>${s.club}</td></tr><tr><th>バイト</th><td>${s.job || 'なし'}（${s.jobDays}日）</td></tr><tr><th>服</th><td>${s.outfits.join('、')}</td></tr><tr><th>難易度</th><td>${s.setup.diff}</td></tr><tr><th>テスト</th><td>${s.exams.map(e => e.rank + '位').join(' → ') || '-'}</td></tr></table>`;
+  const s = S!; const bars = SHOWN.map(k => { const v = Math.round(s.stats[k]); const r = rank(k, v); return `<div class="sx"><span class="sx-l">${STAT_LABEL[k]}</span><span class="sx-bar"><i class="${k === 'st' ? 'bad' : ''}" style="width:${Math.min(100, v / BAR(k) * 100)}%"></i></span><b class="sx-v">${v}</b><em class="rk rk-${r}">${k === 'st' ? '' : r}</em></div>`; }).join('');
+  return `<div class="sxs">${bars}</div><table><tr><th>所持金</th><td>${s.money}円</td></tr><tr><th>部活</th><td>${s.club}</td></tr><tr><th>バイト</th><td>${s.job || 'なし'}（${s.jobDays}日）</td></tr><tr><th>服</th><td>${s.outfits.join('、')}</td></tr><tr><th>難易度</th><td>${s.setup.diff}</td></tr><tr><th>テスト</th><td>${s.exams.map(e => e.rank + '位').join(' → ') || '-'}</td></tr></table>`;
 }
 function relationHtml() {
   const s = S!; return `<table class="rel"><tr><th></th><th>段階</th><th>友好</th><th>ときめき</th><th>傷心</th><th>信頼</th><th>デート</th><th>呼び方</th></tr>${HEROINES.map(H => { const x = s.hs[H.id]; if (!x.met) return `<tr><td>？？？</td><td colspan=7>未登場</td></tr>`; return `<tr><td style="color:${H.color}">${H.sei}${H.mei}${x.bomb ? '💣' : ''}${x.withRival ? '💔' : ''}</td><td>${stage(x)}</td><td>${Math.round(x.friend)}</td><td>${Math.round(x.toki)}</td><td>${Math.round(x.hurt)}</td><td>${Math.round(x.trust)}</td><td>${x.dates}</td><td>${H.call[x.callTier].replace('{S}', s.setup.sei).replace('{M}', s.setup.mei)}</td></tr>`; }).join('')}</table><p class="note">段階：${STAGES.join(' → ')}</p>`;
