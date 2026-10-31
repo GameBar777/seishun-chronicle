@@ -1,5 +1,5 @@
 {
-  "name": "ripple-years",
+  "name": "seishun-chronicle",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,8 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "test": "vitest run",
-    "e2e": "node scripts/e2e.mjs",
-    "eventlist": "npx vite-node scripts/eventlist.ts"
+    "e2e": "node scripts/e2e-seishun.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
