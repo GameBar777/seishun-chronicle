@@ -22,7 +22,7 @@ let vbase = './'; let manifest: Set<string> | null = null; let manifestP: Promis
 let vEl: HTMLAudioElement | null = null; let vPlaying = false;
 export function initVoice(base: string) {
   vbase = base;
-  if (!manifestP && typeof fetch !== 'undefined') manifestP = fetch(`${base}voice/manifest.json`).then(r => r.ok ? r.json() : { ids: [] }).then(j => { manifest = new Set(j.ids as string[]); }).catch(() => { manifest = new Set(); });
+  if (!manifestP && typeof fetch !== 'undefined') manifestP = fetch(`${base}voice/manifest.json`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : { ids: [] }).then(j => { manifest = new Set(j.ids as string[]); }).catch(() => { manifest = new Set(); });
   return manifestP;
 }
 export const voiceUrl = (who: string, vid: string) => `${vbase}voice/${CAST_SLUG[who]}/${vid}.mp3`;
