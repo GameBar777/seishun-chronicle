@@ -38,7 +38,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
-  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約2〜3時間。ヒロイン・芽衣・健太・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。</p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。田中はまだ声なし（端末の読み上げ）。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
@@ -110,7 +110,7 @@ function main() {
   <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${esc(a.ok ? a.desc : a.why || '')}</small></button>`).join('')}</div>
   <div id="talkpick" class="hidden"><p>誰と話す？</p>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<button class="tp" data-h="${h.id}" style="border-color:${h.color}">${h.sei}${h.mei}</button>`).join('')}</div></div>
   <div class="panel"><h3>📱 電話 <small>${s.phoneUsed ? '今週は使用済み' : '週1回'}</small></h3>
-   <div class="row"><select id="ph-h"><option value="kenta">早乙女健太（情報）</option>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<option value="${h.id}">${h.sei}${h.mei}${s.hs[h.id].bomb ? ' 💣' : ''}</option>`).join('')}</select></div>
+   <div class="row"><select id="ph-h"><option value="kenta">早乙女健太（情報・相談）</option>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<option value="${h.id}">${h.sei}${h.mei}${s.hs[h.id].bomb ? ' 💣' : ''}</option>`).join('')}</select></div>
    <div class="row"><button id="ph-talk" ${s.phoneUsed ? 'disabled' : ''}>話す（傷心ケア）</button></div>
    <div class="row"><select id="ph-loc">${Object.entries(LOCATIONS).map(([k, L]) => `<option value="${k}">${L.name}（${L.cost}円${L.outdoor ? '・屋外' : ''}）</option>`).join('')}</select><button id="ph-inv" ${s.phoneUsed || s.dateBooked ? 'disabled' : ''}>日曜デートに誘う</button></div>
    ${s.dateBooked ? `<p class="note">📅 今週日曜：${HMAP[s.dateBooked.h].sei}${HMAP[s.dateBooked.h].mei}と${LOCATIONS[s.dateBooked.loc].name}</p>` : ''}
