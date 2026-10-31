@@ -18,7 +18,7 @@ export interface Setup { sei: string; mei: string; seiYomi: string; meiYomi: str
 export interface Scene { kind: 'event' | 'date' | 'ending' | 'msg' | 'chat'; id: string; h?: string; step?: number; data?: any; tr?: string }
 export interface DiaryEntry { week: number; text: string }
 export interface GameState {
-  v: number; setup: Setup; week: number; rng: number; lastAct?: string; later?: { q: Scene; w: number }[]; seenL?: string[];
+  v: number; setup: Setup; week: number; rng: number; lastAct?: string; later?: { q: Scene; w: number }[]; seenL?: string[]; wada?: { m: Record<string, number>; st: Record<string, number>; next: number; out: string[]; won: string[]; t?: string; watch?: Record<string, number> };
   stats: Record<StatKey, number>; money: number;
   club: Club; job: Job | ''; jobDays: number; course: Course; courseResult: '' | '合格' | '不合格';
   hs: Record<string, HState>;

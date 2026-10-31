@@ -301,6 +301,7 @@ function setExpr(h: string | undefined, emo: string) {
 export const NPC_PORTRAIT: Record<string, { id: string; color: string; name: () => string; sub: string }> = {
   '@芽衣': { id: 'mei', color: '#e05a6d', name: () => `${S?.setup.sei ?? ''}芽衣`, sub: '妹' },
   '@健太': { id: 'kenta', color: '#3d6fb6', name: () => '早乙女健太', sub: '親友・相談役' },
+  '@和田': { id: 'wada', color: '#b5835a', name: () => '和田 和樹', sub: '生意気な後輩・ライバル' },
   '@田中': { id: 'inoue', color: '#c8821e', name: () => '井上 暸', sub: '悪友・恋愛研究会会長' },
   '@井上': { id: 'inoue', color: '#c8821e', name: () => '井上 暸', sub: '悪友・恋愛研究会会長' },
 };

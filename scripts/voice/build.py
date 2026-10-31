@@ -6,10 +6,10 @@ import json, os, subprocess, sys, numpy as np
 from multiprocessing import Pool
 ROOT = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.abspath(os.path.join(ROOT, '..', '..'))
 CACHE = '/workspace/voice-cache'; OUT = os.path.join(REPO, 'public', 'voice')
-SLUG = {'hinata':'hinata','mio':'mio','yura':'yura','kaho':'kaho','reika':'reika','kotoha':'kotoha','ruka':'ruka','rin':'rin','shizuku':'shizuku','@芽衣':'mei','@健太':'kenta','@担任・真鍋':'manabe','@田中':'tanaka'}
+SLUG = {'hinata':'hinata','mio':'mio','yura':'yura','kaho':'kaho','reika':'reika','kotoha':'kotoha','ruka':'ruka','rin':'rin','shizuku':'shizuku','@芽衣':'mei','@健太':'kenta','@担任・真鍋':'manabe','@田中':'tanaka','@和田':'wada'}
 import re
 WORD = re.compile(r'[ぁ-ゖァ-ヺ一-龯々A-Za-z0-9]')
-SEX = {k:'f' for k in SLUG}; SEX['@健太']='m'; SEX['@担任・真鍋']='m'; SEX['@田中']='m'
+SEX = {k:'f' for k in SLUG}; SEX['@健太']='m'; SEX['@担任・真鍋']='m'; SEX['@田中']='m'; SEX['@和田']='m'
 def analyze(l):
     import librosa
     if not WORD.search(l['say']): return None  # 「……」など記号だけの台詞は無音（収録しない）
