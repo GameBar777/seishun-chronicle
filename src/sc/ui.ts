@@ -11,7 +11,7 @@ import * as audio from './audio';
 import { setBg, guessBg, pickBg, LOC_BG, type Tod } from './bg';
 import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 import { backlog, backlogHtml } from './backlog';
-import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone } from './progress';
+import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone, effectParts } from './progress';
 import { replayClip } from './voice';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
@@ -112,7 +112,7 @@ function main() {
   const s = S, c = cal(s.week);
   const acts = actions(s);
   app().innerHTML = `${hud()}${crowd(s)}
-  <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${esc(a.ok ? a.desc : a.why || '')}</small></button>`).join('')}</div>
+  <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${a.ok ? effectParts(a.desc).map(x => x.tone ? `<span class="ef ${x.tone}">${esc(x.t)}</span>` : esc(x.t)).join('') : esc(a.why || '')}</small></button>`).join('')}</div>
   <div id="talkpick" class="hidden"><p>誰と話す？</p>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<button class="tp" data-h="${h.id}" style="border-color:${h.color}">${h.sei}${h.mei}</button>`).join('')}</div></div>
   <div class="panel"><h3>📱 電話 <small>${s.phoneUsed ? '今週は使用済み' : '週1回'}</small></h3>
    <div class="row"><select id="ph-h"><option value="kenta">早乙女健太（情報・相談）</option>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<option value="${h.id}">${h.sei}${h.mei}${s.hs[h.id].bomb ? ' 💣' : ''}</option>`).join('')}</select></div>

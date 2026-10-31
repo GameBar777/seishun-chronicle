@@ -35,3 +35,21 @@ export function weekCard(week: number) { const c = cal(week); const se = season(
 const NEG = /🤧|🩹|🤒|💥|🌀|📢|💔|💧|失敗|治らなかった|できない|ケガ|風邪|熱が|寝込|スランプ|落ち|下がった|減った|怒|嫌われ|振られ|ストレスが(?:溜|たま|増)|ダメ|不合格|赤点|遅刻|叱/;
 const POS = /✨|🎉|💕|♥|治った|成功|合格|上がった|増えた|アップ|仲良く|喜|褒め|優勝|入賞|回復|すっきり|リフレッシュ|もらった|1位/;
 export function logTone(line: string): 'pos' | 'neg' | '' { return /治った|完治|合格した|成功！/.test(line) && !/不合格|治らなかった/.test(line) ? 'pos' : NEG.test(line) ? 'neg' : POS.test(line) ? 'pos' : ''; }
+/** 行動ボタン下の効果説明を色分けする単位に分割：良い効果 pos（緑）、悪い効果 neg（赤） */
+const STATW = /^(文系|理系|芸術|容姿|運動|根性|経験値|ストレス|体力)$/;
+export function effectTone(t: string): 'pos' | 'neg' | '' {
+  if (/ストレス/.test(t)) return /↑|\+|増/.test(t) ? 'neg' : /↓|-|−|減/.test(t) ? 'pos' : '';
+  const f = t.match(/故障率(\d+)%/); if (f) return +f[1] > 0 ? 'neg' : '';
+  if (/体力/.test(t)) return /-|−|↓|消費/.test(t) ? 'neg' : /\+|↑|回復/.test(t) ? 'pos' : '';
+  if (/疲労|半減/.test(t)) return 'neg';
+  if (/収入/.test(t)) return 'pos';
+  if (/所持金-|^-?\d[\d,]*円$|-\d[\d,]*円/.test(t)) return 'neg';
+  if (/↑|伸び|\+\d|治療/.test(t)) return 'pos';
+  if (/↓|-\d|−\d/.test(t)) return 'neg';
+  return '';
+}
+export function effectParts(desc: string): { t: string; tone: 'pos' | 'neg' | '' }[] {
+  const parts = desc.split(/([ 　｜・。、（）()]+)/).filter(x => x !== '').map(t => ({ t, tone: /^[ 　｜・。、（）()]+$/.test(t) ? '' as const : effectTone(t) }));
+  for (let i = parts.length - 3; i >= 0; i--) if (!parts[i].tone && STATW.test(parts[i].t) && parts[i + 1].t === '・' && parts[i + 2].tone) parts[i].tone = parts[i + 2].tone;
+  return parts;
+}
