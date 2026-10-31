@@ -9,7 +9,7 @@ const portraitKey = () => typeof innerWidth !== 'undefined' && innerHeight > inn
 export const bgUrl = (k: string) => k === 'key' && portraitKey() ? `${BASE}img/bg/key-p.webp` : `${BASE}img/bg/${k}${small ? '-s' : ''}.webp`;
 export function guessBg(text: string, fallback = 'gate'): { bg: string; tod?: Tod } {
   const r: [RegExp, string, Tod?][] = [[/病院|お見舞い|病室/, 'hospital'], [/体育館/, 'gym'], [/河川敷|土手|川沿い/, 'river'], [/体育祭|運動会|球技大会|リレー|グラウンド|校庭/, 'ground', 'day'], [/文化祭/, 'classroom'], [/駅のホーム|早朝の駅|改札|駅で|ホームで/, 'station'],
-    [/リビング|玄関|食卓|こたつ|台所|ソファ|夕食|我が家|居間/, 'living'], [/天文|星空|星を|流れ星|夜空/, 'observatory', 'night'], [/(?<!体育|文化|学園)祭|花火|浴衣|神社|初詣|縁日/, 'festival', 'night'], [/海|浜|水着|波/, 'sea'], [/屋上|夕焼け/, 'rooftop', 'evening'],
+    [/プール/, 'pool', 'day'], [/リビング|玄関|食卓|こたつ|台所|ソファ|夕食|我が家|居間/, 'living'], [/天文|星空|星を|流れ星|夜空/, 'observatory', 'night'], [/(?<!体育|文化|学園)祭|花火|浴衣|神社|初詣|縁日/, 'festival', 'night'], [/海|浜|水着|波/, 'sea'], [/屋上|夕焼け/, 'rooftop', 'evening'],
     [/水族館/, 'aquarium'], [/遊園地|観覧車/, 'amuse'], [/カフェ|喫茶/, 'cafe'], [/ゲームセンター|カラオケ|モール|商店街|駅前/, 'town', 'evening'], [/美術館/, 'museum'], [/映画/, 'movie'], [/山道|山頂|登山|ハイキング/, 'mountain'], [/公園/, 'park'],
     [/電話|部屋|自室|ベッド|夜、/, 'room', 'night'], [/教室|授業|図書|放課後|休み時間|隣の席|テスト|生徒会|部活|文化祭|体育祭/, 'classroom'], [/校門|入学|卒業|登校|桜/, 'gate']];
   for (const [re, bg, tod] of r) if (re.test(text)) return { bg, tod };
@@ -18,7 +18,7 @@ export function guessBg(text: string, fallback = 'gate'): { bg: string; tod?: To
 // シーンIDごとの明示背景（キーワード推測より優先）
 export const SCENE_BG: Record<string, string> = {
   d_y1_nov: 'ground', d_y2_kareha: 'ground', d_y3_june: 'ground', d_y3_nov: 'classroom', d_y3_jan: 'station', d_y1_after: 'classroom', d_y2_matsuri: 'town',
-  d_y2_atokata: 'ground', d_y3_mendan: 'classroom', d_y3_yokou: 'gym', d_y1_akiyasumi: 'classroom', d_fr_t_fireworks: 'town', d_fr_t_center: 'station', sports_day: 'ground:day', d_y3_amagumo: 'town:evening', rin_s2: 'town', shizuku_s4: 'observatory:day',
+  d_y2_atokata: 'ground', d_y3_mendan: 'classroom', d_y3_yokou: 'gym', d_y1_akiyasumi: 'classroom', d_fr_t_fireworks: 'town', d_fr_t_center: 'station', sports_day: 'ground:day', d_y1_pool: 'pool:day', d_y3_amagumo: 'town:evening', rin_s2: 'town', shizuku_s4: 'observatory:day',
   kaho_meet: 'river', reika_1: 'rooftop', ruka_3: 'hospital', rin_1: 'hospital', rin_2: 'hospital', mio_s1: 'classroom', kaho_s1: 'ground', ruka_s2: 'station',
   sister: 'living', exam_result: 'station', tournament: 'gym',
 };

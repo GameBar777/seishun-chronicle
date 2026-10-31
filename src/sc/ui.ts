@@ -197,7 +197,7 @@ function hud() {
 function scene() {
   cgOff(); const s = S!; const v = view(s);
   if (!v) return main();
-  const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.map(l => l.text).join(' ');
+  const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '); // つなぎの一文（――その夜。等）で時間帯を決めない
   let sbg = '', stod: string | undefined;
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
   else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }

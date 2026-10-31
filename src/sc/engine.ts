@@ -377,6 +377,18 @@ export const EVMAP: Record<string, Ev> = Object.fromEntries(ALL_EV.map(e => [e.i
 const AUTO_MEET: Record<string, (s: GameState) => boolean> = { mio: s => s.week >= 0, rin: s => s.week >= 1 };
 // 1週のシーンは最大2件。必須（カレンダー・テスト・大会・誕生日・デート・エンディング）は常に出し、残りは最大4週まで後回し
 const TRANS = ['――その日の放課後。', '――数日後。', '――週の終わり。', '――その夜。', '――翌日の昼休み。', '――帰り道。'];
+/** つなぎの一文が続く場面の本文と矛盾しないか（「その夜」→昼のプール開き 等を防ぐ） */
+const NIGHTW = /夜|部屋|(?<!体育|文化|学園)祭|花火|浴衣|神社|初詣|縁日|星空|天文/;
+const TIMEW = /朝|昼|午前|午後|授業|体育|プール|夜|夕|放課後|帰り|下校|式|ホームルーム|HR/;
+export function transOk(tr: string, text: string): boolean {
+  if (/数日後|週の終わり/.test(tr)) return true;
+  if (/その夜/.test(tr)) return /夜|星空|花火|月明/.test(text.slice(0, 60)) && !/朝|昼|午前|授業|体育|プール|式|教室|終業|始業/.test(text.slice(0, 60));
+  const free = !TIMEW.test(text.slice(0, 60)) && !NIGHTW.test(text);
+  if (/放課後/.test(tr)) return free || (/放課後|部活|夕/.test(text.slice(0, 60)) && !NIGHTW.test(text));
+  if (/昼休み/.test(tr)) return free || (/昼休み|昼食|弁当/.test(text.slice(0, 60)) && !NIGHTW.test(text));
+  if (/帰り道/.test(tr)) return free || (/帰り|下校|夕/.test(text.slice(0, 60)) && !NIGHTW.test(text));
+  return free;
+}
 const CAL_IDS = new Set(CAL.map(e => e.id)); const MAX_WK = 2;
 const mustScene = (q: Scene) => q.kind === 'date' || q.kind === 'ending' || CAL_IDS.has(q.id) || ['opening', 'exam', 'tournament', 'birthday', 'meet_rin', 'wada_intro', 'wada'].includes(q.id);
 const prio = (q: Scene) => mustScene(q) ? 0 : q.kind === 'event' && !q.id.startsWith('d_') ? 1 : q.kind === 'event' ? 2 : 3;
@@ -450,7 +462,7 @@ function scheduleRaw(s: GameState) {
 export function view(s: GameState): View | null {
   const v = view0(s); const tr = s.queue[0]?.tr;
   if (v && s.course === '就職') { v.title = jobN(v.title, s.course); v.lines = v.lines.map(l => l.who === 'n' ? { ...l, text: jobN(l.text, s.course) } : l); }
-  if (v && tr) v.lines = [parseLine('n:' + tr, s, v.h), ...v.lines];
+  if (v && tr) { const body = v.title + ' ' + v.lines.map(l => l.text).join(' '); v.lines = [parseLine('n:' + (transOk(tr, body) ? tr : '――数日後。'), s, v.h), ...v.lines]; }
   return v;
 }
 function view0(s: GameState): View | null {

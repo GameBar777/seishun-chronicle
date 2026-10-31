@@ -8,7 +8,7 @@ import { HEVENTS } from '../src/sc/data/hevents';
 import { SIDE_EVENTS } from '../src/sc/data/hevents2';
 import { SIDE_EVENTS2 } from '../src/sc/data/hevents3';
 import { SISTER } from '../src/sc/data/sister';
-import { newGame } from '../src/sc/engine';
+import { newGame, transOk } from '../src/sc/engine';
 
 const ALLOW = new Set(['d_fr_t_fireworks', 'rin_s2']); // 花火大会「前日」の昼の電話／「雨上がり」
 const OUT = new Set(['ground', 'river', 'festival', 'sea', 'rooftop', 'park', 'mountain', 'station', 'gate', 'town', 'amuse', 'observatory']);
@@ -30,6 +30,10 @@ function audit() {
     if (/(夜|星空|花火|月が)/.test(fn) && tod === 'day') bad.push(e.id + ':night-day');
     if (/教室|図書室|部屋|体育館|保健室|職員室|廊下|昇降口/.test(fn) && OUT.has(g.bg)) bad.push(e.id + ':indoor');
     if (/海|浜辺|公園|河川敷|屋上|校庭|神社/.test(fn) && ['classroom', 'room', 'living'].includes(g.bg)) bad.push(e.id + ':outdoor');
+    if (/プール/.test(fn) && (g.bg !== 'pool' || tod !== 'day')) bad.push(e.id + ':pool');
+    const body = txt;
+    if (transOk('――その夜。', body) && tod === 'day') bad.push(e.id + ':trans-night');
+    for (const tr of ['――その日の放課後。', '――翌日の昼休み。', '――帰り道。']) if (transOk(tr, body) && tod === 'night') bad.push(e.id + ':trans-' + tr);
     if (/雨/.test(fn) && sceneWeather(fn + ' ' + txt, '晴れ', true) !== '雨') bad.push(e.id + ':rain');
     if (/快晴|晴れ渡|青空/.test(fn) && sceneWeather(fn + ' ' + txt, '雨', true) === '雨') bad.push(e.id + ':sunny-rain');
   }
@@ -47,6 +51,11 @@ describe('背景・天気の整合性', () => {
     expect(sceneWeather('教室で話した。', '雨', true)).not.toBe('雨');
     expect(sceneWeather('雨の中を歩いた。', '晴れ', true)).toBe('雨');
     expect(sceneWeather('雨上がり。', '晴れ', true)).toBe('晴れ');
+  });
+  it('プール開きは昼のプール、「その夜。」は付かない', () => {
+    expect(pickBg('d_y1_pool', 'プール開き。男子はプール、女子は隣のコートで体育だ。', [], undefined, false)).toEqual({ bg: 'pool', tod: 'day' });
+    expect(transOk('――その夜。', 'プール開き。男子はプール、女子は隣のコートで体育だ。')).toBe(false);
+    expect(transOk('――その夜。', '夜、星を見上げた。')).toBe(true);
   });
   it('全イベントの背景・時間帯・屋内外・天気が本文と矛盾しない', () => { expect(audit()).toEqual([]); });
 });
