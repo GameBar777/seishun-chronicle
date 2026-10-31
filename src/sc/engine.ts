@@ -1,3 +1,4 @@
+import { STAT_LABEL } from './types';
 import { DATEQ_EXTRA, DATE_R } from './data/dateq2';
 import type { GameState, Setup, HState, StatKey, Scene, Difficulty, Club, Job, Course, Emo } from './types';
 import { STAGES } from './types';
@@ -186,6 +187,14 @@ export function meet(s: GameState, id: string) {
 }
 
 // ───────── 行動 ─────────
+/** 部活・バイトの効果を実際の数値から「運動↑↑ 根性↑ ストレス↓」形式に。説明文のうち能力に関係ない短い一言だけ残す */
+export function gainDesc(gain: Record<string, number>, note: string, pay?: number): string {
+  const t: string[] = [];
+  if (pay) t.push(`収入${pay.toLocaleString()}円`);
+  for (const [k, v] of Object.entries(gain)) { if (k === 'hp' || !v || !(k in STAT_LABEL)) continue; const L = STAT_LABEL[k as StatKey]; t.push(L + (v > 0 ? (v >= 6 ? '↑↑' : '↑') : (v <= -6 ? '↓↓' : '↓'))); }
+  const flavor = note.split(/[。、・]/).map(x => x.trim()).filter(x => x && !/文系|理系|芸術|容姿|運動|根性|収入|疲労|伸び|休養/.test(x));
+  return t.join(' ') + (flavor.length ? `（${flavor.join('・')}）` : '');
+}
 export interface Action { id: string; label: string; desc: string; ok: boolean; why?: string }
 export function actions(s: GameState): Action[] {
   const a: Action[] = [
@@ -195,14 +204,14 @@ export function actions(s: GameState): Action[] {
     { id: 'train', label: '筋力トレーニング', desc: '運動・根性↑', ok: s.injury === 0, why: 'ケガ中' },
     { id: 'run', label: 'ランニング', desc: '運動↑ ストレス↓', ok: s.injury === 0, why: 'ケガ中' },
     { id: 'fashion', label: 'ファッション研究', desc: '容姿↑ 所持金-3000', ok: s.money >= 3000, why: 'お金が足りない' },
-    { id: 'club', label: `部活動（${s.club}）`, desc: CLUBS[s.club].note, ok: s.injury === 0 || s.club === '帰宅部', why: 'ケガ中' },
-    { id: 'job', label: s.job ? `アルバイト（${s.job}）` : 'アルバイト（未登録）', desc: s.job ? `収入${JOBS[s.job].pay}円・${JOBS[s.job].note}` : '先にバイト先を決める', ok: !!s.job && s.injury === 0, why: s.job ? 'ケガ中' : 'バイト先未登録' },
+    { id: 'club', label: `部活動（${s.club}）`, desc: gainDesc(CLUBS[s.club].gain, CLUBS[s.club].note), ok: s.injury === 0 || s.club === '帰宅部', why: 'ケガ中' },
+    { id: 'job', label: s.job ? `アルバイト（${s.job}）` : 'アルバイト（未登録）', desc: s.job ? gainDesc(JOBS[s.job].gain, JOBS[s.job].note, JOBS[s.job].pay) : '先にバイト先を決める', ok: !!s.job && s.injury === 0, why: s.job ? 'ケガ中' : 'バイト先未登録' },
     { id: 'rest', label: '休養', desc: `体力+${STA.rest}${s.cold ? '（風邪で半減）' : ''} ストレス↓↓`, ok: true },
     { id: 'hospital', label: '病院', desc: `風邪・ケガの治療（成功率${Math.round(STA.cure * 100)}%）・${STA.fee}円`, ok: !!(s.cold || s.injury), why: '治療するものがない' },
     { id: 'hobby', label: '趣味', desc: 'ストレス↓ 芸術・経験値少し↑', ok: true },
     { id: 'talk', label: 'ヒロインと交流（話しかける）', desc: '自由入力で会話できる', ok: HEROINES.some(h => s.hs[h.id].met && !s.hs[h.id].withRival) },
   ];
-  for (const x of a) { const c = staCost(s, x.id); if (c > 0 && x.ok) x.desc += `｜体力-${c}・故障率${Math.round(riskOf(s, x.id) * 100)}%`; }
+  for (const x of a) { const c = staCost(s, x.id); if (c > 0 && x.ok) x.desc += `｜体力-${c}・故障率${Math.round(riskOf(s, x.id) * 100)}%`; else if (c < 0 && x.ok && !x.desc.includes('体力')) x.desc += `｜体力+${-c}`; }
   return a;
 }
 const ACTION_GAIN: Record<string, Partial<Record<StatKey, number>>> = {
