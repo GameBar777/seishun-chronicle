@@ -178,7 +178,7 @@ function scene() {
   if (!v) return main();
   const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.map(l => l.text).join(' ');
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; bgFor(LOC_BG[loc] || 'park', loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'); }
-  else if (v.kind === 'ending') bgFor('gate', 'day'); else { const fn = v.lines.find(l => l.who === 'n')?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); bgFor(g.bg, g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day')); }
+  else if (v.kind === 'ending') bgFor('gate', 'day'); else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); bgFor(g.bg, g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day')); }
   const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
   audio.playBgm(v.kind === 'ending' ? 'ending' : v.kind === 'date' ? 'date' : /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告') ? 'confession' : sadN >= 2 || /💣|爆弾|噂/.test(txt) ? 'sad' : 'school', v.kind === 'event' || v.kind === 'chat' || v.kind === 'msg' ? TRANS[seasonNow()] || 0 : 0);
   const done = (lines: Line[]) => { if (lines.length) playLines(v.title, lines, () => main()); else main(); };

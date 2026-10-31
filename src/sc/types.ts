@@ -15,7 +15,7 @@ export interface HState {
   lastLocs: string[]; mem: Memory[]; flags: string[]; callTier: number; gotBirthday: number;
 }
 export interface Setup { sei: string; mei: string; seiYomi: string; meiYomi: string; bm: number; bd: number; persona: string; look: string; diff: Difficulty; seed?: number }
-export interface Scene { kind: 'event' | 'date' | 'ending' | 'msg' | 'chat'; id: string; h?: string; step?: number; data?: any }
+export interface Scene { kind: 'event' | 'date' | 'ending' | 'msg' | 'chat'; id: string; h?: string; step?: number; data?: any; tr?: string }
 export interface DiaryEntry { week: number; text: string }
 export interface GameState {
   v: number; setup: Setup; week: number; rng: number; lastAct?: string; later?: { q: Scene; w: number }[]; seenL?: string[];

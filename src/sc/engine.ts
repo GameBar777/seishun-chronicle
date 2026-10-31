@@ -275,6 +275,7 @@ const ALL_EV: Ev[] = [...CAL, ...DAILY, ...HEVENTS];
 export const EVMAP: Record<string, Ev> = Object.fromEntries(ALL_EV.map(e => [e.id, e]));
 const AUTO_MEET: Record<string, (s: GameState) => boolean> = { mio: s => s.week >= 0, rin: s => s.week >= 1 };
 // 1週のシーンは最大2件。必須（カレンダー・テスト・大会・誕生日・デート・エンディング）は常に出し、残りは最大4週まで後回し
+const TRANS = ['――その日の放課後。', '――数日後。', '――週の終わり。', '――その夜。', '――翌日の昼休み。', '――帰り道。'];
 const CAL_IDS = new Set(CAL.map(e => e.id)); const MAX_WK = 2;
 const mustScene = (q: Scene) => q.kind === 'date' || q.kind === 'ending' || CAL_IDS.has(q.id) || ['opening', 'exam', 'tournament', 'birthday', 'meet_rin'].includes(q.id);
 const prio = (q: Scene) => mustScene(q) ? 0 : q.kind === 'event' && !q.id.startsWith('d_') ? 1 : q.kind === 'event' ? 2 : 3;
@@ -297,6 +298,8 @@ export function scheduleScenes(s: GameState) {
     if (room > 0) { s.queue.push(q); room--; continue; }
     if (q.kind === 'event') s.later!.push({ q, w: later.find(l => l.q === q)?.w ?? s.week });
   }
+  // 同じ週の2件目以降には短いつなぎの一文を入れる
+  for (let i = Math.max(1, pre); i < s.queue.length; i++) { const q = s.queue[i]; if (q.kind === 'event' || q.kind === 'msg') q.tr ||= pickL(s, TRANS); }
 }
 function scheduleRaw(s: GameState) {
   const c = cal(s.week);
@@ -339,6 +342,11 @@ function scheduleRaw(s: GameState) {
 
 // ───────── シーン表示 ─────────
 export function view(s: GameState): View | null {
+  const v = view0(s); const tr = s.queue[0]?.tr;
+  if (v && tr) v.lines = [parseLine('n:' + tr, s, v.h), ...v.lines];
+  return v;
+}
+function view0(s: GameState): View | null {
   const sc = s.queue[0]; if (!sc) return null;
   if (sc.kind === 'event') {
     if (sc.id === 'opening') return { kind: 'event', title: 'プロローグ　春、星見ヶ丘', lines: OPENING.map(l => parseLine(l, s, 'hinata')), choices: ['春日ひなたに「おはよう」と返す', '「寝ぐせなんてついてない」と言い返す'] };
