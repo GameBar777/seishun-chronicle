@@ -188,3 +188,7 @@ body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:non
 .sx-l{font-weight:bold;font-size:.85rem}.sx-bar{height:12px;background:#eee;border-radius:6px;overflow:hidden}.sx-bar i{display:block;height:100%;background:linear-gradient(90deg,#74b9ff,#fd79a8);border-radius:6px}.sx-bar i.bad{background:linear-gradient(90deg,#fdcb6e,#d63031)}
 .sx-v{text-align:right;font-variant-numeric:tabular-nums}.rk{font-style:normal;font-weight:900;text-align:center;border-radius:6px;font-size:.85rem}
 .rk-S{color:#fff;background:#e84393}.rk-A{color:#fff;background:#fd79a8}.rk-B{color:#fff;background:#74b9ff}.rk-C{background:#dfe6e9}.rk-D,.rk-E{color:#999}
+/* v1.11.1 行動ログの色分け（暗い半透明パネル上でコントラスト確保） */
+.log .lg.pos{color:#13803d;font-weight:700}.log .lg.neg{color:#c62828;font-weight:700}
+.lgd{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.lgc{font-size:.8rem;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.lgc.pos{color:#13803d;background:#e6f6ec}.lgc.neg{color:#c62828;background:#fdecec}

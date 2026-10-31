@@ -11,7 +11,7 @@ import * as audio from './audio';
 import { setBg, guessBg, pickBg, LOC_BG, type Tod } from './bg';
 import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 import { backlog, backlogHtml } from './backlog';
-import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap } from './progress';
+import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone } from './progress';
 import { replayClip } from './voice';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
@@ -123,7 +123,7 @@ function main() {
    <div class="row"><select id="sh-o">${Object.entries(OUTFITS).filter(([k]) => !s.outfits.includes(k)).map(([k, O]) => `<option value="${k}">${k}（${O.cost}円・容姿+${O.yo}）</option>`).join('')}</select><button id="sh-buy">服を買う</button></div>
    <div class="row"><select id="jb">${['', ...Object.keys(JOBS)].map(j => `<option value="${j}" ${s.job === j ? 'selected' : ''}>${j ? `${j}（${JOBS[j].pay}円/週）` : 'バイトしない'}</option>`).join('')}</select><button id="jb-set">バイト先を変更</button></div>
   </div></div>
-  <div class="panel log" id="log">${(s.lastLog.length ? s.lastLog : ['新しい一週間が始まる。']).map(l => `<div>${esc(l)}</div>`).join('')}</div>
+  <div class="panel log" id="log">${(s.lastLog.length ? s.lastLog : ['新しい一週間が始まる。']).map(l => `<div class="lg ${logTone(l)}">${esc(l)}</div>`).join('')}${lastDeltaHtml}</div>
   ${cmdBar()}`;
   document.querySelectorAll<HTMLButtonElement>('.act').forEach(b => b.onclick = () => act(b.dataset.a!));
   document.querySelectorAll<HTMLButtonElement>('.tp').forEach(b => b.onclick = () => week('talk', b.dataset.h));
@@ -155,6 +155,7 @@ function week(id: string, talkTo?: string) {
   const res = doWeek(S, id, talkTo); S.lastLog = res; chatCount = 0;
   if (res.some(r => r.includes('💥'))) audio.se('bomb');
   const after = snap(S);
+  lastDeltaHtml = deltaChips(before, after);
   main();
   if (after.week !== before.week) weekFlip(before.week, after.week, () => showDelta(before, after));
   else showDelta(before, after);
@@ -409,6 +410,11 @@ export function weekFlip(from: number, to: number, done: () => void) {
   let fin = false; const end = () => { if (fin) return; fin = true; d.classList.add('out'); setTimeout(() => { d.remove(); done(); }, 220); };
   d.onclick = e => { e.stopPropagation(); end(); };
   setTimeout(end, reduced() ? 900 : 1800);
+}
+let lastDeltaHtml = '';
+function deltaChips(a: Snap, b: Snap) {
+  const ds = diffStats(a, b), hs = diffHearts(a, b); if (!ds.length && !hs.length) return '';
+  return `<div class="lgd">${ds.map(x => `<span class="lgc ${x.good ? 'pos' : 'neg'}">${x.d > 0 ? '▲' : '▼'}${esc(x.label)} ${fmtDelta(x)}</span>`).join('')}${hs.map(x => `<span class="lgc ${x.dir === 'down' ? 'neg' : 'pos'}">${x.dir === 'down' ? '💧' : x.dir === 'new' ? '✨' : '♥'}${esc(HMAP[x.id]?.mei || x.id)}${x.dir === 'down' ? ' 好感度↓' : x.dir === 'new' ? ' と出会った' : ' 好感度↑'}</span>`).join('')}</div>`;
 }
 export function showDelta(a: Snap, b: Snap) {
   const ds = diffStats(a, b), hs = diffHearts(a, b); if (!ds.length && !hs.length) return;
