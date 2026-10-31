@@ -1,5 +1,5 @@
 export type StatKey = 'bun' | 'ri' | 'gei' | 'yo' | 'un' | 'kon' | 'hp' | 'st' | 'moral' | 'exp';
-export const STAT_LABEL: Record<StatKey, string> = { bun: '文系', ri: '理系', gei: '芸術', yo: '容姿', un: '運動', kon: '根性', hp: '体調', st: 'ストレス', moral: 'モラル', exp: '経験値' };
+export const STAT_LABEL: Record<StatKey, string> = { bun: '文系', ri: '理系', gei: '芸術', yo: '容姿', un: '運動', kon: '根性', hp: '体力', st: 'ストレス', moral: 'モラル', exp: '経験値' };
 export type Difficulty = 'EASY' | 'NORMAL' | 'HARD' | 'VERY HARD';
 export type Emo = '通常' | '嬉' | '照' | '怒' | '哀' | '驚' | '嫉' | '囁' | '告' | '冷';
 export const STAGES = ['他人', '顔見知り', '友人', '親友', '気になる存在', '好き', '夢中'] as const;
@@ -23,7 +23,7 @@ export interface GameState {
   club: Club; job: Job | ''; jobDays: number; course: Course; courseResult: '' | '合格' | '不合格';
   hs: Record<string, HState>;
   seen: string[]; flags: string[]; diary: DiaryEntry[]; queue: Scene[];
-  sick: number; slump: number; injury: number; rumor: number;
+  sick: number; slump: number; injury: number; rumor: number; cold?: number;
   weather: string; phoneUsed: boolean; dateBooked: { h: string; loc: string } | null;
   exams: { week: number; rank: number; total: number }[]; tournaments: string[];
   outfits: string[]; ended: boolean; ending?: { id: string; title: string; h?: string };

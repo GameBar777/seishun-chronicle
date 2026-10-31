@@ -49,7 +49,7 @@ export function newGame(setup: Setup): GameState {
     v: SAVE_VERSION, setup, week: 0, rng: (setup.seed ?? Math.floor(Math.random() * 1e9)) | 0, stats, money: 10000,
     club: '帰宅部', job: '', jobDays: 0, course: '', courseResult: '',
     hs: Object.fromEntries(HEROINES.map(h => [h.id, newH()])), seen: [], flags: [], diary: [], queue: [],
-    sick: 0, slump: 0, injury: 0, rumor: 0, weather: '晴れ', phoneUsed: false, dateBooked: null,
+    sick: 0, slump: 0, injury: 0, cold: 0, rumor: 0, weather: '晴れ', phoneUsed: false, dateBooked: null,
     exams: [], tournaments: [], outfits: ['カジュアル'], ended: false, lastLog: [], actionCounts: {},
   };
   const hi = s.hs.hinata; Object.assign(hi, { met: true, friend: 32, trust: 30, toki: 8 });
@@ -134,7 +134,7 @@ export function stressMult(st: number) { return st <= GROW.st0 ? 1 : Math.max(GR
 export function statMult(s: GameState, cur: number) { return GROW.base * (cur <= GROW.knee ? 1 : 1 / (1 + (cur - GROW.knee) / GROW.soft)) * stressMult(s.stats.st); }
 export function gainStat(s: GameState, k: StatKey, v: number) {
   let d = v;
-  if (v > 0 && !['hp', 'st'].includes(k)) { if (s.slump > 0) d *= 0.5; if (s.stats.hp < 30) d *= 0.7; d *= DIFF[s.setup.diff].gain > 1 ? 1.1 : 1; if (k !== 'moral' && k !== 'exp') d *= statMult(s, s.stats[k]); }
+  if (v > 0 && !['hp', 'st'].includes(k)) { if (s.slump > 0) d *= 0.5; if (s.stats.hp < 30) d *= 0.7; if (s.cold) d *= STA.coldGrow; if (s.injury) d *= STA.injGrow; d *= DIFF[s.setup.diff].gain > 1 ? 1.1 : 1; if (k !== 'moral' && k !== 'exp') d *= statMult(s, s.stats[k]); }
   const cap = ['hp', 'st'].includes(k) ? 100 : k === 'moral' ? 100 : 999;
   s.stats[k] = clamp(Math.round((s.stats[k] + d) * 10) / 10, 0, cap);
 }
@@ -189,25 +189,53 @@ export function meet(s: GameState, id: string) {
 export interface Action { id: string; label: string; desc: string; ok: boolean; why?: string }
 export function actions(s: GameState): Action[] {
   const a: Action[] = [
-    { id: 'bun', label: '文系の勉強', desc: '文系↑ ストレス↑ 体調↓', ok: true },
-    { id: 'ri', label: '理系の勉強', desc: '理系↑ ストレス↑ 体調↓', ok: true },
+    { id: 'bun', label: '文系の勉強', desc: '文系↑ ストレス↑', ok: true },
+    { id: 'ri', label: '理系の勉強', desc: '理系↑ ストレス↑', ok: true },
     { id: 'art', label: '芸術活動', desc: '芸術↑', ok: true },
-    { id: 'train', label: '筋力トレーニング', desc: '運動・根性↑ 体調↓↓', ok: s.injury === 0, why: 'ケガ中' },
-    { id: 'run', label: 'ランニング', desc: '運動↑ ストレス↓ 体調↓', ok: s.injury === 0, why: 'ケガ中' },
+    { id: 'train', label: '筋力トレーニング', desc: '運動・根性↑', ok: s.injury === 0, why: 'ケガ中' },
+    { id: 'run', label: 'ランニング', desc: '運動↑ ストレス↓', ok: s.injury === 0, why: 'ケガ中' },
     { id: 'fashion', label: 'ファッション研究', desc: '容姿↑ 所持金-3000', ok: s.money >= 3000, why: 'お金が足りない' },
     { id: 'club', label: `部活動（${s.club}）`, desc: CLUBS[s.club].note, ok: s.injury === 0 || s.club === '帰宅部', why: 'ケガ中' },
     { id: 'job', label: s.job ? `アルバイト（${s.job}）` : 'アルバイト（未登録）', desc: s.job ? `収入${JOBS[s.job].pay}円・${JOBS[s.job].note}` : '先にバイト先を決める', ok: !!s.job && s.injury === 0, why: s.job ? 'ケガ中' : 'バイト先未登録' },
-    { id: 'rest', label: '休養', desc: '体調↑↑ ストレス↓↓', ok: true },
+    { id: 'rest', label: '休養', desc: `体力+${STA.rest}${s.cold ? '（風邪で半減）' : ''} ストレス↓↓`, ok: true },
+    { id: 'hospital', label: '病院', desc: `風邪・ケガの治療（成功率${Math.round(STA.cure * 100)}%）・${STA.fee}円`, ok: !!(s.cold || s.injury), why: '治療するものがない' },
     { id: 'hobby', label: '趣味', desc: 'ストレス↓ 芸術・経験値少し↑', ok: true },
     { id: 'talk', label: 'ヒロインと交流（話しかける）', desc: '自由入力で会話できる', ok: HEROINES.some(h => s.hs[h.id].met && !s.hs[h.id].withRival) },
   ];
+  for (const x of a) { const c = staCost(s, x.id); if (c > 0 && x.ok) x.desc += `｜体力-${c}・故障率${Math.round(riskOf(s, x.id) * 100)}%`; }
   return a;
 }
 const ACTION_GAIN: Record<string, Partial<Record<StatKey, number>>> = {
-  bun: { bun: 8, st: 5, hp: -3 }, ri: { ri: 8, st: 5, hp: -3 }, art: { gei: 8, st: 1, hp: -2 },
-  train: { un: 5, kon: 5, yo: 1, hp: -7, st: 1 }, run: { un: 6, kon: 3, hp: -5, st: -4 }, fashion: { yo: 7, st: -3 },
-  rest: { hp: 28, st: -22 }, hobby: { st: -14, gei: 2, hp: 5 },
+  bun: { bun: 8, st: 5 }, ri: { ri: 8, st: 5 }, art: { gei: 8, st: 1 },
+  train: { un: 5, kon: 5, yo: 1, st: 1 }, run: { un: 6, kon: 3, st: -4 }, fashion: { yo: 7, st: -3 },
+  rest: { st: -22 }, hobby: { st: -14, gei: 2 }, hospital: { st: -3 },
 };
+
+// ───────── 体力（パワプロのサクセス風）─────────
+// 行動ごとに体力を消費。行動後の体力が低いほど「故障率」（風邪・ケガ）が上がる。風邪・ケガは病院でしか治らない（成功率70%）
+export const STA = { rest: 50, hobby: 10, hospital: 10, home: 15, nat: 5, safe: 50, mid: 30, cure: 0.7, fee: 2000, coldGrow: 0.7, injGrow: 0.85, coldSt: 4, coldDown: 0.12 };
+const PHYS = new Set(['train', 'run']);
+const ATHLETIC = ['野球部', 'サッカー部', 'テニス部', '陸上部'];
+const HEAVY_JOB = ['ファミレス', 'ホテル', 'イベントスタッフ'];
+export function staCost(s: GameState, act: string): number {
+  if (act === 'club') return s.club === '帰宅部' ? -STA.home : ATHLETIC.includes(s.club) ? 25 : 15;
+  if (act === 'job') return HEAVY_JOB.includes(s.job) ? 25 : 20;
+  return ({ bun: 20, ri: 20, art: 15, train: 25, run: 20, fashion: 10, talk: 5, rest: -STA.rest, hobby: -STA.hobby, hospital: -STA.hospital } as Record<string, number>)[act] ?? 0;
+}
+/** 行動後の体力から故障率：50以上 0%、30〜50 で 0→10%、30未満は 1 下がるごとに +2.5%（0 で 85%） */
+export function riskAt(after: number) { return after >= STA.safe ? 0 : after >= STA.mid ? (STA.safe - after) * 0.005 : Math.min(0.85, 0.1 + (STA.mid - after) * 0.025); }
+export function riskOf(s: GameState, act: string) { const c = staCost(s, act); return c > 0 ? riskAt(s.stats.hp - c) : 0; }
+const isPhys = (s: GameState, act: string) => PHYS.has(act) || (act === 'club' && ATHLETIC.includes(s.club)) || (act === 'job' && HEAVY_JOB.includes(s.job));
+function staWeek(s: GameState, act: string, res: string[]) {
+  if (act === 'hospital') {
+    const what = [s.cold ? '風邪' : '', s.injury ? 'ケガ' : ''].filter(Boolean).join('と');
+    s.money = Math.max(0, s.money - STA.fee);
+    if (chance(s, STA.cure)) { s.cold = 0; s.injury = 0; res.push(`🏥 病院で診てもらった。${what}が治った！`); diary(s, `病院で${what}を治した。`); }
+    else res.push(`🏥 病院に行ったが、${what}はまだ治らなかった……（また来週）`);
+    return;
+  }
+  if (s.cold) { gainStat(s, 'st', STA.coldSt); if (s.sick === 0 && chance(s, STA.coldDown)) { s.sick = 1; res.push('🤒 風邪をこじらせて熱が出た。寝込むことになりそうだ。'); diary(s, '風邪をこじらせて寝込んだ。'); } }
+}
 export function setJob(s: GameState, j: Job | '') { s.job = j; if (j) diary(s, `${j}でアルバイトを始めた。`); }
 export function buyOutfit(s: GameState, o: string): boolean { const O = OUTFITS[o]; if (!O || s.outfits.includes(o) || s.money < O.cost) return false; s.money -= O.cost; s.outfits.push(o); diary(s, `服（${o}）を買った。`); return true; }
 
@@ -221,25 +249,26 @@ export function doWeek(s: GameState, act: string, talkTo?: string): string[] {
   const A = actions(s).find(x => x.id === act);
   if (!A) return ['不明な行動'];
   if (!A.ok && s.sick === 0 && !res.length) return [`その行動はできない：${A.why}`];
+  const risk = riskOf(s, act);
   s.actionCounts[act] = (s.actionCounts[act] || 0) + 1;
+  { let c = staCost(s, act); if (c < 0 && act === 'rest' && s.cold) c = Math.round(c / 2); gainStat(s, 'hp', -c); }
+  if (risk > 0 && chance(s, risk)) { if (isPhys(s, act) && !s.injury && chance(s, 0.6)) { s.injury = 1; res.push('🩹 無理をして足を痛めた……ケガをした。病院に行くまで治らない（運動系の行動ができない）'); diary(s, 'ケガをした。'); } else if (!s.cold) { s.cold = 1; res.push('🤧 疲れがたまって風邪をひいた……病院に行くまで治らない（成長ダウン・ストレス増）'); diary(s, '風邪をひいた。'); } }
   gainStat(s, 'exp', 1);
   if (ACTION_GAIN[act]) for (const [k, v] of Object.entries(ACTION_GAIN[act])) gainStat(s, k as StatKey, (v as number) + (v as number > 3 ? ri(s, -1, 2) : 0));
   if (act === 'fashion') s.money -= 3000;
-  if (act === 'club') for (const [k, v] of Object.entries(CLUBS[s.club].gain)) gainStat(s, k as StatKey, v as number);
-  if (act === 'job' && s.job) { const J = JOBS[s.job]; s.money += J.pay; s.jobDays += 5; for (const [k, v] of Object.entries(J.gain)) gainStat(s, k as StatKey, v as number); }
+  if (act === 'club') for (const [k, v] of Object.entries(CLUBS[s.club].gain)) if (k !== 'hp') gainStat(s, k as StatKey, v as number);
+  if (act === 'job' && s.job) { const J = JOBS[s.job]; s.money += J.pay; s.jobDays += 5; for (const [k, v] of Object.entries(J.gain)) if (k !== 'hp') gainStat(s, k as StatKey, v as number); }
   if (act === 'talk' && talkTo && s.hs[talkTo]?.met) { s.queue.push({ kind: 'chat', id: 'chat', h: talkTo, step: 0 }); applyH(s, talkTo, { f: 2, h: -12 }); }
   res.push(`${A.label}をした。`);
   s.lastLog.unshift(act);
   // 体調・ストレス
-  if (s.stats.hp < 20 && chance(s, 0.5)) { s.sick = ri(s, 1, 2); res.push('🤒 無理がたたって熱が出た。しばらく休むことになりそうだ。'); diary(s, '体調を崩して寝込んだ。'); }
-  if (['train', 'run', 'club'].includes(act) && s.club !== '帰宅部' && s.stats.hp < 35 && chance(s, 0.25)) { s.injury = 3; res.push('🩹 足をひねってケガをした。3週間は運動できない。'); diary(s, 'ケガをした。'); }
+  staWeek(s, act, res);
   // ストレス：高いと寝込む・ヒロインの機嫌が下がる
   if (s.sick === 0 && s.stats.st >= 70 && chance(s, (s.stats.st - 60) / 100)) { s.sick = ri(s, 1, 2); res.push('🤒 ストレスで体調を崩した。しばらく寝込むことになりそうだ。'); diary(s, 'ストレスで寝込んだ。'); }
   if (s.stats.st >= 70) { for (const H of HEROINES) if (s.hs[H.id].met && !s.hs[H.id].withRival) applyH(s, H.id, { f: -1, t: -0.5 }, false); if (chance(s, 0.25)) res.push('😣 イライラが顔に出ているらしい。周りの態度が少しよそよそしい。'); }
   if (s.stats.st > 85 && s.slump === 0) { s.slump = 3; gainStat(s, 'st', -15); res.push('🌀 スランプに陥った……何をやっても身につかない（3週間、成長半減）'); diary(s, 'スランプに陥った。'); }
   else if (s.slump > 0) s.slump--;
-  if (s.injury > 0 && act !== 'train') s.injury = Math.max(0, s.injury - 1);
-  gainStat(s, 'hp', 3); // 自然回復
+  gainStat(s, 'hp', STA.nat); // 自然回復
   weeklyHeroines(s, res);
   if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: dateOrder(s, d.h) } }); s.dateBooked = null; }
   // 次の週へ

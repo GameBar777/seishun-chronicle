@@ -168,8 +168,9 @@ function hud() {
   const bar = (k: StatKey) => `<div class="st"><span>${STAT_LABEL[k]}</span><i style="width:${Math.min(100, s.stats[k] / (k === 'hp' || k === 'st' || k === 'moral' ? 1 : 3))}%"></i><b>${Math.round(s.stats[k])}</b></div>`;
   const hs = HEROINES.filter(h => s.hs[h.id].met).map(h => { const x = s.hs[h.id]; return `<span class="hchip" style="border-color:${h.color}" title="友好${Math.round(x.friend)} ときめき${Math.round(x.toki)} 傷心${Math.round(x.hurt)} 信頼${Math.round(x.trust)}">${h.mei}<small>${x.withRival ? '💔' : stage(x)}</small>${x.bomb ? '💣' : ''}</span>`; }).join('');
   return `<div class="hud"><div class="date"><b>${c.Y}年生</b> ${fmtDate(s.week)} <small>第${s.week + 1}/${LAST_WEEK}週・${s.weather}・${c.term}</small></div>
-  <div class="money">💴 ${s.money.toLocaleString()}円　${s.club}${s.job ? '／' + s.job : ''}${s.course ? '／志望:' + s.course : ''}${s.sick ? ' 🤒' : ''}${s.injury ? ' 🩹' : ''}${s.slump ? ' 🌀' : ''}${s.rumor ? ' 📢悪い噂' : ''}</div>
-  <div class="stats">${(['bun', 'ri', 'gei', 'yo', 'un', 'kon', 'hp', 'st'] as StatKey[]).map(bar).join('')}</div><div class="hs">${hs}</div></div>`;
+  <div class="money">💴 ${s.money.toLocaleString()}円　${s.club}${s.job ? '／' + s.job : ''}${s.course ? '／志望:' + s.course : ''}${s.sick ? ' 🤒寝込み' : ''}${s.cold ? ' 🤧風邪' : ''}${s.injury ? ' 🩹ケガ' : ''}${s.slump ? ' 🌀' : ''}${s.rumor ? ' 📢悪い噂' : ''}</div>
+  <div class="stamina" style="margin:4px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><b>💪 体力 ${Math.round(s.stats.hp)}%</b><span>${s.stats.hp >= 70 ? '元気' : s.stats.hp >= 50 ? 'ふつう' : s.stats.hp >= 30 ? '⚠ 疲れ気味' : '⚠⚠ ヘトヘト（故障注意）'}</span></div><div style="height:8px;background:#0003;border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${Math.max(0, Math.min(100, s.stats.hp))}%;background:${s.stats.hp >= 50 ? '#4caf50' : s.stats.hp >= 30 ? '#ff9800' : '#e53935'}"></i></div></div>
+  <div class="stats">${(['bun', 'ri', 'gei', 'yo', 'un', 'kon', 'st'] as StatKey[]).map(bar).join('')}</div><div class="hs">${hs}</div></div>`;
 }
 
 // ───────── シーン ─────────
