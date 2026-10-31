@@ -8,6 +8,7 @@ import { exportSave, importSave, store } from './save';
 import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName, initVoice, unlockVoice, preloadClip, isSpeaking, hasClip } from './voice';
 import { voiceId } from './engine';
 import * as audio from './audio';
+import { bgmForAct, bgmForScene } from './bgm';
 import { setBg, guessBg, pickBg, LOC_BG, type Tod } from './bg';
 import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 import { backlog, backlogHtml } from './backlog';
@@ -29,7 +30,7 @@ function loadSettings(): VoiceSettings { try { return { ...defaultSettings(), ..
 function saveSettings() { try { localStorage.setItem('seishun:set', JSON.stringify(set)); } catch { } audio.setVolumes(set.master, set.bgm, set.se); }
 const app = () => $('#app');
 
-export function boot() { audio.setVolumes(set.master, set.bgm, set.se); title(); }
+export function boot() { audio.setBase(BASE); audio.installUnlock(); audio.setVolumes(set.master, set.bgm, set.se); audio.preloadSe(); title(); }
 
 // ───────── タイトル ─────────
 function title() {
@@ -42,7 +43,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-cg">🖼 CGモード</button><button id="t-help">遊び方</button></div>
-  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。</p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><span class="credit">音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://soundeffect-lab.info/" target="_blank" rel="noopener">効果音ラボ</a>・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
@@ -106,8 +107,8 @@ function setup() {
 function main() {
   cgOff(); if (!S) return title();
   store.save('auto', S);
-  audio.playBgm('school', TRANS[seasonNow()] || 0); bgFor(S.week % 2 ? 'classroom' : 'gate', 'day');
   if (S.queue.length) return scene();
+  audio.playTrack(bgmForAct(S.lastAct, S.week)); bgFor(S.week % 2 ? 'classroom' : 'gate', 'day');
   if (S.ended) return title();
   const s = S, c = cal(s.week);
   const acts = actions(s);
@@ -150,19 +151,32 @@ function act(id: string) {
   week(id);
 }
 function week(id: string, talkTo?: string) {
-  if (!S) return; audio.se('select');
-  const before = snap(S);
+  if (!S) return; audio.se('confirm');
+  const before = snap(S); const ill0 = { c: S.cold, i: S.injury };
   const res = doWeek(S, id, talkTo); S.lastLog = res; chatCount = 0;
-  if (res.some(r => r.includes('💥'))) audio.se('bomb');
+  setTimeout(() => weekSe(id, res, before, ill0), 250);
   const after = snap(S);
   lastDeltaHtml = deltaChips(before, after);
   main();
   if (after.week !== before.week) weekFlip(before.week, after.week, () => showDelta(before, after));
   else showDelta(before, after);
 }
+/** 週の行動結果に合わせた効果音（風邪・ケガ・病院・休養・爆弾・ライバル・ステータス増減） */
+function weekSe(id: string, res: string[], before: Snap, ill0: { c: unknown; i: unknown }) {
+  if (!S) return; const t = res.join(' ');
+  if (id === 'hospital') audio.se('hospital');
+  else if (id === 'rest') audio.se('rest');
+  if (!ill0.i && S.injury) return audio.se('injury');
+  if (!ill0.c && S.cold) return audio.se('cold');
+  if (t.includes('💥')) return audio.se('bomb');
+  if (/和田|ライバル/.test(t)) return audio.se('rival');
+  const ds = diffStats(before, snap(S)); const up = ds.filter(x => x.good).length, dn = ds.length - up;
+  if (id !== 'hospital' && id !== 'rest') { if (up > dn) audio.se('statup', { vol: .7 }); else if (dn > up) audio.se('statdown', { vol: .7 }); }
+}
 function call(mode: 'talk' | 'invite') {
   if (!S) return; const id = $<HTMLSelectElement>('#ph-h').value; const loc = $<HTMLSelectElement>('#ph-loc').value;
-  const lines = phone(S, id, mode, loc); bgFor('room', 'night'); audio.playBgm('date', -5); playLines('📱 電話', lines, () => main(), HMAP[id] || NPC_BY_ID[id] ? id : undefined);
+  audio.se('phone');
+  const lines = phone(S, id, mode, loc); bgFor('room', 'night'); audio.playTrack('night'); playLines('📱 電話', lines, () => main(), HMAP[id] || NPC_BY_ID[id] ? id : undefined);
 }
 function hud() {
   const s = S!, c = cal(s.week);
@@ -179,15 +193,19 @@ function scene() {
   cgOff(); const s = S!; const v = view(s);
   if (!v) return main();
   const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.map(l => l.text).join(' ');
-  if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; bgFor(LOC_BG[loc] || 'park', loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'); }
-  else if (v.kind === 'ending') bgFor('gate', 'day'); else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); bgFor(g.bg, g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day')); }
+  let sbg = '', stod: string | undefined;
+  if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod); }
+  else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod); }
   const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
-  audio.playBgm(v.kind === 'ending' ? 'ending' : v.kind === 'date' ? 'date' : /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告') ? 'confession' : sadN >= 2 || /💣|爆弾|噂/.test(txt) ? 'sad' : 'school', v.kind === 'event' || v.kind === 'chat' || v.kind === 'msg' ? TRANS[seasonNow()] || 0 : 0);
+  const conf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
+  const rivalSc = /wada|rival/.test(sc0?.id || '') || v.lines.some(l => /和田|ライバル/.test(l.who || ''));
+  audio.playTrack(bgmForScene({ kind: v.kind, title: v.title, text: txt, sadN, confess: conf, loc: sc0?.data?.loc, bg: sbg, tod: stod, season: seasonNow(), rival: rivalSc, endingId: v.kind === 'ending' ? (/バッド|と.*のエンディング/.test(v.title) && !/友情|グッド|トゥルー|告白成功|ノーマル|進路成功/.test(v.title) ? 'bad' : 'good') : undefined }));
+  if (rivalSc && v.kind !== 'ending') audio.se('rival', { vol: .8 }); else if (v.kind === 'msg') audio.se('message'); else if (/チャイム|ホームルーム|始業|放課後/.test(v.title)) audio.se('bell', { vol: .6 }); else if (/^(room|living|classroom)/.test(sbg) && v.kind === 'event') audio.se('door', { vol: .6 });
   const done = (lines: Line[]) => { if (lines.length) playLines(v.title, lines, () => main()); else main(); };
   const choose = () => {
     if (v.kind === 'chat') return chatBox(v.h!);
     if (v.kind === 'ending') return endingBox();
-    showChoices(v.choices, i => { audio.se('select'); done(resolve(s, i)); });
+    showChoices(v.choices, i => { audio.se('confirm'); done(resolve(s, i)); });
   };
   const isConf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
   const cg = v.kind === 'ending' ? 'ending' : (/告白/.test(v.title) || v.lines.some(l => l.emo === '告')) ? 'confess' : v.kind === 'date' && sc0?.data?.loc === 'festival' ? 'fireworks' : '';
@@ -197,7 +215,7 @@ function scene() {
 }
 export const CGS = ['confess', 'ending', 'fireworks'];
 function showCG(name: string, cap: string, after: () => void) {
-  audio.se('heart');
+  audio.se('doki');
   const el = document.createElement('div'); el.className = 'cg'; el.innerHTML = `<img src="${BASE}img/cg/${name}.webp" alt=""><div class="cgcap">${esc(cap)}</div><div class="hint">クリックで進む</div>`;
   document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('on'));
   let closed = false; const close = () => { if (closed) return; closed = true; el.classList.remove('on'); setTimeout(() => el.remove(), 600); document.removeEventListener('keydown', key); after(); };
@@ -406,7 +424,7 @@ export function weekFlip(from: number, to: number, done: () => void) {
   document.getElementById('wflip')?.remove();
   const d = document.createElement('div'); d.id = 'wflip'; d.className = 'wflip' + (reduced() ? ' rm' : '');
   d.innerHTML = `<div class="wf-cal" style="background-image:url(${BASE}img/calendar.webp)"><div class="wf-sheet">${calPage(to, 'new')}${calPage(from, 'old')}</div></div><div class="wf-skip">タップでスキップ</div>`;
-  document.body.appendChild(d); audio.se('select');
+  document.body.appendChild(d); audio.se('page'); setTimeout(() => audio.se('flip', { vol: .6 }), 380); audio.duck(2.4); setTimeout(() => audio.se('jingle', { vol: .55 }), 250);
   let fin = false; const end = () => { if (fin) return; fin = true; d.classList.add('out'); setTimeout(() => { d.remove(); done(); }, 220); };
   d.onclick = e => { e.stopPropagation(); end(); };
   setTimeout(end, reduced() ? 900 : 1800);
@@ -418,6 +436,7 @@ function deltaChips(a: Snap, b: Snap) {
 }
 export function showDelta(a: Snap, b: Snap) {
   const ds = diffStats(a, b), hs = diffHearts(a, b); if (!ds.length && !hs.length) return;
+  if (hs.some(x => x.dir === 'up' || x.dir === 'new')) setTimeout(() => audio.se('heart', { vol: .7 }), 450);
   document.getElementById('dpanel')?.remove();
   const p = document.createElement('div'); p.id = 'dpanel'; p.className = 'dpanel'; p.setAttribute('role', 'status');
   p.innerHTML = `<div class="dp-h">今週の変化</div><div class="dp-list">${ds.map((x, i) => `<span class="dp ${x.good ? 'up' : 'down'}" style="animation-delay:${i * 90}ms">${x.d > 0 ? '▲' : '▼'} ${esc(x.label)} <b>${fmtDelta(x)}</b></span>`).join('')}${hs.map((x, i) => { const H = HMAP[x.id]; return `<span class="dp heart ${x.dir}" style="animation-delay:${(ds.length + i) * 90}ms;--hc:${H?.color || '#fd79a8'}">${x.dir === 'down' ? '💧' : x.dir === 'new' ? '✨' : '♥'} ${esc(H?.mei || x.id)}${x.dir === 'new' ? ' と出会った' : ''}</span>`; }).join('')}</div>`;
