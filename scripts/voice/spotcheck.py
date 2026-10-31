@@ -6,7 +6,7 @@ import json, os, re, sys, subprocess
 import numpy as np
 from faster_whisper import WhisperModel
 ROOT = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.abspath(os.path.join(ROOT, '..', '..'))
-SLUG = {'@芽衣': 'mei', '@健太': 'kenta', '@担任・真鍋': 'manabe', '@田中': 'tanaka'}
+SLUG = {'@芽衣': 'mei', '@健太': 'kenta', '@担任・真鍋': 'manabe', '@田中': 'tanaka', '@和田': 'wada'}
 L = {l['id']: l for l in json.load(open(os.path.join(ROOT, 'lines.json')))}
 def norm(s): return re.sub(r'[^ぁ-ゖァ-ヺ一-龯々a-zA-Z0-9]', '', re.sub(r'（[^）]*）', '', s))
 def hira(s): return ''.join(chr(ord(c) - 0x60) if 'ァ' <= c <= 'ヶ' else c for c in s)
