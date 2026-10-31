@@ -9,6 +9,7 @@ import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voi
 import { voiceId } from './engine';
 import * as audio from './audio';
 import { setBg, guessBg, LOC_BG, type Tod } from './bg';
+import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
 const seasonNow = () => S ? season(cal(S.week).m) : '春';
@@ -29,7 +30,7 @@ export function boot() { audio.setVolumes(set.master, set.bgm, set.se); title();
 
 // ───────── タイトル ─────────
 function title() {
-  stop(); audio.stopBgm(); S = null; setBg('key', { season: '春', weather: '晴れ', tod: 'day' });
+  cgOff(); stop(); audio.stopBgm(); S = null; setBg('key', { season: '春', weather: '晴れ', tod: 'day' });
   if (!audio.songElement()?.loop) audio.stopSong();
   void audio.titleSong(BASE).then(ok => { if (ok || S) return; const h = document.createElement('div'); h.className = 'tapstart'; h.textContent = '🔊 タップで主題歌スタート'; document.querySelector('.title')?.appendChild(h);
     // iOS Safari は touchend/click をユーザー操作として扱うため複数イベントで解錠を試みる
@@ -37,14 +38,15 @@ function title() {
     const go = () => { if (!S) audio.unlockTitleSong(BASE); setTimeout(() => { if (audio.songPlaying() || audio.titleFallbackOn() || S) { EVS.forEach(e => document.removeEventListener(e, go, true)); h.remove(); } }, 300); };
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
-  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-help">遊び方</button></div>
+  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-cg">🖼 CGモード</button><button id="t-help">遊び方</button></div>
   <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。</p></div>`;
   $('#t-new').onclick = () => { audio.resume(); setup(); };
-  $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; audio.resume(); main(); } };
+  $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); main(); } };
   $('#t-load').onclick = () => loadDialog();
   $('#t-set').onclick = () => settings();
   $('#t-help').onclick = () => modal('遊び方', helpText());
   $('#t-song').onclick = () => themeSong();
+  $('#t-cg').onclick = () => cgGallery();
 }
 const SONG_LYRICS: [number, string][] = [[0, '止まらない この鼓動 今 走り出す'], [13, '迷い込んだ この世界で 答えを探してた'], [20, '小さな光 見つけた時 君が笑ってた'], [27, 'もう一歩 踏み出せば 変わり始める'], [34, '輝いて Shine again'], [37, '何度でも立ち上がれ'], [41, '涙さえ 超えてゆける'], [46, '君となら 走り出せ'], [50, '今すぐに 未来を掴みに行こう'], [56, '響いてるこの想い どこまでも'], [64, '不安だってあるけれど 止まれはしないから'], [71, '繋いだ手を離さないで 前を向いていく'], [78, '遠くでも届くまで 歌い続ける'], [85, '輝いて Shine again 何度でも立ち上がれ'], [92, '壊れその夜の先に 光がある'], [99.5, '止まらないこの鼓動 明日へ繋いで行こう'], [106.7, '変わらないこの想い 抱きしめて'], [113.8, 'どんな未来でも'], [118.8, '君となら行ける'], [124.8, '輝いて Shine again'], [127.8, '限界を超えていけ'], [131.8, '涙さえ力になる'], [136.8, '信じてる'], [138.8, '走り出せ 今すぐに'], [142.8, '新しい空の下 終わらない'], [148.1, 'この歌を届けよう'], [157.3, 'また光る未来へ']];
 function themeSong() {
@@ -99,7 +101,7 @@ function setup() {
 
 // ───────── メイン ─────────
 function main() {
-  if (!S) return title();
+  cgOff(); if (!S) return title();
   store.save('auto', S);
   audio.playBgm('school', TRANS[seasonNow()] || 0); bgFor(S.week % 2 ? 'classroom' : 'gate', 'day');
   if (S.queue.length) return scene();
@@ -165,7 +167,7 @@ function hud() {
 
 // ───────── シーン ─────────
 function scene() {
-  const s = S!; const v = view(s);
+  cgOff(); const s = S!; const v = view(s);
   if (!v) return main();
   const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.map(l => l.text).join(' ');
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; bgFor(LOC_BG[loc] || 'park', loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'); }
@@ -182,7 +184,7 @@ function scene() {
   const cg = v.kind === 'ending' ? 'ending' : (/告白/.test(v.title) || v.lines.some(l => l.emo === '告')) ? 'confess' : v.kind === 'date' && sc0?.data?.loc === 'festival' ? 'fireworks' : '';
   const stageCls = isConf ? 'confess' : v.kind === 'date' ? 'date' : v.kind === 'ending' ? 'ending' : '';
   const go = () => { playLines(v.title, v.lines, choose, v.h); if (stageCls) document.querySelector('.stage')?.classList.add(stageCls); };
-  if (cg) showCG(cg, v.title, go); else go();
+  if (cg && !v.lines.some(l => l.who === 'cg')) showCG(cg, v.title, go); else go();
 }
 export const CGS = ['confess', 'ending', 'fireworks'];
 function showCG(name: string, cap: string, after: () => void) {
@@ -193,17 +195,49 @@ function showCG(name: string, cap: string, after: () => void) {
   const key = (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); close(); } };
   setTimeout(() => { el.onclick = close; document.addEventListener('keydown', key); }, 500);
 }
+// ───────── イベントCG（一枚絵） ─────────
+const cgSmall = () => typeof innerWidth !== 'undefined' && Math.max(innerWidth, innerHeight) * (devicePixelRatio || 1) < 1100;
+export const cgUrl = (id: string, small = cgSmall()) => `${BASE}img/cg/h/${id}${small ? '-s' : ''}.webp`;
+export function preloadCgs(lines: Line[]) { for (const l of lines) if (l.who === 'cg' && CG_MAP[l.text]) { const im = new Image(); im.src = cgUrl(l.text); } }
+function syncCg() { if (S) cgSeen.merge(S.flags.filter(f => f.startsWith('cg:')).map(f => f.slice(3))); }
+function setCG(id: string) {
+  if (!CG_MAP[id]) return;
+  cgSeen.add(id); if (S && !S.flags.includes('cg:' + id)) S.flags.push('cg:' + id);
+  const u = cgUrl(id); let el = document.getElementById('cgl');
+  if (!el) { el = document.createElement('div'); el.id = 'cgl'; el.innerHTML = '<div class="cgblur"></div><img class="cgimg" alt="">'; document.body.appendChild(el); }
+  (el.querySelector('.cgblur') as HTMLElement).style.backgroundImage = `url("${u}")`;
+  const img = el.querySelector('.cgimg') as HTMLImageElement; img.alt = CG_MAP[id].title; el.dataset.id = id;
+  el.classList.remove('on'); img.onload = () => requestAnimationFrame(() => el!.classList.add('on')); img.src = u; if (img.complete) requestAnimationFrame(() => el!.classList.add('on'));
+  document.body.classList.add('cgmode');
+}
+function cgOff() {
+  if (typeof document === 'undefined') return; document.body.classList.remove('cgmode');
+  const el = document.getElementById('cgl'); if (el) { el.classList.remove('on'); el.id = ''; setTimeout(() => el.remove(), 600); }
+}
+function cgGallery() {
+  const seen = new Set(cgSeen.all()); const by: Record<string, typeof CG_LIST> = {};
+  for (const c of CG_LIST) (by[c.h] ||= []).push(c);
+  const html = Object.entries(by).map(([h, cs]) => `<h4 style="color:${HMAP[h]?.color || '#333'}">${HMAP[h] ? HMAP[h].sei + HMAP[h].mei : h}　${cs.filter(c => seen.has(c.id)).length}/${cs.length}</h4><div class="cggrid">${cs.map(c => seen.has(c.id) ? `<button class="cgth" data-cg="${c.id}"><img src="${cgUrl(c.id, true)}" alt="${esc(c.title)}" loading="lazy"><span>${esc(c.title)}</span></button>` : `<div class="cgth locked"><span>？？？</span></div>`).join('')}</div>`).join('');
+  modal(`CGモード（${CG_LIST.filter(c => seen.has(c.id)).length}/${CG_LIST.length}）`, html + '<p class="note">本編で見たイベントCGがここに追加されます（この端末に記録）。</p>');
+  document.querySelectorAll<HTMLElement>('[data-cg]').forEach(b => b.onclick = () => {
+    const id = b.dataset.cg!; const el = document.createElement('div'); el.className = 'cg cgview';
+    el.innerHTML = `<img src="${cgUrl(id, false)}" alt=""><div class="hint">クリックで閉じる</div>`; document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('on'));
+    el.onclick = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 600); };
+  });
+}
 let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
   let i = 0;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
   <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint">クリック / Enter で進む</div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
-  bindCmd();
+  bindCmd(); preloadCgs(lines);
   const box = $('#box');
   const next = () => {
     if (typing) { clearInterval(typing); typing = null; $('#tx').textContent = lines[i - 1].text; return; }
     if (i >= lines.length) { box.onclick = null; document.onkeydown = null; stop(); talking(false); after(); return; }
-    const L = lines[i++]; stop();
+    const L = lines[i++];
+    if (L.who === 'cg') { if (L.text === 'off') cgOff(); else setCG(L.text); return next(); }
+    stop();
     $('#nm').textContent = L.name; $('#nm').style.color = L.color; $('#tx').className = 'text ' + (L.who === 'n' ? 'narr' : '');
     const tier = HMAP[L.who] && S ? tierOf(S.hs[L.who]) : 0;
     speak(L.who, L.voice, L.emo, tier, set, undefined, L.vid);
@@ -343,7 +377,7 @@ function scheduleHtml() {
 }
 function loadDialog() {
   modal('LOAD（セーブ文字列を貼り付け）', `<textarea id="ld" class="savestr" placeholder="SEISHUN1:..."></textarea><button id="ld-go" class="primary">読み込む</button>`);
-  $('#ld-go').onclick = () => { try { S = importSave($<HTMLTextAreaElement>('#ld').value); closeModal(); toast('ロードしました'); main(); } catch (e: any) { toast(e.message); } };
+  $('#ld-go').onclick = () => { try { S = importSave($<HTMLTextAreaElement>('#ld').value); syncCg(); closeModal(); toast('ロードしました'); main(); } catch (e: any) { toast(e.message); } };
 }
 function settings() {
   const ja = hasJapaneseVoice();

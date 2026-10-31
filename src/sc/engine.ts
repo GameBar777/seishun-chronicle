@@ -75,6 +75,7 @@ export function render(t: string, s: GameState, hid: string | undefined, reading
 }
 const NPC_COLOR = '#636e72';
 export function parseLine(raw: string, s: GameState, ctxH?: string): Line {
+  if (raw.startsWith('cg:')) return { who: 'cg', name: '', emo: '通常', text: raw.slice(3).trim(), voice: '', color: '' };
   const m = raw.match(/^(@[^:(]+|[a-z]+)(?:\(([^)]+)\))?:([\s\S]*)$/);
   let who = 'n', emo: Emo = '通常', text = raw;
   if (m) { who = m[1]; emo = (m[2] as Emo) || '通常'; text = m[3]; }
