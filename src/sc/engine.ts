@@ -274,7 +274,31 @@ function explode(s: GameState, id: string, res: string[]) {
 const ALL_EV: Ev[] = [...CAL, ...DAILY, ...HEVENTS];
 export const EVMAP: Record<string, Ev> = Object.fromEntries(ALL_EV.map(e => [e.id, e]));
 const AUTO_MEET: Record<string, (s: GameState) => boolean> = { mio: s => s.week >= 0, rin: s => s.week >= 1 };
+// 1週のシーンは最大2件。必須（カレンダー・テスト・大会・誕生日・デート・エンディング）は常に出し、残りは最大4週まで後回し
+const CAL_IDS = new Set(CAL.map(e => e.id)); const MAX_WK = 2;
+const mustScene = (q: Scene) => q.kind === 'date' || q.kind === 'ending' || CAL_IDS.has(q.id) || ['opening', 'exam', 'tournament', 'birthday', 'meet_rin'].includes(q.id);
+const prio = (q: Scene) => mustScene(q) ? 0 : q.kind === 'event' && !q.id.startsWith('d_') ? 1 : q.kind === 'event' ? 2 : 3;
+// ランダムなセリフは一巡するまで繰り返さない
+export function pickL<T>(s: GameState, a: T[]): T {
+  const seen = (s.seenL ||= []); const key = (x: T) => typeof x === 'string' ? x.slice(0, 40) : JSON.stringify(x).slice(0, 40);
+  let c = a.filter(x => !seen.includes(key(x)));
+  if (!c.length) { const ks = new Set(a.map(key)); s.seenL = seen.filter(k => !ks.has(k)); c = a; }
+  const x = pick(s, c); s.seenL!.push(key(x)); if (s.seenL!.length > 600) s.seenL!.splice(0, 100); return x;
+}
 export function scheduleScenes(s: GameState) {
+  const pre = s.queue.length;
+  const later = (s.later || []).filter(l => s.week - l.w <= 4 && !s.seen.includes(l.q.id)); s.later = [];
+  scheduleRaw(s);
+  const fresh = [...later.map(l => l.q), ...s.queue.splice(pre)].filter((q, i, a) => a.findIndex(x => x.id === q.id && x.h === q.h) === i);
+  const sorted = fresh.map((q, i) => ({ q, i })).sort((a, b) => prio(a.q) - prio(b.q) || a.i - b.i).map(x => x.q);
+  let room = Math.max(0, MAX_WK - pre);
+  for (const q of sorted) {
+    if (mustScene(q)) { s.queue.push(q); room--; continue; }
+    if (room > 0) { s.queue.push(q); room--; continue; }
+    if (q.kind === 'event') s.later!.push({ q, w: later.find(l => l.q === q)?.w ?? s.week });
+  }
+}
+function scheduleRaw(s: GameState) {
   const c = cal(s.week);
   // 自動の出会い
   if (!s.seen.includes('meet_rin') && !s.queue.some(q => q.id === 'meet_rin')) { s.queue.push({ kind: 'event', id: 'meet_rin' }); }
@@ -363,7 +387,8 @@ function msgView(s: GameState, sc: Scene): View {
   if (sc.id === 'exam') {
     if (!sc.data) { const tot = 240; const prog = Math.min(1, s.week / LAST_WEEK); const avg = 2 * (55 + 120 * prog); const sc2 = s.stats.bun + s.stats.ri + ri(s, -25, 25) - (s.stats.hp < 30 ? 20 : 0); const z = (sc2 - avg) / (40 + 40 * prog); const rank = clamp(Math.round(tot / 2 - z * 70), 1, tot); sc.data = { rank, tot }; s.exams.push({ week: s.week, rank, total: tot }); diary(s, `定期テスト：学年${rank}位／${tot}人。`); }
     const { rank, tot } = sc.data; const lines = [L(`n:定期テストの結果が貼り出された。学年 ${rank}位／${tot}人。`)];
-    if (s.hs.mio.met) lines.push(L(rank <= 10 ? 'mio(驚):{C}……やるじゃない。次は負けないわ' : rank <= 60 ? 'mio:悪くないわね。でも、まだ上を目指せるはずよ' : 'mio(冷):……この順位で満足していないでしょうね', 'mio'));
+    // 澪のテスト後コメントは毎回ではなく、言い回しも一巡するまで重ねない
+    if (s.hs.mio.met && chance(s, 0.5)) lines.push(L(rank <= 10 ? pickL(s, ['mio(驚):{C}……やるじゃない。次は負けないわ', 'mio(驚):……今回は、わたしの負けね。次は譲らないわ']) : rank <= 60 ? pickL(s, ['mio:悪くないわね。でも、まだ上を目指せるはずよ', 'mio:……平均よりは上ね。本気を出せばもっと上でしょう']) : pickL(s, ['mio(冷):……この順位で満足していないでしょうね', 'mio(冷):……勉強、手伝ってあげてもいいけれど']), 'mio'));
     if (rank > 180 && s.hs.hinata.met) lines.push(L('hinata:{C}、補習だね……ドンマイ！', 'hinata'));
     return { kind: 'msg', title: '定期テスト', lines, choices: ['次へ'] };
   }
@@ -374,7 +399,7 @@ function msgView(s: GameState, sc: Scene): View {
   if (sc.id === 'encounter') {
     const H = HMAP[sc.h!], h = s.hs[sc.h!]; const c = cal(s.week);
     const place = pick(s, ['廊下で', '昇降口で', '購買の前で', '帰り道で', '図書室で', '駅前で']);
-    if (!sc.data) { sc.data = { g: pick(s, H.greet[tierOf(h)]) }; applyH(s, sc.h!, { f: 1, h: -3 }); }
+    if (!sc.data) { sc.data = { g: pickL(s, H.greet[tierOf(h)]) }; applyH(s, sc.h!, { f: 1, h: -3 }); }
     const ls = [L(`n:${place}${H.sei}${H.mei}とばったり会った。（${c.m}月・${s.weather}）`), L(`h(${h.bomb ? '哀' : tierOf(h) ? '嬉' : '通常'}):${h.bomb ? H.bombLine : sc.data.g}`, sc.h)];
     return { kind: 'msg', title: '偶然の出会い', h: sc.h, lines: ls, choices: ['次へ'] };
   }
@@ -385,7 +410,7 @@ function msgView(s: GameState, sc: Scene): View {
 export function sisterLines(s: GameState): string[] {
   const M = '@芽衣'; const out: string[] = [];
   const Y = cal(s.week).Y;
-  out.push(pick(s, ['n:夜。リビングでテレビを見ていると、芽衣がプリンを片手に隣に座った。', 'n:夕食の後、芽衣が「で、最近どうなの」と身を乗り出してきた。', 'n:日曜の昼。芽衣が、こちらのスマホをのぞき込もうとしている。']));
+  out.push(pickL(s, ['n:夜。リビングでテレビを見ていると、芽衣がプリンを片手に隣に座った。', 'n:夕食の後、芽衣が「で、最近どうなの」と身を乗り出してきた。', 'n:日曜の昼。芽衣が、こちらのスマホをのぞき込もうとしている。']));
   const met = HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].toki - s.hs[a.id].toki);
   if (!met.length) { out.push(`${M}:……お兄、女の子の知り合い、ひとりもいないの？ ……やば。まずは話しかけるとこからだよ`); return out; }
   const src = Y >= 2 ? '学校で聞いたんだけど' : '友達のお姉ちゃん情報だけど';
@@ -402,7 +427,7 @@ export function sisterLines(s: GameState): string[] {
   const top = met[0]; const hh = s.hs[top.id];
   if (s.week - hh.lastContact > 6) out.push(`${M}:あと、${top.mei}さんとしばらく話してないでしょ。女の子は、放っておかれるのが一番こたえるんだからね`);
   else if (s.stats.st > 120) out.push(`${M}:……てかお兄、顔疲れてるよ。たまには休みなよ`);
-  else out.push(pick(s, [`${M}:……情報料は、プリン一個ね。前払いで`, `${M}:べつに応援してるわけじゃないからね。お兄がフラれて落ち込むと、家が暗くなるから`, `${M}:誕生日、ちゃんとチェックしときなよ。女の子は覚えてるからね、そういうの`]));
+  else out.push(pickL(s, [`${M}:……情報料は、プリン一個ね。前払いで`, `${M}:べつに応援してるわけじゃないからね。お兄がフラれて落ち込むと、家が暗くなるから`, `${M}:誕生日、ちゃんとチェックしときなよ。女の子は覚えてるからね、そういうの`]));
   return out;
 }
 export function rumorLines(s: GameState): string[] {
@@ -413,7 +438,7 @@ export function rumorLines(s: GameState): string[] {
   const best = met.filter(h => !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].toki - s.hs[a.id].toki)[0];
   if (best) { const t = s.hs[best.id].toki; out.push(`@健太:${best.sei}${best.mei}、${t >= 65 ? 'お前の話するとき顔赤いぞ。マジで' : t >= 40 ? 'お前のこと、ちょっと気にしてるっぽいぜ' : t >= 20 ? 'お前のこと「悪くない」って言ってたらしい' : 'お前のこと、特に何とも思ってないみたいだな'}`); }
   const rival = met.filter(h => s.hs[h.id].rival >= 20 && !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].rival - s.hs[a.id].rival)[0];
-  if (rival) out.push(`@健太:そういや${rival.rivalName}が${rival.sei}${rival.mei}を狙ってるって噂だ。ぼやぼやしてると取られるぞ`);
+  if (rival) out.push(pickL(s, [`@健太:そういや${rival.rivalName}が${rival.sei}${rival.mei}を狙ってるって噂だ。ぼやぼやしてると取られるぞ`, `@健太:……おい、${rival.rivalName}、また${rival.sei}${rival.mei}と話してたぞ。いいのか？`, `@健太:${rival.sei}${rival.mei}の件、まだ${rival.rivalName}がしつこいらしい。お前、ちゃんと会ってるか？`]));
   const hints = [
     '@健太:図書室にこもってる三つ編みの子、知ってるか？ 文系の勉強してると、たまに見かけるらしい',
     '@健太:夜の音楽室からピアノが聞こえるって話。美術室で芸術活動して遅くまで残る奴が聞いたとか',
@@ -425,7 +450,7 @@ export function rumorLines(s: GameState): string[] {
     '@健太:何人もの女子にいい顔してると、そのうち爆発するぞ。俺は知らねーからな',
     '@健太:誕生日、覚えてるか？ 女子は意外と覚えてるもんだぞ、誰が祝ってくれたか',
   ];
-  out.push(pick(s, hints));
+  out.push(pickL(s, hints));
   return out;
 }
 
@@ -441,7 +466,7 @@ export function dateView(s: GameState, sc: Scene): View {
   const H = HMAP[sc.h!], h = s.hs[sc.h!], loc = LOCATIONS[sc.data.loc];
   const L = (x: string) => parseLine(x, s, sc.h);
   const step = sc.step!;
-  if (step === 0) return { kind: 'date', title: `デート：${loc.name}`, h: sc.h, lines: [L(`n:日曜日。${loc.name}の前で待ち合わせ。天気は${s.weather}。`), L(`h(${tierOf(h) ? '嬉' : '通常'}):お待たせ、{C}。`), ...(DATE_FLAVOR[sc.data.loc] ? [L(DATE_FLAVOR[sc.data.loc].arrive[s.week % 3])] : []), L('n:今日の服装は——')], choices: s.outfits.map(o => o) };
+  if (step === 0) return { kind: 'date', title: `デート：${loc.name}`, h: sc.h, lines: [L(`n:日曜日。${loc.name}の前で待ち合わせ。天気は${s.weather}。`), L(h.dates <= 1 ? `h(${tierOf(h) ? '嬉' : '通常'}):お待たせ、{C}。` : pickL(s, [`h(${tierOf(h) ? '嬉' : '通常'}):お待たせ、{C}。`, 'h:ごめん、待った？', 'h(嬉):{C}、早いね。……行こっか', 'h:……今日は、どこから回る？'])), ...(DATE_FLAVOR[sc.data.loc] ? [L(DATE_FLAVOR[sc.data.loc].arrive[s.week % 3])] : []), L('n:今日の服装は——')], choices: s.outfits.map(o => o) };
   if (step >= 1 && step <= 3) {
     const q = dqs(H)[sc.data.order[step - 1]];
     const lines = [L(`h:${q.q}`)];
@@ -497,7 +522,7 @@ export function phone(s: GameState, id: string, mode: 'talk' | 'invite', loc?: s
   s.phoneUsed = true;
   if (id === 'kenta') return rumorLines(s).map(x => parseLine(x, s));
   const H = HMAP[id], h = s.hs[id], t = tierOf(h);
-  const out = [parseLine(`h(${h.bomb ? '冷' : t ? '嬉' : '通常'}):${pick(s, H.phone[t])}`, s, id)];
+  const out = [parseLine(`h(${h.bomb ? '冷' : t ? '嬉' : '通常'}):${pickL(s, H.phone[t])}`, s, id)];
   if (mode === 'talk') {
     const wasBomb = h.bomb > 0;
     applyH(s, id, { f: 3, h: -25, tr: 1 });
@@ -508,8 +533,8 @@ export function phone(s: GameState, id: string, mode: 'talk' | 'invite', loc?: s
   const need = 25 * DIFF[s.setup.diff].thr;
   const ok = !h.withRival && h.bomb === 0 && (h.friend >= need || h.toki >= 30) && !(L.season && !L.season.includes(cal(s.week).m) && false);
   if (ok && s.dateBooked) return [parseLine('n:もう今週末の予定が入っている。', s)];
-  if (ok) { s.dateBooked = { h: id, loc: loc || 'park' }; out.push(parseLine(`h(嬉):${pick(s, H.inviteOk)}`, s, id)); out.push(parseLine(`n:今週の日曜日、${L.name}で会う約束をした。`, s)); applyH(s, id, { h: -10 }); }
-  else { out.push(parseLine(`h(${h.bomb ? '冷' : '哀'}):${pick(s, H.inviteNo)}`, s, id)); h.lastContact = s.week; }
+  if (ok) { s.dateBooked = { h: id, loc: loc || 'park' }; out.push(parseLine(`h(嬉):${pickL(s, H.inviteOk)}`, s, id)); out.push(parseLine(`n:今週の日曜日、${L.name}で会う約束をした。`, s)); applyH(s, id, { h: -10 }); }
+  else { out.push(parseLine(`h(${h.bomb ? '冷' : '哀'}):${pickL(s, H.inviteNo)}`, s, id)); h.lastContact = s.week; }
   return out;
 }
 
@@ -560,7 +585,7 @@ function birthdayResolve(s: GameState, id: string, idx: number): Line[] {
 function inviteResolve(s: GameState, ch: Choice, marker: string): Line[] {
   const [, id, tag] = marker.split(':'); const H = HMAP[id], h = s.hs[id]; const L = (x: string) => parseLine(x, s, id);
   const ok = h.bomb === 0 && (h.friend >= 30 * DIFF[s.setup.diff].thr || h.toki >= 35);
-  if (!ok) { gainStat(s, 'st', 6); h.lastContact = s.week; return [L(`h(哀):${pick(s, H.inviteNo)}`), L('n:断られてしまった……。')]; }
+  if (!ok) { gainStat(s, 'st', 6); h.lastContact = s.week; return [L(`h(哀):${pickL(s, H.inviteNo)}`), L('n:断られてしまった……。')]; }
   applyEff(s, ch.eff, id); applyH(s, id, { h: -30 });
   const flavor: Record<string, string[]> = {
     '夏祭り': ['n:浴衣姿で現れた彼女に、思わず言葉を失った。', 'h(照):……な、なに？ 変かな'],
@@ -571,7 +596,7 @@ function inviteResolve(s: GameState, ch: Choice, marker: string): Line[] {
     '初詣': ['n:おみくじは、二人とも大吉だった。', 'h(嬉):なにお願いしたの？ ……私？ ふふ、ないしょ'],
   };
   diary(s, `${tag}を${H.sei}${H.mei}と過ごした。`);
-  return [L(`h(嬉):${pick(s, H.inviteOk)}`), ...(flavor[tag] || []).map(L)];
+  return [L(`h(嬉):${pickL(s, H.inviteOk)}`), ...(flavor[tag] || []).map(L)];
 }
 function sportsResolve(s: GameState): Line[] {
   const L = (x: string, h?: string) => parseLine(x, s, h); const win = s.stats.un + ri(s, -20, 20) >= 110;
