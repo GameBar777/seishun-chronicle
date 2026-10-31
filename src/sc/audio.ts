@@ -1,4 +1,6 @@
-// BGM・主題歌・効果音：外部素材を使わず WebAudio で生成するオリジナル曲（メロディ／対旋律／パッド／アルペジオ／ベース／ドラム＋リバーブ・コンプ）
+// BGM・効果音：実音源ファイル（魔王魂・効果音ラボ。docs/audio-credits.md）を場面ごとに再生。
+// 下の WebAudio 合成曲は、ファイルの読み込みに失敗したときのフォールバック専用。
+import { BGM_KEYS, SE_KEYS, type BgmKey, type SeKey } from './bgm';
 let ctx: AudioContext | null = null, bgmGain: GainNode | null = null, seGain: GainNode | null = null, timer: any = null, noise: AudioBuffer | null = null;
 const hz = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 let rev: ConvolverNode | null = null, revSend: GainNode | null = null, music: GainNode | null = null;
@@ -49,7 +51,69 @@ export function unlockTitleSong(base: string) { resume(); if (titleFallback) ret
 export function stopSong() { if (songEl) { songEl.onended = null; songEl.pause(); songEl = null; } }
 export const songPlaying = () => !!songEl && !songEl.paused;
 export const songElement = () => songEl;
-export function setVolumes(master: number, bgm: number, se: number) { songVol = Math.min(1, master * bgm * 1.7); if (songEl) songEl.volume = songVol; if (!ensure()) return; bgmGain!.gain.value = master * bgm * 0.85; seGain!.gain.value = master * se * 0.25; }
+let vol = { master: .8, bgm: .7, se: .8 };
+export function setVolumes(master: number, bgm: number, se: number) { vol = { master, bgm, se }; songVol = Math.min(1, master * bgm * 1.7); if (songEl) songEl.volume = songVol; if (!ensure()) return; bgmGain!.gain.value = master * bgm * 0.85; seGain!.gain.value = master * se * 0.25; if (fileBus) fileBus.gain.value = master * bgm * 0.9; if (seBus) seBus.gain.value = master * se * 0.9; }
+export const volumes = () => vol;
+
+// ── 実音源 BGM（HTMLAudio → MediaElementSource → GainNode。iOS でも音量・フェードが効く）──
+let base = '', fileBus: GainNode | null = null, seBus: GainNode | null = null;
+export function setBase(b: string) { base = b; }
+const isBgmKey = (k: string): k is BgmKey => (BGM_KEYS as readonly string[]).includes(k);
+/** 旧来の曲名（合成曲名）→ 実音源キー */
+const ALIAS: Record<string, BgmKey> = { school: 'school', date: 'date', sad: 'sad', confession: 'confession', ending: 'good_end' };
+type Deck = { key: string; el: HTMLAudioElement; g: GainNode; src: MediaElementAudioSourceNode };
+let deck: Deck | null = null; const failed = new Set<string>(); let fileKey = '';
+const XF = 1.6; // クロスフェード秒
+function buses() {
+  const c = ensure(); if (!c) return null;
+  if (!fileBus) { fileBus = c.createGain(); fileBus.gain.value = vol.master * vol.bgm * .9; fileBus.connect(c.destination); seBus = c.createGain(); seBus.gain.value = vol.master * vol.se * .9; seBus.connect(c.destination); }
+  return c;
+}
+export const bgmUrl = (k: string) => `${base}audio/bgm/${k}.mp3`;
+export const seUrl = (k: string) => `${base}audio/se/${k}.mp3`;
+function fadeOutDeck(d: Deck, sec = XF) { const c = ctx!; const t = c.currentTime; d.g.gain.cancelScheduledValues(t); d.g.gain.setValueAtTime(d.g.gain.value, t); d.g.gain.linearRampToValueAtTime(0, t + sec); setTimeout(() => { d.el.pause(); d.el.removeAttribute('src'); try { d.src.disconnect(); d.g.disconnect(); } catch { } }, sec * 1000 + 100); }
+function startDeck(key: BgmKey, fade = XF): boolean {
+  const c = buses(); if (!c || typeof Audio === 'undefined') return false;
+  const el = new Audio(); el.preload = 'auto'; el.crossOrigin = 'anonymous'; el.src = bgmUrl(key);
+  const src = c.createMediaElementSource(el), g = c.createGain(); g.gain.value = 0; src.connect(g); g.connect(fileBus!);
+  const d: Deck = { key, el, g, src };
+  el.onerror = () => { failed.add(key); if (deck === d) { deck = null; fileKey = ''; synthFallback(key); } };
+  // ループの継ぎ目：曲尾の手前で同じ曲の新しいデッキへクロスフェード
+  el.ontimeupdate = () => { if (deck === d && el.duration && el.currentTime > el.duration - XF - .3) { const old = d; deck = null; startDeck(key, XF); fadeOutDeck(old); } };
+  el.play().catch(() => { pendingPlay = true; });
+  const t = c.currentTime; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + fade);
+  deck = d; return true;
+}
+let pendingPlay = false;
+function synthFallback(key: string) { const syn: Record<string, string> = { good_end: 'ending', bad_end: 'sad', confession: 'confession', sad: 'sad', date: 'date', cafe: 'date', festival: 'date', winter: 'date', tender: 'confession', rival: 'sad', night: 'sad' }; playSynth(syn[key] || 'school', 0); }
+/** 場面のBGMをファイルで再生（同じ曲なら何もしない）。読み込み失敗時のみ合成曲にフォールバック */
+export function playTrack(key: BgmKey) {
+  if (songEl) fadeSong();
+  if (fileKey === key && (deck || playing)) return; fileKey = key;
+  if (failed.has(key) || !buses()) { stopFileBgm(); return synthFallback(key); }
+  stopSynth(); if (deck) fadeOutDeck(deck); deck = null; startDeck(key);
+}
+export function stopFileBgm(sec = .8) { if (deck) fadeOutDeck(deck, sec); deck = null; fileKey = ''; }
+export const currentTrack = () => fileKey;
+/** 週替わりジングル等で一時的にBGMを下げる */
+export function duck(sec = 2.2, level = .35) { const d = deck; if (!d || !ctx) return; const t = ctx.currentTime; d.g.gain.cancelScheduledValues(t); d.g.gain.setValueAtTime(d.g.gain.value, t); d.g.gain.linearRampToValueAtTime(level, t + .15); d.g.gain.setValueAtTime(level, t + sec); d.g.gain.linearRampToValueAtTime(1, t + sec + .8); }
+// ── 実音源 SE（デコード済みバッファをキャッシュ）──
+const seBuf = new Map<string, AudioBuffer | Promise<AudioBuffer | null> | null>();
+function loadSe(k: string): Promise<AudioBuffer | null> {
+  const c = buses(); if (!c) return Promise.resolve(null); const have = seBuf.get(k);
+  if (have instanceof AudioBuffer || have === null) return Promise.resolve(have); if (have) return have;
+  const p = fetch(seUrl(k)).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(a => new Promise<AudioBuffer>((res, rej) => c.decodeAudioData(a, res, rej))).then(b => { seBuf.set(k, b); return b; }, () => { seBuf.set(k, null); return null; });
+  seBuf.set(k, p); return p;
+}
+export function preloadSe(keys: readonly string[] = SE_KEYS) { keys.forEach(k => void loadSe(k)); }
+export type SeName = SeKey;
+let unlocked = false;
+/** iOS Safari：最初のユーザー操作で AudioContext を再開し、保留中のBGMを鳴らす */
+export function installUnlock() {
+  if (unlocked || typeof document === 'undefined') return; unlocked = true;
+  const go = () => { const c = ensure(); c?.resume?.(); if (pendingPlay && deck) { pendingPlay = false; deck.el.play().catch(() => { pendingPlay = true; }); } };
+  ['pointerdown', 'touchend', 'keydown', 'click'].forEach(e => document.addEventListener(e, go, { capture: true, passive: true }));
+}
 
 // ── 曲データ：度数（長音階 1=主音, 8=1オクターブ上, b=半音下げ）、'-'=伸ばす、0=休符。1小節＝8分音符8つ
 type Song = { bpm: number; root: number; minor?: boolean; chords: string[]; mel: string[]; drums: 0 | 1 | 2; lead: 'bell' | 'piano' | 'flute'; pad?: boolean; arp?: boolean };
@@ -119,9 +183,14 @@ function drum(kind: 'k' | 's' | 'h' | 'o' | 'c' | 't', t: number, vel = 1, tune 
   f.type = cfg[0]; f.frequency.value = cfg[1]; const g = env(t, cfg[2] * vel, .001, cfg[3]); s.connect(f); f.connect(g); g.connect(kind === 'h' || kind === 'o' ? panTo(.3) : music!); s.start(t); s.stop(t + cfg[3] + .1);
 }
 let playing = '', startAt = 0;
+/** 互換API：実音源キー or 旧合成曲名。通常はファイル再生、合成は theme/検証用とフォールバックのみ */
 export function playBgm(name: string, transpose = 0, opts: { loop?: boolean; onEnd?: () => void; horizon?: number } = {}) {
+  if (!opts.horizon && name !== 'theme' && name !== 'title') { const k = isBgmKey(name) ? name : ALIAS[name]; if (k) return playTrack(k); }
+  return playSynth(name, transpose, opts);
+}
+function playSynth(name: string, transpose = 0, opts: { loop?: boolean; onEnd?: () => void; horizon?: number } = {}) {
   const horizon = opts.horizon ?? .15;
-  if (songEl && !opts.horizon) fadeSong(); if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; stopBgm(); playing = key;
+  if (songEl && !opts.horizon) fadeSong(); if (!ensure()) return; const key = name + transpose; if (playing === key && timer) return; stopSynth(); if (!opts.horizon) { if (deck) fadeOutDeck(deck); deck = null; } playing = key;
   const song = name === 'theme' ? songOfTheme() : (SONGS[name] || SONGS.school);
   const c = ctx!, step = 60 / song.bpm / 2; let slot = 0, next = c.currentTime + .08; startAt = next; const total = song.chords.length * 8; const loop = opts.loop ?? name !== 'theme';
   const bars = song.mel.map(b => parseBar(b, song.minor));
@@ -163,15 +232,25 @@ export async function renderBgm(name: string, sampleRate = 44100): Promise<Audio
   ctx = new OfflineAudioContext(2, Math.ceil(sec * sampleRate), sampleRate) as any; bgmGain = null; const off = ctx as any as OfflineAudioContext;
  
   initGraph(); bgmGain!.gain.value = .85 * .8;
-  playBgm(name, 0, { loop: false, horizon: 1e9 }); if (timer) { clearInterval(timer); timer = null; }
+  playSynth(name, 0, { loop: false, horizon: 1e9 }); if (timer) { clearInterval(timer); timer = null; }
   const buf = await off.startRendering();
   [ctx, bgmGain, seGain, music, rev, revSend, noise] = prev as any; playing = ''; timer = null; return buf;
 }
 export const bgmTime = () => ctx ? ctx.currentTime - startAt : 0;
 export const nowPlaying = () => playing;
-export function stopBgm() { if (timer) clearInterval(timer); timer = null; playing = ''; }
-export function se(kind: 'select' | 'good' | 'bad' | 'bomb' | 'heart' | 'page') {
-  if (!ensure()) return; const c = ctx!, t = c.currentTime; const seq = { select: [76], good: [72, 76, 79], bad: [64, 60], bomb: [40, 36], heart: [79, 84, 88], page: [88] }[kind];
+function stopSynth() { if (timer) clearInterval(timer); timer = null; playing = ''; }
+export function stopBgm() { stopSynth(); stopFileBgm(); }
+/** 効果音：実音源ファイル。読み込み失敗時のみ合成音 */
+export function se(kind: SeKey, opts: { vol?: number; rate?: number } = {}) {
+  const c = buses(); if (!c) return; if (c.state === 'suspended') c.resume?.();
+  void loadSe(kind).then(b => {
+    if (!b) return synthSe(kind);
+    const s = c.createBufferSource(); s.buffer = b; if (opts.rate) s.playbackRate.value = opts.rate; const g = c.createGain(); g.gain.value = opts.vol ?? 1; s.connect(g); g.connect(seBus!); s.start();
+  });
+}
+function synthSe(name: string) {
+  const kind = (({ select: 'select', confirm: 'select', cancel: 'bad', good: 'good', statup: 'good', bad: 'bad', statdown: 'bad', bomb: 'bomb', injury: 'bomb', cold: 'bad', heart: 'heart', doki: 'heart', rival: 'bomb' }) as Record<string, string>)[name] || 'page';
+  if (!ensure()) return; const c = ctx!, t = c.currentTime; const seq = ({ select: [76], good: [72, 76, 79], bad: [64, 60], bomb: [40, 36], heart: [79, 84, 88], page: [88] } as Record<string, number[]>)[kind];
   seq.forEach((n, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = kind === 'bomb' ? 'sawtooth' : 'sine'; o.frequency.value = hz(n); g.gain.setValueAtTime(kind === 'page' ? .1 : .4, t + i * 0.09); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.3); o.connect(g); g.connect(seGain!); o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.32); });
 }
 export function resume() { ensure()?.resume?.(); }
