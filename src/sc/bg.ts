@@ -5,7 +5,8 @@ export type Tod = 'morning' | 'day' | 'evening' | 'night';
 export type Fx = 'petal' | 'rain' | 'snow' | 'leaf' | 'firefly' | 'sparkle' | 'none';
 let cur = '', layer: HTMLDivElement | null = null, cv: HTMLCanvasElement | null = null, raf = 0, parts: any[] = [], fx: Fx = 'none', small = false;
 const reduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-export const bgUrl = (k: string) => `${BASE}img/bg/${k}${small ? '-s' : ''}.webp`;
+const portraitKey = () => typeof innerWidth !== 'undefined' && innerHeight > innerWidth * 1.25;
+export const bgUrl = (k: string) => k === 'key' && portraitKey() ? `${BASE}img/bg/key-p.webp` : `${BASE}img/bg/${k}${small ? '-s' : ''}.webp`;
 export function guessBg(text: string, fallback = 'gate'): { bg: string; tod?: Tod } {
   const r: [RegExp, string, Tod?][] = [[/天文|星空|星を|流れ星|夜空/, 'observatory', 'night'], [/祭|花火|浴衣|神社|初詣|縁日/, 'festival', 'night'], [/海|浜|水着|波/, 'sea'], [/屋上|夕焼け/, 'rooftop', 'evening'],
     [/水族館/, 'aquarium'], [/遊園地|観覧車/, 'amuse'], [/カフェ|喫茶/, 'cafe'], [/ゲームセンター|カラオケ|モール|商店街|駅前/, 'town', 'evening'], [/美術館/, 'museum'], [/映画/, 'movie'], [/山|ハイキング/, 'mountain'], [/公園/, 'park'],
@@ -27,10 +28,11 @@ export function setBg(key: string, opt: { season: string; weather: string; tod?:
     layer = document.createElement('div'); layer.id = 'bg'; layer.innerHTML = '<div class="bgimg"></div><div class="bgimg b2"></div><div class="tint"></div><canvas></canvas>';
     document.body.prepend(layer); cv = layer.querySelector('canvas');
     addEventListener('resize', size); size();
+    addEventListener('resize', () => { if (cur === 'key' && layer!.dataset.key !== (portraitKey() ? 'key-p' : 'key')) { const k = cur; cur = ''; setBg(k, { season: '春', weather: '晴れ', tod: layer!.dataset.tod as Tod }); } });
     addEventListener('pointermove', e => { if (reduce()) return; const x = (e.clientX / innerWidth - .5), y = (e.clientY / innerHeight - .5); layer!.style.setProperty('--px', `${-x * 18}px`); layer!.style.setProperty('--py', `${-y * 12}px`); });
   }
   const tod = opt.tod || 'day';
-  layer.dataset.tod = tod;
+  layer.dataset.tod = tod; layer.dataset.key = key + (key === 'key' && portraitKey() ? '-p' : '');
   if (key !== cur) {
     const imgs = layer.querySelectorAll<HTMLDivElement>('.bgimg'); const front = imgs[0].classList.contains('on') ? imgs[1] : imgs[0], back = front === imgs[0] ? imgs[1] : imgs[0];
     const im = new Image(); im.onload = () => { front.style.backgroundImage = `url(${im.src})`; front.classList.add('on'); back.classList.remove('on'); }; im.src = bgUrl(key); cur = key;
