@@ -13,8 +13,8 @@
 | 桐生院麗華 | reika_2 秘密のゲームセンター | reika_3 姉の影 | reika_4 縁談 | reika_confess 校門・歩いて帰る | reika_kiss | **実装済み** |
 | 灯野ことは | kotoha_1 最初の読者 | kotoha_2 雨の神社 | kotoha_4 選考結果 | kotoha_confess 図書室の手製の本 | kotoha_kiss | **実装済み** |
 | 姫野ルカ | ruka_1 撮影モデル | ruka_2 夜のコンビニ | ruka_4 本気の負け | ruka_confess 卒業式の後 | ruka_kiss | **実装済み** |
-| 黒瀬凛 | rin_1 病院の売店 | rin_3 手術の前夜 | rin_4 同じ未来 | rin_confess 病院の屋上 | rin_kiss | 未実装 |
-| 宙野しずく（隠し） | shizuku_meet 丘の上の幽霊 | shizuku_1 木星の縞 | shizuku_3 新しい光 | shizuku_confess 旧天文台のドーム | shizuku_kiss | 未実装 |
+| 黒瀬凛 | rin_1 病院の売店 | rin_3 手術の前夜 | rin_4 同じ未来 | rin_confess 病院の屋上 | rin_kiss | **実装済み** |
+| 宙野しずく（隠し） | shizuku_meet 丘の上の幽霊 | shizuku_1 木星の縞 | shizuku_3 新しい光 | shizuku_confess 旧天文台のドーム | shizuku_kiss | **実装済み** |
 
 キスはグッドエンド本文に地の文（ナレーション、音声なし）を2行足して挿入する（ひなたで実施済み）。
 見たCGは端末の localStorage `seishun:cg` と、セーブの flags `cg:<id>` に記録。タイトルの「CGモード」で閲覧。
