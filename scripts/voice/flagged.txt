@@ -16,3 +16,6 @@ d4b9d72ce256a790	kotoha	f0_outlier
 95e7ba575bfc0b4f	rin	silent
 41477eb2aa9bc8c0	ruka	silent
 d4e6d5f73248dba7	shizuku	silent
+e24cf2371f1d2413	hinata	f0_outlier
+0934e58f8686ff2b	kaho	silent
+b76f8e03df676bf6	kotoha	f0_outlier

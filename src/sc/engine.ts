@@ -13,6 +13,7 @@ import { FRIENDS } from './data/friends';
 const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4, ...SISTER, ...FRIENDS];
 const HEVENTS = [...HEV0, ...SIDE_EVENTS, ...SIDE_EVENTS2];
 import { CAL } from './data/calendar';
+import { WADA_INTRO, WADA_INTRO_CH, WADA_SC, WADA_CH, WADA_STAGE_T, WADA_REACT_WIN, WADA_REACT_LOSE, WADA_END } from './data/wada';
 import type { Ev, Eff, Choice } from './data/schema';
 
 export const SAVE_VERSION = 1;
@@ -264,14 +265,56 @@ function weeklyHeroines(s: GameState, res: string[]) {
     if (s.week % 4 === 0 && h.friend >= 20) { const a = attraction(s, H.id); if (a >= 1.05) h.toki = clamp(h.toki + 1, 0, 100); else if (a < 0.75 && h.toki > 25) h.toki = clamp(h.toki - 1, 0, 100); }
     // ライバル（2年目から）
     if (s.week >= 52 && H.id !== 'shizuku' && h.friend >= 15) {
-      const pace = h.toki >= 60 ? -1 : (0.6 + (60 - h.toki) / 80) * D.rival * (gap > 4 ? 1.5 : 1);
+      const pace = h.toki >= 60 ? -1 : (0.35 + (60 - h.toki) / 120) * D.rival * (gap > 4 ? 1.5 : 1);
       const before = h.rival; h.rival = clamp(h.rival + pace, 0, 100);
       if (before < 50 && h.rival >= 50) s.lastLog.push(`⚠ 噂：${H.rivalName}が${H.sei}${H.mei}に近づいているらしい`);
       if (before < 80 && h.rival >= 80) s.lastLog.push(`⚠⚠ ${H.sei}${H.mei}と${H.rivalName}が二人で歩いていたという噂……`);
-      if (h.rival >= 100 && h.toki < 65) { h.withRival = true; h.bomb = 0; s.lastLog.push(`💔 ${H.sei}${H.mei}が${H.rivalName}と付き合い始めた`); diary(s, `${H.sei}${H.mei}が${H.rivalName}と付き合い始めたと聞いた。`); }
+      if (h.rival >= 100 && h.toki < 65) takeBy(s, H.id, false);
     }
   }
   if (s.rumor > 0) s.rumor--;
+  wadaWeek(s, res);
+}
+// ───────── 和田 和樹（2年目4月〜） ─────────
+export const WADA_START = 53, WADA_GAP = 7;
+export const wadaName = '和田 和樹（一年生）';
+function wadaTarget(s: GameState): string | undefined {
+  const w = s.wada!; const c = HEROINES.filter(H => s.hs[H.id].met && !s.hs[H.id].withRival && !w.out.includes(H.id));
+  return c.sort((a, b) => (s.hs[b.id].toki + s.hs[b.id].friend / 2) - (s.hs[a.id].toki + s.hs[a.id].friend / 2))[0]?.id;
+}
+function wadaWeek(s: GameState, res: string[]) {
+  if (s.week < WADA_START || !s.wada) return;
+  const w = s.wada; const D = DIFF[s.setup.diff];
+  if (w.won.length) return;
+  if (!w.t || w.out.includes(w.t) || s.hs[w.t].withRival) w.t = wadaTarget(s);
+  if (!w.t) return; const h = s.hs[w.t]; const gap = s.week - h.lastContact;
+  w.m[w.t] = clamp((w.m[w.t] || 0) + (h.toki >= 60 ? 0.3 : (1 + (60 - h.toki) / 40) * D.rival) * (gap > 4 ? 1.5 : 1), 0, 100);
+}
+function takeBy(s: GameState, id: string, wada: boolean) {
+  const H = HMAP[id]; const h = s.hs[id]; h.withRival = true; h.bomb = 0; const nm = wada ? wadaName : H.rivalName;
+  if (wada) s.wada!.won.push(id);
+  s.lastLog.push(`💔 ${H.sei}${H.mei}が${nm}と付き合い始めた`); diary(s, `${H.sei}${H.mei}が${nm}と付き合い始めたと聞いた。`);
+}
+function wadaView(s: GameState, sc: Scene): View {
+  if (sc.id === 'wada_intro') return { kind: 'event', title: '生意気な後輩', lines: WADA_INTRO.map(l => parseLine(l, s)), choices: WADA_INTRO_CH.map(c => c[0]) };
+  const st = s.wada!.st[sc.h!] || 0; const H = HMAP[sc.h!]; const S = WADA_SC[sc.h!][st];
+  return { kind: 'event', title: `${WADA_STAGE_T[st]}――${H.sei}${H.mei}`, h: sc.h, lines: S.lines.map(l => parseLine(l, s, sc.h)), choices: WADA_CH };
+}
+function wadaResolve(s: GameState, sc: Scene, idx: number): Line[] {
+  const L = (x: string) => parseLine(x, s, sc.h);
+  if (sc.id === 'wada_intro') { s.seen.push('wada_intro'); return (WADA_INTRO_CH[idx]?.[1] || []).map(L); }
+  const w = s.wada!; const id = sc.h!; const h = s.hs[id]; const st = w.st[id] || 0; const S = WADA_SC[id][st];
+  w.st[id] = st + 1; w.next = s.week + WADA_GAP;
+  const cut = idx === 0 && (h.toki >= 25 || h.friend >= 40);
+  if (idx === 0) { applyH(s, id, cut ? { t: 3, tr: 2 } : { f: 1, tr: -1 }); w.m[id] = clamp((w.m[id] || 0) - (cut ? 25 : 8), 0, 100); }
+  else { w.m[id] = clamp((w.m[id] || 0) + 12, 0, 100); (w.watch ||= {})[id] = (w.watch[id] || 0) + 1; }
+  const out = (cut ? S.win : S.lose).map(L);
+  if (st >= 2) {
+    // 告白：ほったらかしなら和田の勝ち
+    if (w.m[id] >= 85 && h.toki < 40 && h.friend >= 30 && (w.watch?.[id] || 0) >= 3 && s.week - h.lastContact > 3) { takeBy(s, id, true); out.push(L(pickL(s, WADA_REACT_LOSE))); }
+    else { w.out.push(id); w.t = undefined; out.push(L(pickL(s, WADA_REACT_WIN))); }
+  }
+  return out;
 }
 function explode(s: GameState, id: string, res: string[]) {
   const H = HMAP[id], h = s.hs[id];
@@ -290,7 +333,7 @@ const AUTO_MEET: Record<string, (s: GameState) => boolean> = { mio: s => s.week 
 // 1週のシーンは最大2件。必須（カレンダー・テスト・大会・誕生日・デート・エンディング）は常に出し、残りは最大4週まで後回し
 const TRANS = ['――その日の放課後。', '――数日後。', '――週の終わり。', '――その夜。', '――翌日の昼休み。', '――帰り道。'];
 const CAL_IDS = new Set(CAL.map(e => e.id)); const MAX_WK = 2;
-const mustScene = (q: Scene) => q.kind === 'date' || q.kind === 'ending' || CAL_IDS.has(q.id) || ['opening', 'exam', 'tournament', 'birthday', 'meet_rin'].includes(q.id);
+const mustScene = (q: Scene) => q.kind === 'date' || q.kind === 'ending' || CAL_IDS.has(q.id) || ['opening', 'exam', 'tournament', 'birthday', 'meet_rin', 'wada_intro', 'wada'].includes(q.id);
 const prio = (q: Scene) => mustScene(q) ? 0 : q.kind === 'event' && !q.id.startsWith('d_') ? 1 : q.kind === 'event' ? 2 : 3;
 // ランダムなセリフは一巡するまで繰り返さない
 export function pickL<T>(s: GameState, a: T[]): T {
@@ -315,6 +358,11 @@ export function scheduleScenes(s: GameState) {
   for (let i = Math.max(1, pre); i < s.queue.length; i++) { const q = s.queue[i]; if (q.kind === 'event' || q.kind === 'msg') q.tr ||= pickL(s, TRANS); }
 }
 function scheduleRaw(s: GameState) {
+  if (s.week >= WADA_START) {
+    s.wada ||= { m: {}, st: {}, next: WADA_START + 4, out: [], won: [] };
+    if (!s.seen.includes('wada_intro')) s.queue.push({ kind: 'event', id: 'wada_intro' });
+    else if (!s.wada.won.length && s.week >= s.wada.next && s.week < LAST_WEEK - 2) { const t = s.wada.t || wadaTarget(s); if (t && !s.hs[t].withRival) { s.wada.t = t; s.queue.push({ kind: 'event', id: 'wada', h: t }); s.wada.next = s.week + WADA_GAP; } }
+  }
   const c = cal(s.week);
   // 自動の出会い
   if (!s.seen.includes('meet_rin') && !s.queue.some(q => q.id === 'meet_rin')) { s.queue.push({ kind: 'event', id: 'meet_rin' }); }
@@ -366,6 +414,7 @@ function view0(s: GameState): View | null {
     if (sc.id === 'opening') return { kind: 'event', title: 'プロローグ　春、星見ヶ丘', lines: OPENING.map(l => parseLine(l, s, 'hinata')), choices: ['春日ひなたに「おはよう」と返す', '「寝ぐせなんてついてない」と言い返す'] };
     if (sc.id === 'meet_rin') return { kind: 'event', title: '隣の席の少女', h: 'rin', lines: MEET_RIN.map(l => parseLine(l, s, 'rin')), choices: ['「よろしく」と笑いかける', '黙って教科書を出す'] };
     if (sc.id === 'birthday') return birthdayView(s, sc.h!);
+    if (sc.id === 'wada' || sc.id === 'wada_intro') return wadaView(s, sc);
     const e = EVMAP[sc.id];
     if (e.h === 'mio' || e.id === 'club_select') { /* noop */ }
     const ls = (e.dynLines ? e.dynLines(s) : []).concat(e.lines);
@@ -460,6 +509,7 @@ export function rumorLines(s: GameState): string[] {
   const best = met.filter(h => !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].toki - s.hs[a.id].toki)[0];
   if (best) { const t = s.hs[best.id].toki; out.push(`@健太:${best.sei}${best.mei}、${t >= 65 ? 'お前の話するとき顔赤いぞ。マジで' : t >= 40 ? 'お前のこと、ちょっと気にしてるっぽいぜ' : t >= 20 ? 'お前のこと「悪くない」って言ってたらしい' : 'お前のこと、特に何とも思ってないみたいだな'}`); }
   const rival = met.filter(h => s.hs[h.id].rival >= 20 && !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].rival - s.hs[a.id].rival)[0];
+  const wt = s.wada?.t; if (wt && (s.wada!.m[wt] || 0) >= 20 && !s.hs[wt].withRival) out.push(pickL(s, [`@健太:一年の和田、最近${HMAP[wt].sei}${HMAP[wt].mei}にべったりだぞ。……放っといていいのか？`, `@健太:和田のやつ、${HMAP[wt].mei}のこと本気らしい。お前、最近ちゃんと話してるか？`]));
   if (rival) out.push(pickL(s, [`@健太:そういや${rival.rivalName}が${rival.sei}${rival.mei}を狙ってるって噂だ。ぼやぼやしてると取られるぞ`, `@健太:……おい、${rival.rivalName}、また${rival.sei}${rival.mei}と話してたぞ。いいのか？`, `@健太:${rival.sei}${rival.mei}の件、まだ${rival.rivalName}がしつこいらしい。お前、ちゃんと会ってるか？`]));
   const hints = [
     '@健太:図書室にこもってる三つ編みの子、知ってるか？ 文系の勉強してると、たまに見かけるらしい',
@@ -569,6 +619,7 @@ export function resolve(s: GameState, idx: number): Line[] {
     if (sc.id === 'opening') { s.seen.push('opening'); meet(s, 'mio'); applyH(s, 'hinata', idx === 0 ? { f: 3, t: 1 } : { f: 2, tr: 2 }); return [L(idx === 0 ? 'h(嬉):よろしい！ じゃ、行こっか' : 'h(嬉):ついてるってば。ほら、直してあげる', 'hinata')]; }
     if (sc.id === 'meet_rin') { s.seen.push('meet_rin'); meet(s, 'rin'); applyH(s, 'rin', idx === 0 ? { f: 3 } : { tr: 3 }); return [L(idx === 0 ? 'h(冷):……ん' : 'n:彼女が、ほんの少しだけこちらを見た気がした。', 'rin')]; }
     if (sc.id === 'birthday') return birthdayResolve(s, sc.h!, idx);
+    if (sc.id === 'wada' || sc.id === 'wada_intro') return wadaResolve(s, sc, idx);
     const e = EVMAP[sc.id]; const ch = choicesOf(s, e)[idx]; s.seen.push(e.id);
     if (e.h && !e.id.endsWith('_meet')) { s.flags = s.flags.filter(f => !f.startsWith('lastHE:')); s.flags.push('lastHE:' + s.week); s.hs[e.h].events++; diary(s, `【${e.title}】${HMAP[e.h].sei}${HMAP[e.h].mei}との出来事。`); }
     if (e.id.endsWith('_meet') && e.h) meet(s, e.h);
@@ -694,7 +745,7 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
   } else {
     const rivalH = HEROINES.filter(H => s.hs[H.id].withRival).sort((a, b) => s.hs[b.id].friend - s.hs[a.id].friend)[0];
     const friendH = HEROINES.filter(H => s.hs[H.id].met && s.hs[H.id].friend >= 65 && !s.hs[H.id].withRival).sort((a, b) => s.hs[b.id].friend - s.hs[a.id].friend)[0];
-    if (rivalH && s.hs[rivalH.id].friend >= 30) { id = 'rival:' + rivalH.id; h = rivalH.id; title = `${rivalH.sei}${rivalH.mei}と${rivalH.rivalName.split('（')[0]}のエンディング`; body = rivalH.endings.rival; }
+    if (rivalH && s.hs[rivalH.id].friend >= 30) { const byW = s.wada?.won.includes(rivalH.id); id = (byW ? 'wada:' : 'rival:') + rivalH.id; h = rivalH.id; title = `${rivalH.sei}${rivalH.mei}と${(byW ? wadaName : rivalH.rivalName).split('（')[0]}のエンディング`; body = byW ? WADA_END(rivalH.mei) : rivalH.endings.rival; }
     else if (friendH) { id = 'friend:' + friendH.id; h = friendH.id; title = `友情エンド：${friendH.sei}${friendH.mei}`; body = friendH.endings.friend; }
     else if (s.courseResult === '合格') { id = 'course'; title = '進路成功エンド：新しい春へ'; body = ['n:恋は実らなかった。けれど、手の中には合格通知がある。', '@健太:{S}、お前はよくやったよ。大学で彼女作れよな！', 'n:桜はまだ咲いていない。それでも、確かに春は来ていた。']; }
     else { body = ['n:式が終わり、校門の前に一人で立った。', 'n:誰かを待っていたわけじゃない。……待っていてくれる人が、いなかっただけだ。', '@健太:……帰るか、{S}。ラーメンおごってやるよ', '@田中:俺も行く！ 替え玉は研究会の経費で落とす！ ……経費、ないけど！']; }

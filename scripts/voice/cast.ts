@@ -12,6 +12,7 @@ export const VOICED: Record<string, { slug: string; name: string; voiceId: strin
   '@芽衣': { slug: 'mei', name: 'Lida', voiceId: 'yPWBURQS57P0VcJh4deb', sex: 'f', pron: 'お兄' },
   '@健太': { slug: 'kenta', name: 'Hiro', voiceId: 'y3fpa8t4npoVDiU9o7Gc', sex: 'm', pron: 'お前' },
   '@田中': { slug: 'tanaka', name: 'Ritsuto', voiceId: 'A4AyGcPAjb1pHgflyZZp', sex: 'm', pron: 'お前' },
+  '@和田': { slug: 'wada', name: 'Minto', voiceId: 'lfG6BR3yQRoBrnUm4Z8N', sex: 'm', pron: '先輩' },
   '@担任・真鍋': { slug: 'manabe', name: 'Tatsuki', voiceId: 'AYFJOmHxRJdmf572TQ7R', sex: 'm', pron: 'お前' },
 };
 /**
