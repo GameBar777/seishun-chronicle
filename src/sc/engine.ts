@@ -74,12 +74,33 @@ export function render(t: string, s: GameState, hid: string | undefined, reading
   return t.replace(/\{C\}/g, callT).replace(/\{S\}/g, S).replace(/\{M\}/g, M);
 }
 const NPC_COLOR = '#636e72';
+// 進路に合わせたセリフの言い換え（就職・専門学校で「大学」と言われないように）。voiceId も言い換え後で引く
+export const CAREER: [string, string, string][] = [
+  ['大学行っても、連絡しろよ', '働き始めても、連絡しろよ', '専門行っても、連絡しろよ'],
+  ['手の中には合格通知がある', '手の中には内定通知がある', '手の中には合格通知がある'],
+  ['大学で彼女作れよな', '職場で彼女作れよな', '専門で彼女作れよな'],
+  ['お兄、合格おめでと', 'お兄、内定おめでと', 'お兄、合格おめでと'],
+  ['大学行っても、たまにはお店に', '働き始めても、たまにはお店に', '専門行っても、たまにはお店に'],
+  ['同じ大学で、また隣の席を予約しておくわ', '春からも、また隣の席を予約しておくわ', '春からも、また隣の席を予約しておくわ'],
+  ['大学でもお互い頑張りましょう', '春からもお互い頑張りましょう', '春からもお互い頑張りましょう'],
+  ['大学でも走るからさ', '春からも走るからさ', '春からも走るからさ'],
+  ['大学で可愛い子に浮気したら', '職場で可愛い子に浮気したら', '専門で可愛い子に浮気したら'],
+  ['お兄は大学生か', 'お兄は社会人か', 'お兄は専門学校生か'],
+  ['合格祈願。……一番高いやつ', '必勝祈願。……一番高いやつ', '合格祈願。……一番高いやつ'],
+  ['手の中には合格通知', '手の中には内定通知', '手の中には合格通知'],
+];
+export function career(text: string, course: string): string {
+  const col = course === '就職' ? 1 : course === '専門学校' ? 2 : 0; if (!col) return text;
+  for (const r of CAREER) if (text.includes(r[0])) text = text.split(r[0]).join(r[col]);
+  return text;
+}
 export function parseLine(raw: string, s: GameState, ctxH?: string): Line {
   if (raw.startsWith('cg:')) return { who: 'cg', name: '', emo: '通常', text: raw.slice(3).trim(), voice: '', color: '' };
   const m = raw.match(/^(@[^:(]+|[a-z]+)(?:\(([^)]+)\))?:([\s\S]*)$/);
   let who = 'n', emo: Emo = '通常', text = raw;
   if (m) { who = m[1]; emo = (m[2] as Emo) || '通常'; text = m[3]; }
   if (who === 'h') who = ctxH || 'n';
+  if (s.course) text = career(text, s.course);
   const hid = HMAP[who] ? who : ctxH;
   let name = '', color = '#b2bec3';
   if (HMAP[who]) { const H = HMAP[who]; const hs = s.hs[who]; name = hs.met || who === ctxH ? `${H.sei} ${H.mei}` : '？？？'; color = H.color; }
@@ -568,7 +589,7 @@ function examResolve(s: GameState): Line[] {
   if (!s.course) s.course = '私立大学';
   const r = courseRequirement(s); const luck = rand(s) < 0.1; const pass = r.ok || (luck && s.stats.kon >= 100);
   s.courseResult = pass ? '合格' : '不合格'; diary(s, `${s.course}：${s.courseResult}。`);
-  return [L(`n:三月の初め。結果が届いた。——${s.course}、${pass ? '合格' : '不合格'}。`), L(pass ? 'n:手が震えた。三年間は、無駄じゃなかった。' : 'n:目の前が真っ白になった。……あと少し、何かが足りなかった。')];
+  return [L(`n:三月の初め。結果が届いた。——${s.course}、${s.course === '就職' ? (pass ? '内定' : '不採用') : pass ? '合格' : '不合格'}。`), L(pass ? 'n:手が震えた。三年間は、無駄じゃなかった。' : 'n:目の前が真っ白になった。……あと少し、何かが足りなかった。')];
 }
 
 // ───────── エンディング判定 ─────────
@@ -615,7 +636,7 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
     else if (s.courseResult === '合格') { id = 'course'; title = '進路成功エンド：新しい春へ'; body = ['n:恋は実らなかった。けれど、手の中には合格通知がある。', '@健太:{S}、お前はよくやったよ。大学で彼女作れよな！', 'n:桜はまだ咲いていない。それでも、確かに春は来ていた。']; }
     else { body = ['n:式が終わり、校門の前に一人で立った。', 'n:誰かを待っていたわけじゃない。……待っていてくれる人が、いなかっただけだ。', '@健太:……帰るか、{S}。ラーメンおごってやるよ', '@田中:俺も行く！ 替え玉は研究会の経費で落とす！ ……経費、ないけど！']; }
   }
-  const courseLine = s.course ? (s.courseResult === '合格' ? `n:【進路】${s.course}に合格。春から新しい生活が始まる。` : `n:【進路】${s.course}は不合格。……一年、もう一度挑戦することにした。`) : '';
+  const courseLine = s.course ? (s.courseResult === '合格' ? (s.course === '就職' ? `n:【進路】就職、内定。春から社会人だ。` : `n:【進路】${s.course}に合格。春から新しい生活が始まる。`) : (s.course === '就職' ? `n:【進路】就職は内定が出なかった。……卒業後も、あきらめずに探し続ける。` : `n:【進路】${s.course}は不合格。……一年、もう一度挑戦することにした。`)) : '';
   if (id.startsWith('good') || id === 'true' || id.startsWith('confess') || id.startsWith('normal')) { if (s.courseResult === '不合格') title += '／進路失敗'; }
   const sis = id === 'bad' ? ['n:家に帰ると、芽衣が玄関で待っていた。', '@芽衣:……おかえり、お兄。卒業おめでと。……今日は、お兄の好きなハンバーグだって'] : id === 'course' ? ['@芽衣:お兄、合格おめでと。……送辞、ちゃんと聞いてた？ ……泣いてないし'] : (id.startsWith('good') || id === 'true' || id.startsWith('confess')) ? ['n:その夜。家に帰ると、芽衣がにやにやしながら待ち構えていた。', '@芽衣:……で？ ……その顔、うまくいったんでしょ。……おめでと、お兄。情報料、高くつくからね'] : [];
   const lines = [...pre, ...body, ...sis, ...(courseLine ? [courseLine] : []), ...recap(s)];
