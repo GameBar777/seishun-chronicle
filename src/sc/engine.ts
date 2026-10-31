@@ -66,7 +66,7 @@ export function stage(h: HState): typeof STAGES[number] {
   if (h.friend >= 25) return '友人';
   return '顔見知り';
 }
-export const tierOf = (h: HState) => { const i = STAGES.indexOf(stage(h)); return i >= 5 ? 2 : i >= 3 ? 1 : 0; };
+export const tierOf = (h: HState) => { const i = STAGES.indexOf(stage(h)); return i >= 4 ? 2 : i >= 2 ? 1 : 0; };
 export function render(t: string, s: GameState, hid: string | undefined, reading: boolean): string {
   const st = s.setup; const S = reading ? st.seiYomi || st.sei : st.sei; const M = reading ? st.meiYomi || st.mei : st.mei;
   let callT = '{S}くん';
@@ -250,7 +250,7 @@ function weeklyHeroines(s: GameState, res: string[]) {
     if (s.week % 4 === 0 && h.friend >= 20) { const a = attraction(s, H.id); if (a >= 1.05) h.toki = clamp(h.toki + 1, 0, 100); else if (a < 0.75 && h.toki > 25) h.toki = clamp(h.toki - 1, 0, 100); }
     // ライバル（2年目から）
     if (s.week >= 52 && H.id !== 'shizuku' && h.friend >= 15) {
-      const pace = h.toki >= 60 ? -1 : (0.25 + (60 - h.toki) / 120) * D.rival * (gap > 4 ? 1.5 : 1);
+      const pace = h.toki >= 60 ? -1 : (0.6 + (60 - h.toki) / 80) * D.rival * (gap > 4 ? 1.5 : 1);
       const before = h.rival; h.rival = clamp(h.rival + pace, 0, 100);
       if (before < 50 && h.rival >= 50) s.lastLog.push(`⚠ 噂：${H.rivalName}が${H.sei}${H.mei}に近づいているらしい`);
       if (before < 80 && h.rival >= 80) s.lastLog.push(`⚠⚠ ${H.sei}${H.mei}と${H.rivalName}が二人で歩いていたという噂……`);
@@ -278,7 +278,14 @@ export function scheduleScenes(s: GameState) {
   // 自動の出会い
   if (!s.seen.includes('meet_rin') && !s.queue.some(q => q.id === 'meet_rin')) { s.queue.push({ kind: 'event', id: 'meet_rin' }); }
   // カレンダー
-  for (const e of [...CAL, ...DAILY]) if (!s.seen.includes(e.id) && !s.queue.some(q => q.id === e.id) && e.cond(s)) s.queue.push({ kind: 'event', id: e.id });
+  // 芽衣は出すぎないよう、前回の芽衣シーンから7週空ける（1周20前後）
+  const lastSis = Number(s.flags.find(f => f.startsWith('lastSis:'))?.slice(8) ?? -99);
+  const markSis = () => { s.flags = s.flags.filter(f => !f.startsWith('lastSis:')); s.flags.push(`lastSis:${s.week}`); };
+  let sisOk = s.week - lastSis >= 7;
+  for (const e of [...CAL, ...DAILY]) if (!s.seen.includes(e.id) && !s.queue.some(q => q.id === e.id) && e.cond(s)) {
+    if (e.id.startsWith('d_sis_')) { if (!sisOk) continue; sisOk = false; markSis(); }
+    s.queue.push({ kind: 'event', id: e.id });
+  }
   // テスト
   const exam = (c.m === 5 && c.n === 3) || (c.m === 7 && c.n === 2) || (c.m === 10 && c.n === 3) || (c.m === 12 && c.n === 1) || (c.m === 2 && c.n === 4 && c.Y <= 2);
   if (exam) s.queue.push({ kind: 'msg', id: 'exam' });
@@ -302,7 +309,7 @@ export function scheduleScenes(s: GameState) {
   // 健太の噂（ヒント）
   if (s.week % 9 === 4) s.queue.push({ kind: 'msg', id: 'rumor' });
   // 妹・芽衣の恋愛相談（家での好感度ヒント）
-  if (s.week % 9 === 8 && s.week > 2) s.queue.push({ kind: 'msg', id: 'sister' });
+  if (s.week % 9 === 8 && s.week > 2 && sisOk) { s.queue.push({ kind: 'msg', id: 'sister' }); markSis(); }
 }
 
 // ───────── シーン表示 ─────────
@@ -404,7 +411,7 @@ export function rumorLines(s: GameState): string[] {
   if (bombs.length) out.push(`@健太:おい{S}、${bombs.map(h => h.sei).join('と')}の様子、最近おかしくないか？ ……お前、何かしたろ。早めに電話でもしとけ`);
   const best = met.filter(h => !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].toki - s.hs[a.id].toki)[0];
   if (best) { const t = s.hs[best.id].toki; out.push(`@健太:${best.sei}${best.mei}、${t >= 65 ? 'お前の話するとき顔赤いぞ。マジで' : t >= 40 ? 'お前のこと、ちょっと気にしてるっぽいぜ' : t >= 20 ? 'お前のこと「悪くない」って言ってたらしい' : 'お前のこと、特に何とも思ってないみたいだな'}`); }
-  const rival = met.filter(h => s.hs[h.id].rival >= 40 && !s.hs[h.id].withRival)[0];
+  const rival = met.filter(h => s.hs[h.id].rival >= 20 && !s.hs[h.id].withRival).sort((a, b) => s.hs[b.id].rival - s.hs[a.id].rival)[0];
   if (rival) out.push(`@健太:そういや${rival.rivalName}が${rival.sei}${rival.mei}を狙ってるって噂だ。ぼやぼやしてると取られるぞ`);
   const hints = [
     '@健太:図書室にこもってる三つ編みの子、知ってるか？ 文系の勉強してると、たまに見かけるらしい',
