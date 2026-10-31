@@ -98,7 +98,7 @@ function main() {
   if (S.ended) return title();
   const s = S, c = cal(s.week);
   const acts = actions(s);
-  app().innerHTML = `${hud()}
+  app().innerHTML = `${hud()}${crowd(s)}
   <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${esc(a.ok ? a.desc : a.why || '')}</small></button>`).join('')}</div>
   <div id="talkpick" class="hidden"><p>誰と話す？</p>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<button class="tp" data-h="${h.id}" style="border-color:${h.color}">${h.sei}${h.mei}</button>`).join('')}</div></div>
   <div class="panel"><h3>📱 電話 <small>${s.phoneUsed ? '今週は使用済み' : '週1回'}</small></h3>
@@ -117,7 +117,20 @@ function main() {
   $('#ph-talk').onclick = () => call('talk'); $('#ph-inv').onclick = () => call('invite');
   $('#sh-buy').onclick = () => { const o = $<HTMLSelectElement>('#sh-o').value; if (!o) return; if (buyOutfit(s, o)) { toast(`${o}の服を買った`); main(); } else toast('お金が足りない'); };
   $('#jb-set').onclick = () => { setJob(s, $<HTMLSelectElement>('#jb').value as Job | ''); toast('バイト先を変更した'); main(); };
+  document.querySelectorAll<HTMLElement>('.cw').forEach(b => b.onclick = () => { const id = b.dataset.h!; if (s.hs[id]?.met && !s.hs[id].withRival) week('talk', id); });
   bindCmd(); void c;
+}
+/** 週画面：周囲にいる人物（直前の行動ログに登場した子を優先＋週ごとに入れ替わる顔ぶれ） */
+export function nearby(s: GameState, n = 3): string[] {
+  const met = HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival);
+  const log = s.lastLog.join(' ');
+  const hit = met.filter(h => log.includes(h.mei) || log.includes(h.sei + h.mei));
+  const rest = met.filter(h => !hit.includes(h)).sort((a, b) => ((a.id.charCodeAt(0) * 31 + s.week * 17) % 23) - ((b.id.charCodeAt(0) * 31 + s.week * 17) % 23));
+  return [...hit, ...rest].slice(0, n).map(h => h.id);
+}
+function crowd(s: GameState) {
+  const ids = nearby(s); if (!ids.length) return '';
+  return `<div class="crowd"><div class="cwl">周囲にいる人物 <small>（タップで話しかける）</small></div>${ids.map((id, i) => { const H = HMAP[id], x = s.hs[id]; const e = x.hurt > 40 ? 's' : tierOf(x) >= 2 ? 'b' : tierOf(x) >= 1 ? 'h' : 'n'; return `<button class="cw" data-h="${id}" style="--hc:${H.color};--d:${i * 0.12}s;--ph:${i * 1.3}s"><span class="cwimg"><img src="${pSrc(id, e)}" alt=""></span><span class="cwn">${H.mei}<small>${x.withRival ? '💔' : stage(x)}</small></span></button>`; }).join('')}</div>`;
 }
 function act(id: string) {
   if (id === 'talk') { $('#talkpick').classList.toggle('hidden'); return; }
@@ -181,12 +194,15 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
   const box = $('#box');
   const next = () => {
     if (typing) { clearInterval(typing); typing = null; $('#tx').textContent = lines[i - 1].text; return; }
-    if (i >= lines.length) { box.onclick = null; document.onkeydown = null; stop(); after(); return; }
+    if (i >= lines.length) { box.onclick = null; document.onkeydown = null; stop(); talking(false); after(); return; }
     const L = lines[i++]; stop();
     $('#nm').textContent = L.name; $('#nm').style.color = L.color; $('#tx').className = 'text ' + (L.who === 'n' ? 'narr' : '');
     const tier = HMAP[L.who] && S ? tierOf(S.hs[L.who]) : 0;
     speak(L.who, L.voice, L.emo, tier, set);
-    const em = $('#emo'); if (em && (!h || L.who === h)) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); }
+    const isH = !!HMAP[L.who];
+    if (isH) { showSpeaker(L.who); h = L.who; }
+    const apply = () => { const em = document.getElementById('emo'); if (em && h && (isH || L.who === 'me')) { if (isH) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); if (L.emo === '嬉' || L.emo === '照' || L.emo === '告') heartPop('up'); else if (L.emo === '哀' || L.emo === '怒' || L.emo === '冷') heartPop('down'); } } if (isH) talking(true); };
+    if (isH && document.getElementById('por')?.classList.contains('exit')) setTimeout(apply, 260); else apply();
     const t = L.who === 'n' || !L.name ? L.text : `「${L.text}」`;
     if (set.textSpeed <= 0) { $('#tx').textContent = t; return; }
     let k = 0; $('#tx').textContent = '';
@@ -206,11 +222,33 @@ function preloadExpr(h: string) { if (preloaded.has(h)) return; preloaded.add(h)
 function setExpr(h: string | undefined, emo: string) {
   const img = document.getElementById('pimg') as HTMLImageElement | null; if (!img || !h) return; const src = pSrc(h, EXPR[emo] || 'n');
   if (img.src.endsWith(src.replace(/^\./, ''))) { img.classList.remove('bounce'); void img.offsetWidth; img.classList.add('bounce'); return; }
-  img.classList.add('swap'); setTimeout(() => { img.src = src; img.classList.remove('swap'); }, 120);
+  img.classList.add('swap'); setTimeout(() => { img.src = src; const hr = document.getElementById('phair') as HTMLImageElement | null; if (hr) hr.src = src; img.classList.remove('swap'); }, 120);
 }
 function portrait(h: string) {
   const H = HMAP[h], x = S!.hs[h]; preloadExpr(h);
-  return `<div class="portrait"><div class="pwrap"><img id="pimg" class="pimg" src="${pSrc(h, 'n')}" alt="${H.sei}${H.mei}" onerror="this.style.display='none'"></div><div id="emo" class="emo"></div><div class="pi">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
+  const src = pSrc(h, 'n');
+  return `<div class="portrait enter" id="por" data-h="${h}"><div class="pwrap"><div class="psway"><img id="pimg" class="pimg" src="${src}" alt="${H.sei}${H.mei}" onerror="this.style.display='none'"><img id="phair" class="phair" src="${src}" alt="" aria-hidden="true"></div></div><div id="emo" class="emo"></div><div class="pi" id="pinfo">${H.sei}${H.mei}<small>${stage(x)}　呼び方:「${H.call[x.callTier].replace('{S}', S!.setup.sei).replace('{M}', S!.setup.mei)}」</small></div></div>`;
+}
+/** 話者が別のヒロインに変わったら立ち絵を入れ替える（退場→登場スライド） */
+function showSpeaker(h: string) {
+  const st = document.querySelector('.stage') as HTMLElement | null; if (!st || !S || !HMAP[h]) return;
+  const cur = document.getElementById('por');
+  if (cur && cur.dataset.h === h) return;
+  st.style.setProperty('--hc', HMAP[h].color);
+  const put = () => { document.getElementById('por')?.remove(); st.querySelector('.sc-title')!.insertAdjacentHTML('afterend', portrait(h)); };
+  if (cur) { cur.classList.add('exit'); setTimeout(put, 220); } else put();
+}
+let talkTimer: any = null;
+function talking(on: boolean) {
+  clearInterval(talkTimer); const w = () => document.querySelector('.pwrap');
+  if (!on) { w()?.classList.remove('talk'); return; }
+  w()?.classList.add('talk');
+  talkTimer = setInterval(() => { const sp = typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking; if (!typing && !sp) { w()?.classList.remove('talk'); clearInterval(talkTimer); } }, 200);
+}
+function heartPop(kind: 'up' | 'down') {
+  const p = document.getElementById('por'); if (!p) return;
+  p.classList.remove('react-up', 'react-down'); void p.offsetWidth; p.classList.add(kind === 'up' ? 'react-up' : 'react-down');
+  const f = document.createElement('div'); f.className = 'pfx ' + kind; f.textContent = kind === 'up' ? '♥' : '💧'; p.appendChild(f); setTimeout(() => f.remove(), 1200);
 }
 function showChoices(ch: string[], pick: (i: number) => void) {
   const el = $('#ch'); el.innerHTML = ch.map((c, i) => `<button data-i="${i}"><b>${i + 1}</b> ${esc(c)}</button>`).join('');
