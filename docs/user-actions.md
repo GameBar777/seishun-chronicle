@@ -29,8 +29,8 @@
 | 日本語のキャラクター音声（無料） | VOICEVOX（https://voicevox.hiroshiba.jp/term/） | ソフトは無料。商用・非商用で利用可 | キャラクターごとの規約に従い「VOICEVOX:ずんだもん」などの**クレジット表記が必須**。一部のキャラクターは商用・ゲームでの利用に事前確認が必要。ブラウザ単体では動かないので、音声を事前に生成してファイルとして同梱するのが現実的（名前の読み上げはできなくなる） |
 
 ### あなたが行う必要がある操作（青春クロニクル）
-1. 公開ページ https://gamebar777.github.io/ripple-years/ を実際に開いて遊び、⚙設定の「試聴」で声が出るか確認する。日本語音声の有無は端末によって違う
-2. URLが ripple-years のままです。名前を変えたい場合は GitHub のリポジトリ名を変更し、`vite.config.ts` の `VITE_SITE_URL` と workflow の `BASE_PATH` を合わせる
+1. 公開ページ https://gamebar777.github.io/seishun-chronicle/ を実際に開いて遊び、⚙設定の「試聴」で声が出るか確認する。日本語音声の有無は端末によって違う
+2. URLは https://gamebar777.github.io/seishun-chronicle/ に変更済み（2026-10-31、旧URL ripple-years は使えません）
 3. `public/thumbnail.png`（OGP画像）と `public/illustrations/` は旧作のものです。差し替えが必要
 4. `public/privacy.html` と `public/terms.html` のプレースホルダ（運営者名・問い合わせ先）を記入する
 5. 上の有料オプションを使う場合だけ、各サービスで契約し、APIキーをサーバー側に設定する（私は契約していません）
@@ -42,7 +42,7 @@
 ---
 
 ## 『青春クロニクル』v1.2（2026-10-31 JST）
-追加で必要な操作は**ありません**。GitHub Pages（https://gamebar777.github.io/ripple-years/）へ自動で公開済みです。
+追加で必要な操作は**ありません**。GitHub Pages（https://gamebar777.github.io/seishun-chronicle/）へ自動で公開済みです。
 - 試聴用の音源: docs/audio-previews/title.{mp3,ogg}・theme.{mp3,ogg}（各30秒、ゲーム内の音源をそのまま書き出したもの。主題歌はインストゥルメンタル）。
 - 任意で確認してほしい点: 実機（スマホ）での BGM の音量感、立ち絵の解像度（元画像を約1.5倍に拡大）。
 

@@ -1,4 +1,4 @@
-# 人生の残響 — RIPPLE YEARS
+# 青春クロニクル ～君と過ごした1000日間～
 
 18歳から80歳超までを1年1ターンで生きるブラウザ人生シミュレーション（Vite + TypeScript、バックエンド・AI API なし）。
 選択の「残響（echo）」が数年後に返ってくる因果システム、架空の世界経済、NPCの感情と目標、世代継承、多軸の人生レビューを備えます。
@@ -32,11 +32,11 @@ npm run eventlist                            # docs/events.md 再生成
 秘密情報はリポジトリに含めないこと。`.env*` は `.gitignore` 済み（`.env.example` のみ追跡）。
 
 ## 公開（GitHub Pages）
-- 公開URL: https://gamebar777.github.io/ripple-years/ （リポジトリ: https://github.com/GameBar777/ripple-years ）
+- 公開URL: https://gamebar777.github.io/seishun-chronicle/ （リポジトリ: https://github.com/GameBar777/seishun-chronicle ）
 - `main` に push すると `.github/workflows/deploy.yml` が `npm ci → npm test → npm run build → Pages へデプロイ` を自動実行
-- サブパス対応: `BASE_PATH`（例 `/ripple-years/`）で Vite の base を設定、`VITE_SITE_URL` で canonical / og:url / og:image を絶対URL化。静的ページ・manifest・ゲーム内リンクは相対パス
-- ローカル確認: `BASE_PATH=/ripple-years/ npm run build && npx vite preview --base /ripple-years/`
-- 公開URLに対するE2E: `E2E_OUT=docs/screenshots-live E2E_RESULTS=docs/e2e-results-live.json node scripts/e2e.mjs https://gamebar777.github.io/ripple-years`
+- サブパス対応: `BASE_PATH`（例 `/seishun-chronicle/`）で Vite の base を設定、`VITE_SITE_URL` で canonical / og:url / og:image を絶対URL化。静的ページ・manifest・ゲーム内リンクは相対パス
+- ローカル確認: `BASE_PATH=/seishun-chronicle/ npm run build && npx vite preview --base /seishun-chronicle/`
+- 公開URLに対するE2E: `E2E_OUT=docs/screenshots-live E2E_RESULTS=docs/e2e-results-live.json node scripts/e2e.mjs https://gamebar777.github.io/seishun-chronicle`
 - 秘密情報は不要（ワークフローは GitHub 標準の権限のみ使用）
 
 ## Cloudflare Pages へのデプロイ（未実施・手順のみ）
