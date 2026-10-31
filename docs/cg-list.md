@@ -11,8 +11,8 @@
 | 白鷺ゆら | yura_1 音が見える | yura_2 冬の海 | yura_4 わたしの音 | yura_confess 夕暮れの音楽室 | yura_kiss | **実装済み** |
 | 速水夏帆 | kaho_1 はやみ食堂 | kaho_3 止まった脚 | kaho_4 最後の県大会 | kaho_confess 誰もいないグラウンド | kaho_kiss | **実装済み** |
 | 桐生院麗華 | reika_2 秘密のゲームセンター | reika_3 姉の影 | reika_4 縁談 | reika_confess 校門・歩いて帰る | reika_kiss | **実装済み** |
-| 灯野ことは | kotoha_1 最初の読者 | kotoha_2 雨の神社 | kotoha_4 選考結果 | kotoha_confess 図書室の手製の本 | kotoha_kiss | 未実装 |
-| 姫野ルカ | ruka_1 撮影モデル | ruka_2 夜のコンビニ | ruka_4 本気の負け | ruka_confess 卒業式の後 | ruka_kiss | 未実装 |
+| 灯野ことは | kotoha_1 最初の読者 | kotoha_2 雨の神社 | kotoha_4 選考結果 | kotoha_confess 図書室の手製の本 | kotoha_kiss | **実装済み** |
+| 姫野ルカ | ruka_1 撮影モデル | ruka_2 夜のコンビニ | ruka_4 本気の負け | ruka_confess 卒業式の後 | ruka_kiss | **実装済み** |
 | 黒瀬凛 | rin_1 病院の売店 | rin_3 手術の前夜 | rin_4 同じ未来 | rin_confess 病院の屋上 | rin_kiss | 未実装 |
 | 宙野しずく（隠し） | shizuku_meet 丘の上の幽霊 | shizuku_1 木星の縞 | shizuku_3 新しい光 | shizuku_confess 旧天文台のドーム | shizuku_kiss | 未実装 |
 

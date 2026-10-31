@@ -26,6 +26,16 @@ export const CG_LIST: CgDef[] = [
   { id: 'reika_4', h: 'reika', title: '縁談' },
   { id: 'reika_confess', h: 'reika', title: '歩いて帰る道' },
   { id: 'reika_kiss', h: 'reika', title: 'ただの麗華として' },
+  { id: 'kotoha_1', h: 'kotoha', title: '最初の読者' },
+  { id: 'kotoha_2', h: 'kotoha', title: '雨の神社' },
+  { id: 'kotoha_4', h: 'kotoha', title: '選考結果' },
+  { id: 'kotoha_confess', h: 'kotoha', title: '最後の一行' },
+  { id: 'kotoha_kiss', h: 'kotoha', title: '図書室の窓際で' },
+  { id: 'ruka_1', h: 'ruka', title: '撮影モデル' },
+  { id: 'ruka_2', h: 'ruka', title: '夜のコンビニ' },
+  { id: 'ruka_4', h: 'ruka', title: '本気の負け' },
+  { id: 'ruka_confess', h: 'ruka', title: '卒業式の後' },
+  { id: 'ruka_kiss', h: 'ruka', title: '本気の負け、のその先' },
 ];
 export const CG_MAP: Record<string, CgDef> = Object.fromEntries(CG_LIST.map(c => [c.id, c]));
 const KEY = 'seishun:cg';
