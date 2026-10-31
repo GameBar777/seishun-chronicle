@@ -69,3 +69,40 @@ describe('背景・天気の整合性', () => {
   });
   it('全イベントの背景・時間帯・屋内外・天気が本文と矛盾しない', () => { expect(audit()).toEqual([]); });
 });
+
+import { isDated } from '../src/sc/engine';
+import { cal } from '../src/sc/time';
+describe('屋内の場所（学校／家）が場面と合う', () => {
+  const SCH = /クラスメイト|学期|始業|終業|担任|先生|ホームルーム|昼休み|購買|廊下|休み時間|教室|授業|同級生|黒板/;
+  const HOME = /(?<!お)母さん|(?<!お)父さん|家族|我が家|自宅|リビング|食卓|持って帰って/;
+  function audit2() {
+    const s: any = newGame({ sei: '相沢', mei: '悠斗', seiYomi: 'あいざわ', meiYomi: 'ゆうと', bm: 4, bd: 10, persona: '優しい', look: '爽やか系', diff: 'NORMAL', seed: 1 } as any);
+    const all = [...CAL, ...DAILY, ...DAILY2, ...DAILY3, ...DAILY4, ...FRIENDS, ...HEVENTS, ...SIDE_EVENTS, ...SIDE_EVENTS2, ...SISTER];
+    const bad = new Set<string>();
+    for (const e of all) {
+      let vac = false, lines = e.lines;
+      for (let w = 0; w < 152; w++) { s.week = w; try { if (e.cond(s)) { vac = cal(w).vacation; break; } } catch { /* */ } }
+      if (e.dynLines) try { lines = e.dynLines(s); } catch { /* */ }
+      const ls = lines.filter(l => !l.startsWith('cg:'));
+      const fn = ls.filter(l => l.startsWith('n:')).map(l => l.slice(2))[0] || e.title;
+      const text = e.title + ' ' + ls.map(l => l.replace(/^[^:]*:/, '')).join(' ');
+      const sis = /^sis|^d_sis/.test(e.id);
+      const dated = (isDated(e.id) || CAL.some(c => c.id === e.id)) && !sis;
+      const head = text.slice(0, 120);
+      for (const act of ['bun', 'ri', 'rest', 'hobby', 'club', 'job', 'talk', undefined]) {
+        const g = pickBg(e.id, fn, ['相沢', '悠斗'], act, sis, { text, dated, vacation: vac, heroine: !!(e as any).h });
+        if (!vac && SCH.test(fn + e.title) && !HOME.test(fn) && ['living', 'room'].includes(g.bg)) bad.add(`${e.id}:school-on-${g.bg}`);
+        const homeScene = (HOME.test(fn) || (sis && !SCH.test(fn) && !/文化祭|生徒会室|模擬店|廊下|教室/.test(fn)));
+        if (homeScene && ['classroom', 'gym', 'ground'].includes(g.bg)) bad.add(`${e.id}:home-on-${g.bg}`);
+        if (dated && !vac && !HOME.test(head) && !/部屋|自室|電話|夜/.test(fn) && ['living', 'room'].includes(g.bg)) bad.add(`${e.id}:dated-school-term-on-${g.bg}`);
+        if ((e as any).h && !/部屋|自室|電話|家|夜/.test(fn) && g.bg === 'living') bad.add(`${e.id}:heroine-on-living`);
+      }
+    }
+    return [...bad].sort();
+  }
+  it('「二学期の始まり」は教室', () => {
+    const e = DAILY.find(x => x.id === 'd_y1_sep')!;
+    for (const act of ['rest', 'bun', 'hobby']) expect(pickBg(e.id, e.lines[0].slice(2), [], act, false, { text: e.lines.join(' '), dated: true }).bg).toBe('classroom');
+  });
+  it('全イベント×全行動で、学校の場面が家に・家の場面が学校にならない', () => { expect(audit2()).toEqual([]); });
+});

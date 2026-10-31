@@ -6,7 +6,7 @@ import { cal, fmtDate, LAST_WEEK, season } from './time';
 import { chatReply, SUGGEST } from './chat';
 import { exportSave, importSave, store } from './save';
 import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName, initVoice, unlockVoice, preloadClip, isSpeaking, hasClip } from './voice';
-import { voiceId } from './engine';
+import { voiceId, isDated } from './engine';
 import * as audio from './audio';
 import { bgmForAct, bgmForScene } from './bgm';
 import { setBg, guessBg, pickBg, LOC_BG, sceneWeather, type Tod } from './bg';
@@ -200,7 +200,7 @@ function scene() {
   const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '); // つなぎの一文（――その夜。等）で時間帯を決めない
   let sbg = '', stod: string | undefined;
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
-  else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || '')); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }
+  else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || ''), { text: v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '), dated: !!sc0?.id && (CAL_IDS.has(sc0.id) || isDated(sc0.id)) && !sc0.id.startsWith('d_sis'), vacation: cal(s.week).vacation, heroine: !!v.h }); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }
   const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
   const conf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
   const rivalSc = /wada|rival/.test(sc0?.id || '') || v.lines.some(l => /和田|ライバル/.test(l.who || ''));
