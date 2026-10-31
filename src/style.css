@@ -132,3 +132,18 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
 .tapstart{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;background:#2d3436d0;color:#fff;padding:8px 18px;border-radius:20px;font-weight:bold;animation:tapb 2.4s ease-in-out infinite;pointer-events:none}@keyframes tapb{50%{opacity:.55}}
 @media(max-width:720px){.portrait .pi{top:auto;bottom:16%;left:4px;right:auto;font-size:.72rem;z-index:1}.cmd{display:flex;gap:4px}.cmd input{flex:1;min-width:0}.cmd button{white-space:nowrap;flex:none;padding-left:8px;padding-right:8px}}
 @media(max-width:720px){.portrait .pi{top:6px;bottom:auto;left:calc(50% - 50vw + 8px);text-align:left}}
+/* イベントCG（一枚絵）：立ち絵を隠し、テキストボックスの後ろに全画面表示。縦画面は16:9をそのまま見せ、余白はぼかし背景 */
+#cgl{position:fixed;inset:0;z-index:1;background:#000;opacity:0;transition:opacity .7s ease;pointer-events:none;overflow:hidden}
+#cgl.on{opacity:1}
+#cgl .cgblur{position:absolute;inset:-40px;background:center/cover no-repeat;filter:blur(24px) brightness(.55)}
+#cgl .cgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:cgPan 14s ease-out both}
+@media (max-aspect-ratio:4/3){#cgl .cgimg{object-fit:contain;object-position:50% 30%;animation:none}}
+body.cgmode .portrait,body.cgmode .rays{visibility:hidden}
+body.cgmode .hud,body.cgmode .cmd{position:relative;z-index:3}body.cgmode .stage{z-index:2}
+body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:none}
+.cggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+.cgth{padding:0;border:none;background:#2d3436;border-radius:8px;overflow:hidden;aspect-ratio:16/9;position:relative;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
+.cgth img{width:100%;height:100%;object-fit:cover}.cgth span{position:absolute;left:0;right:0;bottom:0;font-size:.72rem;background:#0008;padding:2px 4px}
+.cgth.locked{cursor:default;color:#888}.cgth.locked span{position:static;background:none;font-size:1rem}
+.cg.cgview{z-index:60}.cg.cgview img{object-fit:contain;animation:none}
+@media (prefers-reduced-motion:reduce){#cgl .cgimg{animation:none}}
