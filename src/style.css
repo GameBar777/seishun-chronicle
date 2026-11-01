@@ -250,3 +250,24 @@ body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:non
 .em-col h3{background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
 .em-col section.em-logo h3{font-size:1.15rem;letter-spacing:.25em;color:#fff;text-shadow:0 0 14px var(--hc,#ff8fb8)}
 .endmv .em-skip,.endmv .em-skip:hover{background:#0008!important;color:#fff!important;box-shadow:none!important}
+/* ── TM4 systems ── */
+.hh{font-style:normal;margin-right:2px;text-shadow:0 0 2px #fff8}
+.bomb{font-style:normal;font-size:.85em}.bomb.b2{animation:bombPulse 1s infinite}.bomb.b3{animation:bombPulse .45s infinite}
+@keyframes bombPulse{50%{filter:drop-shadow(0 0 4px #ff3b30);transform:scale(1.15)}}
+.bat{display:inline-block;width:42px;height:12px;border:2px solid #555;border-radius:3px;vertical-align:middle;position:relative;margin:0 4px}
+.bat::after{content:'';position:absolute;right:-5px;top:2px;width:3px;height:4px;background:#555;border-radius:1px}
+.bat i{display:block;height:100%;background:#4caf50}.bat.low i{background:#e53935}
+.phapp button{position:relative}.badge{position:absolute;top:-6px;right:-6px;background:#e53935;color:#fff;border-radius:9px;font-size:11px;padding:0 5px}
+button.conf{background:linear-gradient(90deg,#ff8fb1,#ff4f81);color:#fff;border:none}
+.mails .mail{border-left:4px solid var(--hc);background:#fff;border-radius:8px;padding:6px 10px;margin:6px 0;box-shadow:0 1px 3px #0002}
+.mail.new{background:#fff6f9}.mail .mh{display:flex;justify-content:space-between}.mail .mt{font-weight:bold;font-size:.9em}.mail .mb{font-size:.88em;color:#444}
+.book .pb{border:2px solid var(--hc);border-radius:10px;margin:6px 0;padding:4px 8px;background:#fff}.book summary{cursor:pointer;font-weight:bold}.book summary small{margin-left:6px;color:#888}
+.book table{width:100%;font-size:.85em;border-collapse:collapse}.book th{text-align:left;color:#777;width:34%;padding:2px}.book td.lk{color:#bbb;letter-spacing:2px}
+.inf .ir{border-left:4px solid;padding:4px 8px;margin:6px 0;background:#fff;border-radius:6px}.inf .ir small{display:block;color:#666}.inf .warn{color:#c0392b;font-size:.85em}
+.hall{margin:6px 0;padding:8px 10px;border-radius:12px;background:linear-gradient(90deg,var(--hc),#fff0 85%);color:#222;animation:hallIn .5s ease-out}
+.hall .hb{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}.hall .hb button{font-size:.8em;padding:6px 4px}
+@keyframes hallIn{from{transform:translateX(-30px);opacity:0}}
+.calstrip{display:flex;gap:4px;overflow-x:auto;padding:4px 0 8px}.calstrip .cs{min-width:72px;background:#fff;border-radius:8px;padding:4px;font-size:.75em;box-shadow:0 1px 3px #0002;display:flex;flex-direction:column;gap:2px}
+.calstrip .cs.now{outline:2px solid #ff4f81}.calstrip .cs small{color:#666;font-weight:bold}
+body.shake #app{animation:shake .6s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-2px)}30%,50%,70%{transform:translate(-8px,3px)}40%,60%{transform:translate(8px,-3px)}}

@@ -18,6 +18,8 @@ import { backlog, backlogHtml } from './backlog';
 import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone, effectParts } from './progress';
 import { replayClip } from './voice';
 import { buildEndingMovie, playEndingMovie } from './ending';
+import { hallTalk, sendMail, startConfess } from './tm4';
+import { heartChip, batteryHtml, phoneAppBtns, mailHtml, bookHtml, informantHtml, hallHtml, calStripHtml } from './tm4ui';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
 const seasonNow = () => S ? season(cal(S.week).m) : '春';
@@ -119,13 +121,14 @@ function main() {
   if (S.ended) return title();
   const s = S, c = cal(s.week);
   const acts = actions(s);
-  app().innerHTML = `${hud()}${crowd(s)}
+  app().innerHTML = `${hud()}${hallHtml(s)}${crowd(s)}
   <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${a.ok ? effectParts(a.desc).map(x => x.tone ? `<span class="ef ${x.tone}">${esc(x.t)}</span>` : esc(x.t)).join('') : esc(a.why || '')}</small></button>`).join('')}</div>
   <div id="talkpick" class="hidden"><p>誰と話す？</p>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<button class="tp" data-h="${h.id}" style="border-color:${h.color}">${h.sei}${h.mei}</button>`).join('')}</div></div>
-  <div class="panel"><h3>📱 電話 <small>${s.phoneUsed ? '今週は使用済み' : '週1回'}</small></h3>
+  <div class="panel"><h3>📱 携帯 ${batteryHtml(s)} <small>${s.phoneUsed ? '通話：今週は使用済み' : '通話：週1回'}</small></h3>
    <div class="row"><select id="ph-h"><option value="kenta">早乙女健太（情報・相談）</option>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<option value="${h.id}">${h.sei}${h.mei}${s.hs[h.id].bomb ? ' 💣' : ''}</option>`).join('')}</select></div>
    <div class="row"><button id="ph-talk" ${s.phoneUsed ? 'disabled' : ''}>話す（傷心ケア）</button></div>
    <div class="row"><select id="ph-loc">${Object.entries(LOCATIONS).map(([k, L]) => `<option value="${k}">${L.name}（${L.cost}円${L.outdoor ? '・屋外' : ''}）</option>`).join('')}</select><button id="ph-inv" ${s.phoneUsed || s.dateBooked ? 'disabled' : ''}>日曜デートに誘う</button></div>
+   ${phoneAppBtns(s)}
    ${s.dateBooked ? `<p class="note">📅 今週日曜：${HMAP[s.dateBooked.h].sei}${HMAP[s.dateBooked.h].mei}と${LOCATIONS[s.dateBooked.loc].name}</p>` : ''}
    <h3>🛍 ショップ・バイト</h3>
    <div class="row"><select id="sh-o">${Object.entries(OUTFITS).filter(([k]) => !s.outfits.includes(k)).map(([k, O]) => `<option value="${k}">${k}（${O.cost}円・容姿+${O.yo}）</option>`).join('')}</select><button id="sh-buy">服を買う</button></div>
@@ -136,6 +139,10 @@ function main() {
   document.querySelectorAll<HTMLButtonElement>('.act').forEach(b => b.onclick = () => act(b.dataset.a!));
   document.querySelectorAll<HTMLButtonElement>('.tp').forEach(b => b.onclick = () => week('talk', b.dataset.h));
   $('#ph-talk').onclick = () => call('talk'); $('#ph-inv').onclick = () => call('invite');
+  $('#ph-mail').onclick = () => { modal('✉ メール', mailHtml(s)); }; $('#ph-book').onclick = () => modal('📒 プロフィール帳', bookHtml(s));
+  $('#ph-send').onclick = () => { const id = $<HTMLSelectElement>('#ph-h').value; if (!HMAP[id]) return toast('メールを送る相手を選んでください'); audio.se('message'); playLines('✉ メール', sendMail(s, id), () => main(), id); };
+  document.getElementById('ph-conf')?.addEventListener('click', () => { const id = $<HTMLSelectElement>('#ph-h').value; if (!HMAP[id]) return toast('想いを伝える相手を選んでください'); if (!confirm(`${HMAP[id].sei}${HMAP[id].mei}に告白しますか？（一度きり）`)) return; startConfess(s, id); main(); });
+  document.querySelectorAll<HTMLButtonElement>('.hl').forEach(b => b.onclick = () => { audio.se('confirm'); const ls = hallTalk(s, +b.dataset.i!); if (ls.length) playLines('🚶 廊下で', ls, () => main(), ls.find(l => HMAP[l.who])?.who); });
   $('#sh-buy').onclick = () => { const o = $<HTMLSelectElement>('#sh-o').value; if (!o) return; if (buyOutfit(s, o)) { toast(`${o}の服を買った`); main(); } else toast('お金が足りない'); };
   $('#jb-set').onclick = () => { setJob(s, $<HTMLSelectElement>('#jb').value as Job | ''); toast('バイト先を変更した'); main(); };
   document.querySelectorAll<HTMLElement>('.cw').forEach(b => b.onclick = () => { const id = b.dataset.h!; if (s.hs[id]?.met && !s.hs[id].withRival) week('talk', id); });
@@ -175,7 +182,7 @@ function weekSe(id: string, res: string[], before: Snap, ill0: { c: unknown; i: 
   else if (id === 'rest') audio.se('rest');
   if (!ill0.i && S.injury) return audio.se('injury');
   if (!ill0.c && S.cold) return audio.se('cold');
-  if (t.includes('💥')) return audio.se('bomb');
+  if (t.includes('💥')) { document.body.classList.add('shake'); setTimeout(() => document.body.classList.remove('shake'), 700); try { navigator.vibrate?.([80, 40, 160]); } catch { } return audio.se('bomb'); }
   if (/和田|ライバル/.test(t)) return audio.se('rival');
   const ds = diffStats(before, snap(S)); const up = ds.filter(x => x.good).length, dn = ds.length - up;
   if (id !== 'hospital' && id !== 'rest') { if (up > dn) audio.se('statup', { vol: .7 }); else if (dn > up) audio.se('statdown', { vol: .7 }); }
@@ -183,12 +190,12 @@ function weekSe(id: string, res: string[], before: Snap, ill0: { c: unknown; i: 
 function call(mode: 'talk' | 'invite') {
   if (!S) return; const id = $<HTMLSelectElement>('#ph-h').value; const loc = $<HTMLSelectElement>('#ph-loc').value;
   audio.se('phone');
-  const lines = phone(S, id, mode, loc); bgFor('room', 'night'); audio.playTrack('night'); playLines('📱 電話', lines, () => main(), HMAP[id] || NPC_BY_ID[id] ? id : undefined);
+  const used = S.phoneUsed; const lines = phone(S, id, mode, loc); const st = S; bgFor('room', 'night'); audio.playTrack('night'); playLines('📱 電話', lines, () => { main(); if (id === 'kenta' && !used && st.phoneUsed) modal('📒 健太の情報メモ', informantHtml(st)); }, HMAP[id] || NPC_BY_ID[id] ? id : undefined);
 }
 function hud() {
   const s = S!, c = cal(s.week);
   const bar = (k: StatKey) => `<div class="st"><span>${STAT_LABEL[k]}</span><i style="width:${Math.min(100, s.stats[k] / (k === 'hp' || k === 'st' || k === 'moral' ? 1 : 3))}%"></i><b>${Math.round(s.stats[k])}</b></div>`;
-  const hs = HEROINES.filter(h => s.hs[h.id].met).map(h => { const x = s.hs[h.id]; return `<span class="hchip" style="border-color:${h.color}" title="友好${Math.round(x.friend)} ときめき${Math.round(x.toki)} 傷心${Math.round(x.hurt)} 信頼${Math.round(x.trust)}">${h.mei}<small>${x.withRival ? '💔' : stage(x)}</small>${x.bomb ? '💣' : ''}</span>`; }).join('');
+  const hs = HEROINES.filter(h => s.hs[h.id].met).map(h => { const x = s.hs[h.id]; return `<span class="hchip" style="border-color:${h.color}" title="友好${Math.round(x.friend)} ときめき${Math.round(x.toki)} 傷心${Math.round(x.hurt)} 信頼${Math.round(x.trust)}">${heartChip(s, h.id)}${h.mei}<small>${x.withRival ? '💔' : stage(x)}</small></span>`; }).join('');
   return `<div class="hud"><div class="date"><b>${c.Y}年生</b> ${fmtDate(s.week)} <small>第${s.week + 1}/${LAST_WEEK}週・${wxNow ?? s.weather}・${c.term}</small></div>
   <div class="money">💴 ${s.money.toLocaleString()}円　${s.club}${s.job ? '／' + s.job : ''}${s.course ? '／志望:' + s.course : ''}${s.sick ? ' 🤒寝込み' : ''}${s.cold ? ' 🤧風邪' : ''}${s.injury ? ' 🩹ケガ' : ''}${s.slump ? ' 🌀' : ''}${s.rumor ? ' 📢悪い噂' : ''}</div>
   <div class="stamina" style="margin:4px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><b>💪 体力 ${Math.round(s.stats.hp)}%</b><span>${s.stats.hp >= 70 ? '元気' : s.stats.hp >= 50 ? 'ふつう' : s.stats.hp >= 30 ? '⚠ 疲れ気味' : '⚠⚠ ヘトヘト（故障注意）'}</span></div><div style="height:8px;background:#0003;border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${Math.max(0, Math.min(100, s.stats.hp))}%;background:${s.stats.hp >= 50 ? '#4caf50' : s.stats.hp >= 30 ? '#ff9800' : '#e53935'}"></i></div></div>
@@ -498,7 +505,7 @@ function relationHtml() {
 function scheduleHtml() {
   const s = S!; const ev: string[] = [];
   for (let w = s.week; w < Math.min(LAST_WEEK, s.week + 10); w++) { const c = cal(w); const marks: string[] = []; if ((c.m === 5 && c.n === 3) || (c.m === 7 && c.n === 2) || (c.m === 10 && c.n === 3) || (c.m === 12 && c.n === 1) || (c.m === 2 && c.n === 4 && c.Y <= 2)) marks.push('定期テスト'); for (const H of HEROINES) if (s.hs[H.id].met && H.birthday[0] === c.m && H.birthday[1] >= c.date.getDate() && H.birthday[1] < c.date.getDate() + 7) marks.push(`🎂${H.mei}`); if (c.vacation) marks.push('休み'); ev.push(`<div><small>${fmtDate(w)}</small> ${marks.join('・') || '-'}</div>`); }
-  return `<p>今後10週</p>${ev.join('')}<p class="note">年間行事：4月部活/5月GW・体育祭/7月夏休み・夏祭り/8月海・花火/10-11月文化祭/修学旅行(2年)/12月クリスマス/1月初詣/2月バレンタイン/3月卒業式</p>`;
+  return `${calStripHtml(s)}<p>今後10週</p>${ev.join('')}<p class="note">年間行事：4月部活/5月GW・体育祭/7月夏休み・夏祭り/8月海・花火/10-11月文化祭/修学旅行(2年)/12月クリスマス/1月初詣/2月バレンタイン/3月卒業式</p>`;
 }
 function loadDialog() {
   modal('LOAD（セーブ文字列を貼り付け）', `<textarea id="ld" class="savestr" placeholder="SEISHUN1:..."></textarea><button id="ld-go" class="primary">読み込む</button>`);

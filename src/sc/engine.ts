@@ -27,6 +27,7 @@ const EV_RETIRE = new Set(['kaho_s1', 'kaho_s2']);
 const evTimeOk = (e: Ev, s: GameState, c: ReturnType<typeof cal>) => (!e.when || e.when.includes(c.m)) && (!EV_AFTER[e.id] || s.seen.includes(EV_AFTER[e.id])) && !(/_[234]$/.test(e.id) && !s.seen.includes(e.id.slice(0, -1) + (Number(e.id.slice(-1)) - 1))) && !(EV_RETIRE.has(e.id) && c.Y === 3 && (c.m >= 9 || c.m <= 3));
 import { CAL } from './data/calendar';
 import { CONFESS_ASK_CG } from './data/confess';
+import { bombWeek, weeklyPhone, rollHall, beforeDate, afterDate, tm4View, tm4Resolve, legendPrelude, uneasyNote, spendBattery, tryDouble, BAT } from './tm4';
 import { WADA_INTRO, WADA_INTRO_CH, WADA_SC, WADA_CH, WADA_REACT_WIN, WADA_REACT_LOSE, WADA_END, WADA_STAGE_T2, WADA_SEEN, WADA_SEEN_OPEN, WADA_SEEN_W, WADA_SEEN_END, WADA_SEEN_CH, WADA_WAR, WADA_WAR_CH, WADA_WAR_RES, WADA_EVE, WADA_EVE_OPEN, WADA_EVE_CH, WADA_CLIMAX_CH, WADA_CLIMAX_WIN, WADA_CLIMAX_LOSE } from './data/wada';
 import type { Ev, Eff, Choice } from './data/schema';
 
@@ -293,7 +294,8 @@ export function doWeek(s: GameState, act: string, talkTo?: string): string[] {
   else if (s.slump > 0) s.slump--;
   gainStat(s, 'hp', STA.nat); // 自然回復
   weeklyHeroines(s, res);
-  if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: dateOrder(s, d.h, d.loc) } }); s.dateBooked = null; }
+  weeklyPhone(s); rollHall(s);
+  if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: dateOrder(s, d.h, d.loc) } }); s.dateBooked = null; beforeDate(s); }
   // 次の週へ
   s.week++; s.phoneUsed = false;
   s.weather = rollWeather(s);
@@ -320,6 +322,7 @@ function weeklyHeroines(s: GameState, res: string[]) {
       h.bomb++;
       if (h.bomb > 4) explode(s, H.id, res);
     }
+    if (!h.withRival) bombWeek(s, H.id);
     // 能力によるときめきの自然変動（4週ごと）
     if (s.week % 4 === 0 && h.friend >= 20) { const a = attraction(s, H.id); if (a >= 1.05) h.toki = clamp(h.toki + 1, 0, 100); else if (a < 0.75 && h.toki > 25) h.toki = clamp(h.toki - 1, 0, 100); }
     // ライバル（2年目から）
@@ -539,6 +542,7 @@ function view0(s: GameState): View | null {
     if (sc.id === 'meet_rin') return { kind: 'event', title: '隣の席の少女', h: 'rin', lines: MEET_RIN.map(l => parseLine(l, s, 'rin')), choices: ['「よろしく」と笑いかける', '黙って教科書を出す'] };
     if (sc.id === 'birthday') return birthdayView(s, sc.h!);
     if (sc.id === 'wada' || sc.id === 'wada_intro') return wadaView(s, sc);
+    if (sc.id === 'tm4') return tm4View(s, sc);
     const e = EVMAP[sc.id];
     if (e.h === 'mio' || e.id === 'club_select') { /* noop */ }
     const ls = (e.dynLines ? e.dynLines(s) : []).concat(e.lines);
@@ -735,7 +739,7 @@ function dateStart(s: GameState, sc: Scene, outfit: string): string[] {
   if (repeat >= 1) { sc0 -= repeat * 2; const T = DATE_TALK[sc.h!]; out.push(T ? pickL(s, T.again).replace(/\{L\}/g, loc.name) : `h:また${loc.name}？ ……まあ、いいけど`); }
   if (s.money < loc.cost) { sc0 -= 4; out.push('n:財布の中身が足りず、彼女に半分出してもらった……。'); s.money = 0; } else s.money -= loc.cost;
   if (h.bomb > 0) { sc0 -= 2; }
-  sc.data.score = sc0;
+  sc.data.score = sc0 + (sc.data.pen || 0);
   sc.data.outfit = outfit; pickSpotEv(s, sc);
   // ランダム遭遇
   const others = HEROINES.filter(o => o.id !== sc.h && s.hs[o.id].met && !s.hs[o.id].withRival && s.hs[o.id].toki >= 25);
@@ -763,11 +767,13 @@ function dateEnd(s: GameState, sc: Scene) {
   diary(s, `${H.sei}${H.mei}と${loc.name}でデート（${['失敗', 'まあまあ', '楽しかった', '最高'][grade]}）。`);
   lines.push(`n:【結果】${['つまらなかった……', 'まあまあ', '楽しかった', '最高のデート！'][grade]}（評価 ${sc0}）`);
   sc.data.endLines = lines;
+  afterDate(s, sc, grade);
 }
 
 // ───────── 電話 ─────────
 export function phone(s: GameState, id: string, mode: 'talk' | 'invite', loc?: string): Line[] {
   if (s.phoneUsed) return [parseLine('n:今週はもう電話した。', s)];
+  { const e = spendBattery(s, BAT.call); if (e) return [parseLine(e, s)]; }
   s.phoneUsed = true;
   if (id === 'kenta') return rumorLines(s).map(x => parseLine(x, s));
   const H = HMAP[id], h = s.hs[id], t = tierOf(h);
@@ -781,7 +787,7 @@ export function phone(s: GameState, id: string, mode: 'talk' | 'invite', loc?: s
   const L = LOCATIONS[loc || 'park'];
   const need = 25 * DIFF[s.setup.diff].thr;
   const ok = !h.withRival && h.bomb === 0 && (h.friend >= need || h.toki >= 30) && !(L.season && !L.season.includes(cal(s.week).m) && false);
-  if (ok && s.dateBooked) return [parseLine('n:もう今週末の予定が入っている。', s)];
+  if (ok && s.dateBooked) { const dbl = tryDouble(s, id, loc || 'park'); if (dbl) { out.push(parseLine(`h(嬉):${pickL(s, H.inviteOk)}`, s, id), ...dbl); return out; } return [parseLine('n:もう今週末の予定が入っている。', s)]; }
   if (ok) { s.dateBooked = { h: id, loc: loc || 'park' }; out.push(parseLine(`h(嬉):${pickL(s, H.inviteOk)}`, s, id)); out.push(parseLine(`n:今週の日曜日、${L.name}で会う約束をした。`, s)); applyH(s, id, { h: -10 }); }
   else { out.push(parseLine(`h(${h.bomb ? '冷' : '哀'}):${pickL(s, H.inviteNo)}`, s, id)); h.lastContact = s.week; }
   return out;
@@ -797,6 +803,7 @@ export function resolve(s: GameState, idx: number): Line[] {
     if (sc.id === 'meet_rin') { s.seen.push('meet_rin'); meet(s, 'rin'); applyH(s, 'rin', idx === 0 ? { f: 3 } : { tr: 3 }); return [L(idx === 0 ? 'h(冷):……ん' : 'n:彼女が、ほんの少しだけこちらを見た気がした。', 'rin')]; }
     if (sc.id === 'birthday') return birthdayResolve(s, sc.h!, idx);
     if (sc.id === 'wada' || sc.id === 'wada_intro') return wadaResolve(s, sc, idx);
+    if (sc.id === 'tm4') return tm4Resolve(s, sc, idx);
     const e = EVMAP[sc.id]; const ch = choicesOf(s, e)[idx]; s.seen.push(e.id);
     if (e.h && !e.id.endsWith('_meet')) { s.flags = s.flags.filter(f => !f.startsWith('lastHE:')); s.flags.push('lastHE:' + s.week); s.hs[e.h].events++; diary(s, `【${e.title}】${HMAP[e.h].sei}${HMAP[e.h].mei}との出来事。`); }
     if (e.id.endsWith('_meet') && e.h) meet(s, e.h);
@@ -916,10 +923,10 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
     const H = goods[0]; h = H.id;
     if (H.id === 'shizuku') { id = 'true'; title = '隠しトゥルーエンド：千日目の流れ星'; }
     else { id = 'good:' + H.id; title = `グッドエンド：${H.sei}${H.mei}からの告白`; }
-    body = H.endings.good;
+    body = [...(H.id === 'shizuku' ? [] : legendPrelude(s, H.id)), ...H.endings.good];
   } else if (normals.length) {
     const H = normals[0]; h = H.id; const hh = s.hs[H.id];
-    if (hh.toki >= 70 && hh.trust >= 45) { id = 'confess:' + H.id; title = `告白成功エンド：${H.sei}${H.mei}`; body = [`n:式の後、${H.sei}${H.mei}を呼び止めた。`, 'me:ずっと言いたかった。……好きだ。付き合ってほしい。', CONFESS_ASK_CG[H.id] || 'cg:off', `h(驚):……{C}。`, 'h(照):……はい。私で、よければ。', 'cg:off', ...H.endings.normal]; }
+    if (hh.toki >= 70 && hh.trust >= 45) { id = 'confess:' + H.id; title = `告白成功エンド：${H.sei}${H.mei}`; body = [`n:式の後、${H.sei}${H.mei}を呼び止めた。`, ...uneasyNote(s, H.id), 'me:ずっと言いたかった。……好きだ。付き合ってほしい。', CONFESS_ASK_CG[H.id] || 'cg:off', `h(驚):……{C}。`, 'h(照):……はい。私で、よければ。', 'cg:off', ...H.endings.normal]; }
     else { id = 'normal:' + H.id; title = `ノーマルエンド：${H.sei}${H.mei}`; body = H.endings.normal; }
   } else {
     const rivalH = HEROINES.filter(H => s.hs[H.id].withRival).sort((a, b) => s.hs[b.id].friend - s.hs[a.id].friend)[0];
