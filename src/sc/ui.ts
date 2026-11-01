@@ -17,6 +17,7 @@ import { CG_LIST, CG_MAP, cgSeen } from './data/cg';
 import { backlog, backlogHtml } from './backlog';
 import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone, effectParts } from './progress';
 import { replayClip } from './voice';
+import { buildEndingMovie, playEndingMovie } from './ending';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
 const seasonNow = () => S ? season(cal(S.week).m) : '春';
@@ -35,7 +36,7 @@ function loadSettings(): VoiceSettings { try { return { ...defaultSettings(), ..
 function saveSettings() { try { localStorage.setItem('seishun:set', JSON.stringify(set)); } catch { } audio.setVolumes(set.master, set.bgm, set.se); }
 const app = () => $('#app');
 
-export function boot() { audio.setBase(BASE); audio.installUnlock(); audio.setVolumes(set.master, set.bgm, set.se); audio.preloadSe(); title(); }
+export function boot() { audio.setBase(BASE); audio.installUnlock(); audio.setVolumes(set.master, set.bgm, set.se); audio.preloadSe(); const q = new URLSearchParams(location.search); if (q.get('debug') === 'end') return debugEnding(q); title(); }
 
 // ───────── タイトル ─────────
 function title() {
@@ -260,16 +261,24 @@ function cgGallery() {
 }
 let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
-  let i = 0;
+  let i = 0, tamed = false, hold = false;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
   <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint bl-row-hint"><button class="bl-btn" id="bl-open" aria-label="会話ログ">📜 ログ</button><span>クリック / Enter で進む</span></div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
   bindCmd(); preloadCgs(lines);
   const box = $('#box'); bindBacklog(box);
   const next = () => {
+    if (hold) return;
     if (typing) { clearInterval(typing); typing = null; $('#tx').textContent = lines[i - 1].text; return; }
     if (i >= lines.length) { box.onclick = null; document.onkeydown = null; stop(); talking(false); after(); return; }
     const L = lines[i++];
     if (L.who === 'cg') { if (L.text === 'off') cgOff(); else setCG(L.text); return next(); }
+    if (hold) { i--; return; }
+    // 告白の「ため」：最初の告白台詞の直前に一拍の静寂（暗転＋鼓動）を置く（TM4の告白演出を参考）
+    if (L.emo === '告' && hasPortrait(L.who) && !tamed) {
+      tamed = true; hold = true; i--; stop(); $('#nm').textContent = ''; $('#tx').textContent = '……';
+      const st = document.querySelector('.stage'); st?.classList.add('tame'); audio.se('doki');
+      setTimeout(() => { hold = false; st?.classList.remove('tame'); st?.classList.add('tamed'); next(); }, 1400); return;
+    }
     stop();
     $('#nm').textContent = L.name; $('#nm').style.color = L.color; $('#tx').className = 'text ' + (L.who === 'n' ? 'narr' : '');
     const tier = HMAP[L.who] && S ? tierOf(S.hs[L.who]) : 0;
@@ -388,13 +397,40 @@ function chatBox(h: string) {
   $('#ce').onclick = () => { resolve(S!, 0); main(); };
   $<HTMLInputElement>('#ci').focus();
 }
-function endingBox() {
-  const e = judgeEnding(S!); audio.playSong(BASE, { loop: false });
-  $('#ch').innerHTML = `<div class="panel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。</p><div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-s">最終セーブ文字列</button></div></div>`;
-  $('#e-t').onclick = () => { audio.stopSong(); resolve(S!, 0); store.save('auto', S!); try { localStorage.removeItem('seishun:slotauto'); } catch { } title(); };
-  $('#e-s').onclick = () => modal('SAVE', `<textarea readonly class="savestr">${exportSave(S!)}</textarea>`);
+function endingBox(replay = false) {
+  const e = judgeEnding(S!); const st = S!;
+  const panel = () => {
+    $('#ch').innerHTML = `<div class="panel endpanel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。三年間、ありがとう。</p><div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-r">🎬 エンディングをもう一度</button><button id="e-s">最終セーブ文字列</button></div></div>`;
+    $('#e-t').onclick = () => { audio.stopSong(); audio.stopFileBgm(); resolve(st, 0); store.save('auto', st); try { localStorage.removeItem('seishun:slotauto'); } catch { } title(); };
+    $('#e-r').onclick = () => endingBox(true);
+    $('#e-s').onclick = () => modal('SAVE', `<textarea readonly class="savestr">${exportSave(st)}</textarea>`);
+  };
+  if (!replay) panel();
+  const m = buildEndingMovie(st, e, BASE);
+  cgOff(); stop();
+  playEndingMovie(m, {
+    se: k => audio.se(k as any),
+    music: ph => {
+      if (ph === 'mono') { audio.stopSong(); audio.playTrack(m.tier === 'bad' || m.tier === 'rival' ? 'bad_end' : 'good_end'); }
+      else if (ph === 'roll' && m.tier !== 'bad') { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
+    },
+    done: () => { if (replay) return; },
+  });
 }
-
+/** 検証用：?debug=end&e=good|confess|normal|bad&h=hinata でエンディングへ直行（セーブは作らない） */
+function debugEnding(q: URLSearchParams) {
+  const h = HMAP[q.get('h') || ''] ? q.get('h')! : 'hinata'; const kind = q.get('e') || 'good';
+  const s = newGame({ sei: '青木', mei: '湊', seiYomi: 'あおき', meiYomi: 'みなと', bm: 4, bd: 2, persona: Object.keys(PERSONAS)[0], look: '', diff: 'NORMAL' } as any);
+  s.week = LAST_WEEK; s.club = '陸上部'; s.course = '私立大学'; s.courseResult = kind === 'bad' ? '不合格' : '合格';
+  s.exams.push({ week: 30, rank: 12, total: 240 }, { week: 80, rank: 7, total: 240 }); s.tournaments.push('40:県大会ベスト8');
+  if (kind !== 'bad') {
+    const hs = s.hs[h]; hs.met = true; hs.dates = 8; hs.friend = 60; hs.trust = 55; hs.toki = kind === 'normal' ? 60 : 75;
+    for (const id of ['meet', '1', '2', '3', '4']) s.seen.push(`${h}_${id}`);
+    for (const c of CG_LIST) if (c.h === h && (kind === 'good' || !/_(confess|kiss)$/.test(c.id)) && !/_ask$/.test(c.id)) s.flags.push('cg:' + c.id);
+    if (kind === 'good') { const H = HMAP[h]; s.ending = { id: 'good:' + h, title: `グッドエンド：${H.sei}${H.mei}からの告白`, h }; (s as any)._endLines = H.endings.good; }
+  }
+  S = s; s.queue = [{ kind: 'ending', id: 'ending' }]; scene();
+}
 // ───────── コマンド ─────────
 function cmdBar() { return `<div class="cmd"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS RELATION SCHEDULE DIARY LOVE HELP"><button id="cmd-go">実行</button><button id="b-st" title="ステータス">📊</button><button id="b-aff" title="好感度">💗</button><button id="b-set">⚙</button><button id="b-title">タイトル</button></div>`; }
 function bindCmd() {

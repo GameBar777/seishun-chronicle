@@ -26,6 +26,7 @@ export const EV_AFTER: Record<string, string> = { hinata_s4: 'hinata_2', kaho_4:
 const EV_RETIRE = new Set(['kaho_s1', 'kaho_s2']);
 const evTimeOk = (e: Ev, s: GameState, c: ReturnType<typeof cal>) => (!e.when || e.when.includes(c.m)) && (!EV_AFTER[e.id] || s.seen.includes(EV_AFTER[e.id])) && !(/_[234]$/.test(e.id) && !s.seen.includes(e.id.slice(0, -1) + (Number(e.id.slice(-1)) - 1))) && !(EV_RETIRE.has(e.id) && c.Y === 3 && (c.m >= 9 || c.m <= 3));
 import { CAL } from './data/calendar';
+import { CONFESS_ASK_CG } from './data/confess';
 import { WADA_INTRO, WADA_INTRO_CH, WADA_SC, WADA_CH, WADA_REACT_WIN, WADA_REACT_LOSE, WADA_END, WADA_STAGE_T2, WADA_SEEN, WADA_SEEN_OPEN, WADA_SEEN_W, WADA_SEEN_END, WADA_SEEN_CH, WADA_WAR, WADA_WAR_CH, WADA_WAR_RES, WADA_EVE, WADA_EVE_OPEN, WADA_EVE_CH, WADA_CLIMAX_CH, WADA_CLIMAX_WIN, WADA_CLIMAX_LOSE } from './data/wada';
 import type { Ev, Eff, Choice } from './data/schema';
 
@@ -918,7 +919,7 @@ export function judgeEnding(s: GameState): { id: string; title: string; h?: stri
     body = H.endings.good;
   } else if (normals.length) {
     const H = normals[0]; h = H.id; const hh = s.hs[H.id];
-    if (hh.toki >= 70 && hh.trust >= 45) { id = 'confess:' + H.id; title = `告白成功エンド：${H.sei}${H.mei}`; body = [`n:式の後、${H.sei}${H.mei}を呼び止めた。`, 'me:ずっと言いたかった。……好きだ。付き合ってほしい。', `h(驚):……{C}。`, 'h(照):……はい。私で、よければ。', ...H.endings.normal]; }
+    if (hh.toki >= 70 && hh.trust >= 45) { id = 'confess:' + H.id; title = `告白成功エンド：${H.sei}${H.mei}`; body = [`n:式の後、${H.sei}${H.mei}を呼び止めた。`, 'me:ずっと言いたかった。……好きだ。付き合ってほしい。', CONFESS_ASK_CG[H.id] || 'cg:off', `h(驚):……{C}。`, 'h(照):……はい。私で、よければ。', 'cg:off', ...H.endings.normal]; }
     else { id = 'normal:' + H.id; title = `ノーマルエンド：${H.sei}${H.mei}`; body = H.endings.normal; }
   } else {
     const rivalH = HEROINES.filter(H => s.hs[H.id].withRival).sort((a, b) => s.hs[b.id].friend - s.hs[a.id].friend)[0];
