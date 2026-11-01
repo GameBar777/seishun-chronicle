@@ -425,6 +425,8 @@ export function scheduleScenes(s: GameState) {
   let room = Math.max(0, MAX_WK - pre);
   for (const q of sorted) {
     if (mustScene(q)) { s.queue.push(q); room--; continue; }
+    // 男友達（健太・井上）の短い場面は枠を使わない（行事と重なって後回し→期限切れで出ない、を防ぐ。v1.14.0）
+    if (q.kind === 'event' && q.id.startsWith('d_fr_')) { s.queue.push(q); continue; }
     if (room > 0) { s.queue.push(q); room--; continue; }
     if (q.kind === 'event') s.later!.push({ q, w: later.find(l => l.q === q)?.w ?? s.week });
   }

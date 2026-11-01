@@ -3,8 +3,9 @@ import { DATE_TALK_LINES } from '../src/sc/data/datetalk/index';
 import { readFileSync, existsSync } from 'node:fs';
 import { DATEQ_EXTRA, DATE_R } from '../src/sc/data/dateq2';
 import { WADA_NV } from '../src/sc/data/wada';
+import { FRIENDS_NV } from '../src/sc/data/friends';
 // テキストのみ（nv）の行は収録率の計算から除外
-const NV = new Set<string>([...Object.values(DATEQ_EXTRA).flat().map(q => q.q), ...Object.values(DATE_R).flat().map(r => r.replace(/^h(\([^)]*\))?:/, '')), ...WADA_NV, ...DATE_TALK_LINES]);
+const NV = new Set<string>([...Object.values(DATEQ_EXTRA).flat().map(q => q.q), ...Object.values(DATE_R).flat().map(r => r.replace(/^h(\([^)]*\))?:/, '')), ...WADA_NV, ...DATE_TALK_LINES, ...FRIENDS_NV]);
 import { voiceId, newGame, view, resolve, doWeek, actions, phone, lineTap } from '../src/sc/engine';
 import { HEROINES } from '../src/sc/data/index';
 import { CAST_SLUG } from '../src/sc/voice';
