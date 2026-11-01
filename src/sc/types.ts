@@ -28,4 +28,5 @@ export interface GameState {
   exams: { week: number; rank: number; total: number }[]; tournaments: string[];
   outfits: string[]; ended: boolean; ending?: { id: string; title: string; h?: string };
   lastLog: string[]; actionCounts: Record<string, number>;
+  tm?: { bat: number; mail: { w: number; from: string; title: string; body: string; read?: boolean }[]; mailW?: number; hall?: { w: number; h: string; done?: boolean }; dbl?: { h: string; loc: string }; conf?: string };
 }
