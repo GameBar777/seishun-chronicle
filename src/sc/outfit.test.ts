@@ -85,3 +85,27 @@ describe('date sequence keeps one outfit end-to-end (v1.18.1)', () => {
     expect(sceneOutfit({ kind: 'event', id: 'tm4', data: { t: 'confess' } }, { bg: 'rooftop', month: 2 })).toBe('u');
   });
 });
+
+import { tm4Bg } from './tm4';
+describe('post-date scene backgrounds (v1.18.2)', () => {
+  const SCHOOL = /classroom|gate|gym|ground|rooftop|pool/;
+  const locs = ['movie', 'amuse', 'aquarium', 'zoo', 'mall', 'cafe', 'restaurant', 'park', 'sea', 'mountain', 'arcade', 'museum', 'karaoke', 'shrine', 'festival'];
+  it('dbl / nanpa / extra / hand never use a school background, and the walk home is evening or night', () => {
+    for (const loc of locs) for (const t of ['dbl', 'nanpa', 'extra', 'hand']) {
+      const r = tm4Bg({ kind: 'event', id: 'tm4', data: { t, dloc: loc } })!;
+      expect(r.bg, `${t}@${loc}`).not.toMatch(SCHOOL);
+      if (t !== 'dbl') expect(['evening', 'night']).toContain(r.tod);
+    }
+    expect(tm4Bg({ kind: 'event', id: 'tm4', data: { t: 'hand' } })!.bg).toBe('river');
+    expect(tm4Bg({ kind: 'event', id: 'tm4', data: { t: 'nanpa', dloc: 'sea' } })!.bg).toBe('sea');
+    expect(tm4Bg({ kind: 'event', id: 'tm4', data: { t: 'hand', dloc: 'festival' } })!.tod).toBe('night');
+    expect(tm4Bg({ kind: 'event', id: 'tm4', data: { t: 'confess' } })!.bg).toBe('rooftop');
+    expect(tm4Bg({ kind: 'event', id: 'x', data: {} })).toBeUndefined();
+  });
+  it('every tm4 scene in an engine-driven date sequence gets a non-school background', () => {
+    const s = newGame({ sei: '青木', mei: '湊', seiYomi: 'あおき', meiYomi: 'みなと', bm: 4, bd: 2, persona: Object.keys(PERSONAS)[0], look: '', diff: 'NORMAL' } as any);
+    s.week = 60; Object.assign(s.hs.hinata, { met: true, friend: 90, toki: 95 }); const d = mkDate(s, 'hinata', 'cafe'); s.queue = [d];
+    afterDate(s, d, 3); const fu = s.queue.filter(q => q.id === 'tm4'); expect(fu.length).toBeGreaterThan(0);
+    for (const q of fu) expect(tm4Bg(q)!.bg).not.toMatch(SCHOOL);
+  });
+});
