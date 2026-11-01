@@ -17,11 +17,15 @@ export function tierOfEnding(id: string): EndTier {
   return 'bad';
 }
 
+/** ライバル編（和田）でヒロインを奪われた場合は、エンディングの格に関わらずほろ苦い「rival」演出にする */
+export const lostToWada = (s: GameState, h?: string) => !!h && s.flags.includes(`wadaClimax:lose:${h}`);
+export const wonVsWada = (s: GameState, h?: string) => !!h && s.flags.includes(`wadaClimax:win:${h}`);
+export const endTier = (s: GameState, id: string, h?: string): EndTier => lostToWada(s, h) ? 'rival' : tierOfEnding(id);
 const seenCgs = (s: GameState, h: string) => CG_LIST.filter(c => c.h === h && s.flags.includes('cg:' + c.id)).map(c => c.id);
 
 /** 3年間を振り返る独白。実際のプレイデータ（見たイベント・デート回数・部活・進路・試験など）から組み立てる */
 export function monologue(s: GameState, id: string, h?: string): string[] {
-  const tier = tierOfEnding(id); const me = s.setup.mei; const H = h ? HMAP[h] : undefined; const hs = h ? s.hs[h] : undefined;
+  const tier = endTier(s, id, h); const me = s.setup.mei; const H = h ? HMAP[h] : undefined; const hs = h ? s.hs[h] : undefined;
   const out: string[] = [];
   const metN = HEROINES.filter(x => s.hs[x.id].met).length;
   out.push(`入学式の朝から、${s.week >= 150 ? '千日' : s.week + '週'}。——三年間が、終わった。`);
@@ -36,6 +40,8 @@ export function monologue(s: GameState, id: string, h?: string): string[] {
     const mid = evs.filter(t => t !== meet?.title).slice(-3);
     if (mid.length) out.push(`「${mid.join('」「')}」——${tier === 'good' ? '一つひとつが、今の二人につながっている。' : 'どれも、忘れられない。'}`);
     if (hs.dates) out.push(`二人で出かけたのは${hs.dates}回。${hs.dates >= 10 ? '数えきれないくらい、と言ってもいい。' : hs.dates >= 4 ? 'どの日も、天気まで覚えている。' : '少ないけれど、大切な日ばかりだ。'}`);
+    if (wonVsWada(s, h) && tier !== 'rival') out.push(`三年の冬、和田との勝負から逃げなかった。あの日があったから、今がある。`);
+    if (lostToWada(s, h)) out.push(`三年の冬。和田に「本気」で負けた。言い訳は、ひとつも思いつかなかった。`);
     if (tier === 'good') out.push(`そして卒業式の日。${H.mei}の答えを、きっと一生忘れない。`);
     else if (tier === 'normal') out.push(`${H.mei}とは、これからも。——その「これから」が、少しだけ楽しみだ。`);
     else if (tier === 'rival') out.push(`${H.mei}の隣にいるのは、自分じゃなかった。……それでも、あの笑顔が見られるなら。`);
@@ -63,12 +69,12 @@ export function buildCredits(s?: GameState): CreditSection[] {
 }
 
 export function buildEndingMovie(s: GameState, e: { id: string; title: string; h?: string }, base = '/'): EndingMovie {
-  const tier = tierOfEnding(e.id); const h = e.h;
+  const tier = endTier(s, e.id, e.h); const h = e.h;
   const bg = (n: string) => `${base}img/bg/${n}.webp`;
   let imgs: { img: string; cg: boolean }[] = [];
   if (h && tier !== 'bad') {
     const cgs = seenCgs(s, h);
-    const order = [...cgs.filter(c => !/_(confess|kiss|ask)$/.test(c)), ...cgs.filter(c => /_(ask|confess|kiss)$/.test(c))];
+    const order = [...cgs.filter(c => !/_(confess|kiss|ask)$/.test(c)), ...(tier === 'rival' ? [] : cgs.filter(c => /_(ask|confess|kiss)$/.test(c)))];
     imgs = order.map(id => ({ img: `${base}img/cg/h/${id}.webp`, cg: true }));
   }
   const fill = tier === 'bad' ? ['gate', 'classroom', 'station', 'river'] : ['gate', 'classroom', 'rooftop', 'park', 'station'];

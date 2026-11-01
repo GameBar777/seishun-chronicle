@@ -37,3 +37,26 @@ describe('confession illustrations', () => {
     }
   });
 });
+describe('wada climax hook', () => {
+  const setup = (flag: 'win' | 'lose') => {
+    const s = mk(); const h = s.hs.hinata; h.met = true; h.toki = 80; h.trust = 60; h.friend = 70; h.dates = 8;
+    s.flags.push('cg:hinata_ask', `wadaClimax:${flag}:hinata`);
+    if (flag === 'lose') { h.withRival = true; s.wada = s.wada || ({ m: {}, won: [], out: [] } as any); s.wada!.won.push('hinata'); }
+    return s;
+  };
+  it('lost to wada → bitter rival ending, no confession CGs', () => {
+    const s = setup('lose'); const e = judgeEnding(s);
+    expect(e.id.startsWith('good') || e.id.startsWith('confess')).toBe(false);
+    const m = buildEndingMovie(s, { ...e, h: 'hinata' }, '/');
+    expect(m.tier).toBe('rival');
+    expect(m.slides.some(x => /_ask|_confess|_kiss/.test(x.img))).toBe(false);
+    expect(m.slides.map(x => x.text).join()).toContain('和田');
+  });
+  it('lose flag forces rival tier even if ending id was good', () => {
+    const s = setup('lose'); expect(buildEndingMovie(s, { id: 'good:hinata', title: 'x', h: 'hinata' }, '/').tier).toBe('rival');
+  });
+  it('won vs wada → keeps good tier and mentions the fight', () => {
+    const s = setup('win'); const m = buildEndingMovie(s, { id: 'good:hinata', title: 'x', h: 'hinata' }, '/');
+    expect(m.tier).toBe('good'); expect(m.slides.map(x => x.text).join()).toContain('和田との勝負');
+  });
+});
