@@ -429,8 +429,11 @@ function endingBox(replay = false) {
   playEndingMovie(m, {
     se: k => audio.se(k as any),
     music: ph => {
-      if (ph === 'mono') { audio.stopSong(); audio.playTrack(m.tier === 'bad' || m.tier === 'rival' ? 'bad_end' : 'good_end'); }
-      else if (ph === 'roll' && (m.tier === 'good' || m.tier === 'normal')) { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
+      // v1.19.0 タイトルの主題歌をエンディングテーマに：グッド・ノーマル・和田エンドは振り返りから主題歌、バッドは静かな曲のまま
+      const theme = m.tier !== 'bad';
+      if (ph === 'mono') { audio.stopSong(); if (theme) { audio.stopFileBgm(.6); audio.playSong(BASE, { loop: false }); } else audio.playTrack('bad_end'); }
+      else if (ph === 'roll' && theme && !audio.songPlaying()) { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
+      else if (ph === 'end') { if (audio.songPlaying()) audio.fadeSong(3500); else audio.stopFileBgm(3.5); }
     },
     done: () => { if (replay) return; },
   });

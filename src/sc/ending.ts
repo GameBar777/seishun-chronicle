@@ -61,6 +61,7 @@ export function buildCredits(s?: GameState): CreditSection[] {
     { role: 'クラスメイト・後輩', names: ['健太', '田中', '井上', '和田 和樹', '芽衣'] },
     { role: '企画・シナリオ・プログラム', names: ['GameBar777'] },
     { role: 'キャラクター・背景・イベントCG', names: ['画像生成AIによるオリジナル'] },
+    { role: '主題歌', names: ['タイトル曲（ボーカル入り・提供音源）'] },
     { role: '音楽', names: ['魔王魂（https://maou.audio/）', 'CC BY 4.0'] },
     { role: '効果音', names: ['OtoLogic（https://otologic.jp/）', '魔王魂（https://maou.audio/）', 'CC BY 4.0'] },
     { role: 'ボイス', names: ['ElevenLabs（AI音声合成）', 'ブラウザ音声合成（フォールバック）'] },

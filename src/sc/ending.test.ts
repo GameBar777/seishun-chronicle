@@ -60,3 +60,7 @@ describe('wada climax hook', () => {
     expect(m.tier).toBe('good'); expect(m.slides.map(x => x.text).join()).toContain('和田との勝負');
   });
 });
+
+describe('v1.19.0 theme song credit', () => {
+  it('end roll credits the theme song', () => { expect(buildCredits().some(c => c.role === '主題歌')).toBe(true); });
+});
