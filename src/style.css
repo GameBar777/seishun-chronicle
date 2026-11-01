@@ -271,3 +271,6 @@ button.conf{background:linear-gradient(90deg,#ff8fb1,#ff4f81);color:#fff;border:
 .calstrip .cs.now{outline:2px solid #ff4f81}.calstrip .cs small{color:#666;font-weight:bold}
 body.shake #app{animation:shake .6s cubic-bezier(.36,.07,.19,.97) both}
 @keyframes shake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-2px)}30%,50%,70%{transform:translate(-8px,3px)}40%,60%{transform:translate(8px,-3px)}}
+
+/* v1.18.0 衣装ギャラリー */
+.wardrobe{display:flex;gap:4px;overflow-x:auto;padding:6px 0}.wardrobe figure{margin:0;flex:0 0 auto;text-align:center}.wardrobe img{height:120px;width:auto;display:block;background:#0001;border-radius:6px}.wardrobe figcaption{font-size:10px;opacity:.8}

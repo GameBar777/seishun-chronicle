@@ -3,6 +3,10 @@ import type { GameState } from './types';
 import { HEROINES, HMAP } from './data/index';
 import { render } from './engine';
 import { fmtDate } from './time';
+import { OUTFITS, OUTFIT_LABEL, OUTFIT_HEROINES } from './outfit';
+const OBASE = (import.meta as any).env?.BASE_URL ?? '/';
+/** プロフィール帳の衣装ギャラリー（知り合った相手のみ） */
+export const wardrobeHtml = (id: string) => OUTFIT_HEROINES.includes(id) ? `<div class="wardrobe">${OUTFITS.map(o => `<figure><img loading="lazy" src="${OBASE}img/ch/${o === 'u' ? id + '_n' : id + '_' + o + '_n'}-s.webp" alt="${OUTFIT_LABEL[o]}"><figcaption>${OUTFIT_LABEL[o]}</figcaption></figure>`).join('')}</div>` : '';
 import { tm, unread, profile, informant, heartOf, bombStage, BOMB_LABEL, hallNow, HALL_CH, calendarStrip, canConfess, BAT } from './tm4';
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const met = (s: GameState) => HEROINES.filter(H => s.hs[H.id].met && !s.hs[H.id].withRival);
@@ -22,7 +26,7 @@ export function mailHtml(s: GameState): string {
 export function bookHtml(s: GameState): string {
   const hs = HEROINES.filter(H => s.hs[H.id].met);
   if (!hs.length) return '<p>まだ誰とも知り合っていない。</p>';
-  return `<div class="book">${hs.map(H => { const hc = heartOf(s.hs[H.id]); return `<details class="pb" style="--hc:${H.color}"><summary><i class="hh" style="color:${hc.color}">♥</i> ${esc(H.sei + H.mei)}<small>${hc.stage}</small></summary><table>${profile(s, H.id).map(r => `<tr><th>${r.k}</th><td class="${r.v === '？？？' ? 'lk' : ''}">${esc(r.v)}</td></tr>`).join('')}</table></details>`; }).join('')}<p class="note">仲良くなるほど項目が埋まっていく。</p></div>`;
+  return `<div class="book">${hs.map(H => { const hc = heartOf(s.hs[H.id]); return `<details class="pb" style="--hc:${H.color}"><summary><i class="hh" style="color:${hc.color}">♥</i> ${esc(H.sei + H.mei)}<small>${hc.stage}</small></summary><table>${profile(s, H.id).map(r => `<tr><th>${r.k}</th><td class="${r.v === '？？？' ? 'lk' : ''}">${esc(r.v)}</td></tr>`).join('')}</table>${wardrobeHtml(H.id)}</details>`; }).join('')}<p class="note">仲良くなるほど項目が埋まっていく。</p></div>`;
 }
 export function informantHtml(s: GameState): string {
   const rs = informant(s);
