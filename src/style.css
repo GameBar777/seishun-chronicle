@@ -241,12 +241,12 @@ body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:non
 .em-col h3{font-size:.78rem;letter-spacing:.35em;color:var(--hc,#ffb3d1);margin:0 0 .7em;font-weight:normal}
 .em-col p{margin:.25em 0;font-size:1rem;letter-spacing:.12em}
 .em-col small{display:block;font-size:.7rem;opacity:.7;letter-spacing:.05em}
-.em-col section.logo h2{font-size:1.6rem;letter-spacing:.3em;margin:0}
+.em-col section.em-logo h2{font-size:1.6rem;letter-spacing:.3em;margin:0}
 .em-col section.fin{margin-top:6em}
 .em-skip{position:absolute;right:12px;top:calc(9vh + 10px);z-index:20;background:#0008;color:#fff;border:1px solid #fff6;border-radius:16px;padding:6px 14px;font-size:.8rem;letter-spacing:.15em}
 .endmv.t-bad .em-img img{filter:grayscale(.7) brightness(.6)}
 .endmv.t-bad .em-title h2{color:#b2bec3;text-shadow:none}
 @media (prefers-reduced-motion:reduce){.em-img.on img{animation:none!important}.em-roll.on .em-col{animation-duration:calc(var(--dur,52s) * 1.4)}.sc-title,.stage.tame .pwrap{animation:none}}
 .em-col h3{background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
-.em-col section.logo h3{font-size:1.15rem;letter-spacing:.25em;color:#fff;text-shadow:0 0 14px var(--hc,#ff8fb8)}
+.em-col section.em-logo h3{font-size:1.15rem;letter-spacing:.25em;color:#fff;text-shadow:0 0 14px var(--hc,#ff8fb8)}
 .endmv .em-skip,.endmv .em-skip:hover{background:#0008!important;color:#fff!important;box-shadow:none!important}
