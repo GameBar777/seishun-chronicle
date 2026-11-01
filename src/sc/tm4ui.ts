@@ -26,7 +26,7 @@ export function bookHtml(s: GameState): string {
 }
 export function informantHtml(s: GameState): string {
   const rs = informant(s);
-  return `<div class="inf"><p>@健太「よし、俺の情報網によると——」</p>${rs.map(r => `<div class="ir" style="border-color:${HMAP[r.id].color}"><b><i class="hh" style="color:${r.color}">♥</i>${esc(r.name)}</b><small>ハート：${r.heart}　📍${esc(r.where)}</small><div>「${esc(r.note)}」</div>${bombStage(s.hs[r.id]) ? `<div class="warn">${BOMB_LABEL[bombStage(s.hs[r.id])]}</div>` : ''}</div>`).join('') || '<p>まだ誰とも知り合ってないだろ、お前。</p>'}</div>`;
+  return `<div class="inf"><p>健太「よし、俺の情報網によると——」</p>${rs.map(r => `<div class="ir" style="border-color:${HMAP[r.id].color}"><b><i class="hh" style="color:${r.color}">♥</i>${esc(r.name)}</b><small>ハート：${r.heart}　📍${esc(r.where)}</small><div>「${esc(r.note)}」</div>${bombStage(s.hs[r.id]) ? `<div class="warn">${BOMB_LABEL[bombStage(s.hs[r.id])]}</div>` : ''}</div>`).join('') || '<p>まだ誰とも知り合ってないだろ、お前。</p>'}</div>`;
 }
 export function hallHtml(s: GameState): string {
   const id = hallNow(s); if (!id) return '';
