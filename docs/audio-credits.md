@@ -10,6 +10,8 @@
 加工：BGM は前後無音カット → loudnorm I=-16 LUFS / TP -1.5 → 44.1kHz stereo 128kbps。SE は I=-18 LUFS（0.4秒未満の短い音はループ計測でゲイン算出、TP -1.5 上限）mono 96kbps。ループは終端 1.6 秒前から同曲へクロスフェード。
 ファイル読み込み失敗時のみ旧シンセ BGM/SE にフォールバック。タイトル曲 theme.mp3 は従来のまま。
 
+主題歌（public/audio/theme.mp3 / .ogg、タイトル画面・エンディングで再生）：「Shine Again」 歌：MIRAi — https://youtube.com/@mirai_official19（ユーザー提供の音源）。表記：タイトル画面のクレジット、🎵主題歌プレイヤー、エンドロール。
+
 ## BGM（public/audio/bgm/）
 | key | 使う場面 | 原曲（魔王魂） |
 |---|---|---|

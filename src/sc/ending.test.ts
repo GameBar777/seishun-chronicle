@@ -62,5 +62,5 @@ describe('wada climax hook', () => {
 });
 
 describe('v1.19.0 theme song credit', () => {
-  it('end roll credits the theme song', () => { expect(buildCredits().some(c => c.role === '主題歌')).toBe(true); });
+  it('end roll credits the theme song', () => { const t = buildCredits().find(c => c.role === '主題歌')!; expect(t.names[0]).toBe('「Shine Again」 歌：MIRAi'); expect(t.names).toContain('youtube.com/@mirai_official19'); expect(t.names.join()).not.toContain('si='); });
 });
