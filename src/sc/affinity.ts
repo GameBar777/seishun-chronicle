@@ -18,7 +18,7 @@ export function affinityRows(s: GameState): { rows: AffRow[]; unmet: number } {
   for (const H of HEROINES) {
     const h = s.hs[H.id]; if (!h?.met) continue;
     const st = stage(h); const warn: string[] = [];
-    { const b = bombStage(h); if (b) warn.push(BOMB_LABEL[b] + (b >= 2 ? '（放っておくと噂が広がる。電話かデートで解除）' : '（まだ間に合う）')); }
+    { const b = bombStage(h); if (b) warn.push(BOMB_LABEL[b] + (b >= 2 ? '（放っておくと噂が広がる。電話かデートで解除）' : '……まだ間に合う')); }
     if (h.hurt >= 40) warn.push('💧 傷ついている');
     if (h.withRival) warn.push('💔 和田と付き合いはじめた');
     else { const w = (s as any).wada; if (w && !w.done && w.t === H.id && (w.st?.[H.id] ?? 0) >= 1) { const m = Math.round(w.m?.[H.id] ?? 0); const lv = m >= 75 ? '危険' : m >= 50 ? '本気' : m >= 25 ? '接近' : '様子見'; warn.push(`⚠ 和田が接近中（${lv}・本気度 ${m}）`); } }

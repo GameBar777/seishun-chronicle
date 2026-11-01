@@ -24,7 +24,7 @@ export function heartOf(h: HState): { color: string; word: string; stage: string
 export const BOMB_WARN = 45, BOMB_FUSE = 4;
 /** 0:なし 1:出現（くすぶり） 2:点火 3:爆発寸前 */
 export function bombStage(h: HState): 0 | 1 | 2 | 3 { if (h.bomb > 0) return h.bomb >= BOMB_FUSE - 1 ? 3 : 2; return h.flags.includes('bombWarn') ? 1 : 0; }
-export const BOMB_LABEL = ['', '💣 爆弾が出現（まだ火はついていない）', '💣🔥 導火線に火がついた', '💣🔥🔥 爆発寸前！'];
+export const BOMB_LABEL = ['', '⚠ 不穏（傷心が溜まっている）', '💣🔥 爆弾に火がついた', '💣🔥🔥 爆発寸前！'];
 export function bombWeek(s: GameState, id: string) {
   const h = s.hs[id];
   if (h.bomb === 0) {
@@ -150,7 +150,7 @@ export function afterDate(s: GameState, q: Scene, grade: number) {
   if (grade >= 2) add.push(sc('hand', q.h!));
   s.queue.splice(1, 0, ...add.slice(0, 2));
 }
-const mkDate = (s: GameState, h: string, loc: string, extra: any = {}): Scene => ({ kind: 'date', id: 'date', h, step: 0, data: { loc, score: 0, order: dateOrder(s, h, loc), ...extra } });
+export const mkDate = (s: GameState, h: string, loc: string, extra: any = {}): Scene => ({ kind: 'date', id: 'date', h, step: 0, data: { loc, score: 0, order: dateOrder(s, h, loc), ...extra } });
 export function canConfess(s: GameState) { const c = cal(s.week); return c.Y === 3 && c.m >= 1 && c.m <= 3 && s.week < LAST_WEEK && !tm(s).conf; }
 export function startConfess(s: GameState, id: string) { if (!canConfess(s)) return false; s.queue.push(sc('confess', id)); return true; }
 

@@ -6,7 +6,7 @@ import { fmtDate } from './time';
 import { tm, unread, profile, informant, heartOf, bombStage, BOMB_LABEL, hallNow, HALL_CH, calendarStrip, canConfess, BAT } from './tm4';
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const met = (s: GameState) => HEROINES.filter(H => s.hs[H.id].met && !s.hs[H.id].withRival);
-export const BOMB_ICON = ['', '💣', '💣🔥', '💣🔥🔥'];
+export const BOMB_ICON = ['', '⚠', '💣🔥', '💣🔥🔥'];
 export function heartChip(s: GameState, id: string): string { const h = s.hs[id], hc = heartOf(h), b = bombStage(h); return `<i class="hh" style="color:${hc.color}" title="ハート：${hc.word}">♥</i>${b ? `<i class="bomb b${b}">${BOMB_ICON[b]}</i>` : ''}`; }
 export function batteryHtml(s: GameState): string { const b = tm(s).bat; return `<span class="bat ${b < BAT.call ? 'low' : ''}" title="携帯の電池（通話${BAT.call}%・メール${BAT.mail}%／毎週+${BAT.charge}%）"><i style="width:${b}%"></i></span><small>${b}%</small>`; }
 export function phoneAppBtns(s: GameState): string {
