@@ -412,7 +412,7 @@ function endingBox(replay = false) {
     se: k => audio.se(k as any),
     music: ph => {
       if (ph === 'mono') { audio.stopSong(); audio.playTrack(m.tier === 'bad' || m.tier === 'rival' ? 'bad_end' : 'good_end'); }
-      else if (ph === 'roll' && m.tier !== 'bad') { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
+      else if (ph === 'roll' && (m.tier === 'good' || m.tier === 'normal')) { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
     },
     done: () => { if (replay) return; },
   });
@@ -429,6 +429,7 @@ function debugEnding(q: URLSearchParams) {
     for (const c of CG_LIST) if (c.h === h && (kind === 'good' || !/_(confess|kiss)$/.test(c.id)) && !/_ask$/.test(c.id)) s.flags.push('cg:' + c.id);
     if (kind === 'good') { const H = HMAP[h]; s.ending = { id: 'good:' + h, title: `グッドエンド：${H.sei}${H.mei}からの告白`, h }; (s as any)._endLines = H.endings.good; }
   }
+  if (kind === 'wada') { s.flags.push(`wadaClimax:lose:${h}`); s.hs[h].withRival = true; s.wada = s.wada || ({ m: {}, won: [], out: [], st: {} } as any); s.wada!.won.push(h); }
   S = s; s.queue = [{ kind: 'ending', id: 'ending' }]; scene();
 }
 // ───────── コマンド ─────────
