@@ -194,3 +194,59 @@ body.cgmode .stage.confess::before,body.cgmode .stage.confess::after{display:non
 .lgc.pos{color:#13803d;background:#e6f6ec}.lgc.neg{color:#c62828;background:#fdecec}
 /* v1.11.2 行動ボタンの効果説明の色分け */
 .act small .ef{font-weight:700}.act small .ef.pos{color:#13803d}.act small .ef.neg{color:#c62828}.act:disabled small .ef{color:inherit;font-weight:inherit}
+
+/* ───────── 告白の「ため」 ───────── */
+.stage.tame::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at center,#0000 20%,#000c 85%);z-index:3;pointer-events:none;animation:tameIn 1.4s ease both}
+.stage.tame .pwrap{animation:tameBeat .7s ease-in-out 2}
+.stage.tamed .pwrap{filter:drop-shadow(0 0 18px #ff9ec4)}
+@keyframes tameIn{0%{opacity:0}35%{opacity:1}100%{opacity:.85}}
+@keyframes tameBeat{0%,100%{transform:scale(1)}30%{transform:scale(1.035)}}
+/* イベント見出しのカットイン */
+.sc-title{animation:cutIn .55s cubic-bezier(.2,.9,.3,1.2) both;box-shadow:0 2px 10px #0002}
+@keyframes cutIn{from{transform:translateX(-120%);opacity:0}to{transform:none;opacity:1}}
+
+/* ───────── エンディングムービー / エンドロール ───────── */
+.endmv{position:fixed;inset:0;z-index:9000;background:#000;color:#fff;overflow:hidden;opacity:0;transition:opacity 1.2s;font-family:"Hiragino Mincho ProN","Yu Mincho",serif}
+.endmv.on{opacity:1}.endmv.out{opacity:0;transition:opacity 1.6s}
+.em-stage{position:absolute;inset:0;z-index:0;pointer-events:none}
+.em-img{position:absolute;inset:0;opacity:0;transition:opacity 1.6s ease;overflow:hidden}
+.em-img.on{opacity:1}
+.em-img .em-blur{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(22px) brightness(.4)}
+.em-img img{position:absolute;left:50%;top:50%;width:min(100vw,177.8vh);aspect-ratio:16/9;object-fit:cover;transform:translate(-50%,-50%);box-shadow:0 0 40px #000}
+.em-img:not(.cg) img{filter:saturate(.8) brightness(.8)}
+@media (orientation:portrait){.em-img img{width:auto;height:46vh;max-width:none}}
+.em-img.pan0.on img{animation:emPan0 9s ease-out both}.em-img.pan1.on img{animation:emPan1 9s ease-out both}
+.em-img.pan2.on img{animation:emPan2 9s ease-out both}.em-img.pan3.on img{animation:emPan3 9s ease-out both}
+@keyframes emPan0{from{transform:translate(-50%,-50%) scale(1.02)}to{transform:translate(-50%,-50%) scale(1.14)}}
+@keyframes emPan1{from{transform:translate(-56%,-50%) scale(1.1)}to{transform:translate(-44%,-50%) scale(1.1)}}
+@keyframes emPan2{from{transform:translate(-50%,-48%) scale(1.15)}to{transform:translate(-50%,-52%) scale(1.03)}}
+@keyframes emPan3{from{transform:translate(-44%,-50%) scale(1.1)}to{transform:translate(-56%,-49%) scale(1.16)}}
+.em-bar{position:absolute;left:0;right:0;height:9vh;background:#000;z-index:3;transition:height 1.2s}
+.em-bar.top{top:0}.em-bar.bot{bottom:0}
+.endmv.rolling .em-bar{height:0}
+.em-text{position:absolute;left:6%;right:6%;bottom:13vh;z-index:4;text-align:center;font-size:clamp(1rem,4.4vw,1.35rem);line-height:2;letter-spacing:.08em;text-shadow:0 0 8px #000,0 0 18px #000;opacity:0;transform:translateY(8px);transition:opacity 1.2s,transform 1.2s;white-space:pre-wrap}
+.em-text.on{opacity:1;transform:none}
+.em-title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;opacity:0;transition:opacity 1.6s;text-align:center;padding:0 8%}
+.em-title.on{opacity:1}
+.em-title h2{font-size:clamp(1.3rem,6vw,2.2rem);letter-spacing:.2em;margin:0 0 .6em;color:var(--hc,#ffd1e8);text-shadow:0 0 18px var(--hc,#ff8fb8)}
+.em-title p{opacity:.8;letter-spacing:.3em;font-size:.9rem;margin:0}
+.em-title.fin h2{font-size:clamp(2rem,10vw,3.6rem);letter-spacing:.5em;color:#fff}
+.em-roll{position:absolute;inset:0;z-index:6;overflow:hidden;opacity:0;transition:opacity 1.4s;-webkit-mask-image:linear-gradient(#0000,#000 14%,#000 86%,#0000);mask-image:linear-gradient(#0000,#000 14%,#000 86%,#0000)}
+.em-roll.on{opacity:1}
+.endmv.rolling .em-img img{filter:brightness(.4) blur(1px)}
+.em-col{position:absolute;left:0;right:0;top:100%;text-align:center;padding:0 10%}
+.em-roll.on .em-col{animation:emRoll var(--dur,52s) linear forwards}
+@keyframes emRoll{from{transform:translateY(0)}to{transform:translateY(calc(-100% - 100vh))}}
+.em-col section{margin:0 0 3.2em}
+.em-col h3{font-size:.78rem;letter-spacing:.35em;color:var(--hc,#ffb3d1);margin:0 0 .7em;font-weight:normal}
+.em-col p{margin:.25em 0;font-size:1rem;letter-spacing:.12em}
+.em-col small{display:block;font-size:.7rem;opacity:.7;letter-spacing:.05em}
+.em-col section.logo h2{font-size:1.6rem;letter-spacing:.3em;margin:0}
+.em-col section.fin{margin-top:6em}
+.em-skip{position:absolute;right:12px;top:calc(9vh + 10px);z-index:20;background:#0008;color:#fff;border:1px solid #fff6;border-radius:16px;padding:6px 14px;font-size:.8rem;letter-spacing:.15em}
+.endmv.t-bad .em-img img{filter:grayscale(.7) brightness(.6)}
+.endmv.t-bad .em-title h2{color:#b2bec3;text-shadow:none}
+@media (prefers-reduced-motion:reduce){.em-img.on img{animation:none!important}.em-roll.on .em-col{animation-duration:calc(var(--dur,52s) * 1.4)}.sc-title,.stage.tame .pwrap{animation:none}}
+.em-col h3{background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+.em-col section.logo h3{font-size:1.15rem;letter-spacing:.25em;color:#fff;text-shadow:0 0 14px var(--hc,#ff8fb8)}
+.endmv .em-skip,.endmv .em-skip:hover{background:#0008!important;color:#fff!important;box-shadow:none!important}
