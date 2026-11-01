@@ -6,6 +6,7 @@ import { HEROINES, HMAP, LOCATIONS } from './data/index';
 import { applyH, stage, tierOf, parseLine, dateOrder, type Line, type View } from './engine';
 import { rand, pick, chance } from './rng';
 import { cal, LAST_WEEK, fmtDate } from './time';
+import { LOC_BG } from './bg';
 
 export interface Mail { w: number; from: string; title: string; body: string; read?: boolean }
 export interface TmState { bat: number; mail: Mail[]; mailW?: number; hall?: { w: number; h: string; done?: boolean }; dbl?: { h: string; loc: string }; conf?: string }
@@ -237,4 +238,20 @@ export function calendarStrip(s: GameState, n = 8): { w: number; label: string; 
     r.push({ w, label: fmtDate(w).replace(/^\d+年/, ''), marks });
   }
   return r;
+}
+
+/** v1.18.2 TM4場面の背景（デート後の場面は学校にしない） */
+const INDOOR_SPOT = new Set(['movie', 'cafe', 'aquarium', 'museum']);
+export function tm4Bg(sc: any, lastDateLoc?: string): { bg: string; tod: 'morning' | 'day' | 'evening' | 'night' } | undefined {
+  if (sc?.id !== 'tm4') return undefined;
+  const loc = sc.data?.dloc || lastDateLoc || 'park';
+  const spot = LOC_BG[loc] || 'park', late = loc === 'festival' || loc === 'shrine';
+  switch (sc.data?.t) {
+    case 'dbl': return { bg: 'station', tod: 'morning' };           // 日曜の朝、待ち合わせ前の駅前
+    case 'nanpa': return { bg: INDOOR_SPOT.has(spot) ? 'town' : spot, tod: late ? 'night' : 'evening' }; // デート先を出たところ
+    case 'extra': return { bg: INDOOR_SPOT.has(spot) ? 'town' : spot, tod: late ? 'night' : 'evening' };
+    case 'hand': return { bg: 'river', tod: late ? 'night' : 'evening' }; // 夕暮れの川沿いの帰り道
+    case 'confess': return { bg: 'rooftop', tod: 'evening' };        // 放課後の屋上
+  }
+  return undefined;
 }

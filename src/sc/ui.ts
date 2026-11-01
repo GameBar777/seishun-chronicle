@@ -20,7 +20,7 @@ import { backlog, backlogHtml } from './backlog';
 import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone, effectParts } from './progress';
 import { replayClip } from './voice';
 import { buildEndingMovie, playEndingMovie } from './ending';
-import { hallTalk, sendMail, startConfess } from './tm4';
+import { hallTalk, sendMail, startConfess, tm4Bg } from './tm4';
 import { heartChip, batteryHtml, phoneAppBtns, mailHtml, bookHtml, informantHtml, hallHtml, calStripHtml } from './tm4ui';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
 const TRANS: Record<string, number> = { 春: 0, 夏: 2, 秋: -2, 冬: -4 };
@@ -119,8 +119,8 @@ function main() {
   cgOff(); if (!S) return title();
   store.save('auto', S);
   if (S.queue.length) return scene();
-  outfitNow = 'u'; // ハブ画面は教室/校門背景なので制服
-  audio.playTrack(bgmForAct(S.lastAct, S.week)); bgFor(S.week % 2 ? 'classroom' : 'gate', 'day');
+  const hubVac = cal(S.week).vacation; outfitNow = hubVac ? (cal(S.week).m >= 4 && cal(S.week).m <= 9 ? 'cs' : 'cw') : 'u'; // 学期中は教室/校門で制服、休み中は街で私服
+  audio.playTrack(bgmForAct(S.lastAct, S.week)); bgFor(hubVac ? 'town' : S.week % 2 ? 'classroom' : 'gate', 'day');
   if (S.ended) return title();
   const s = S, c = cal(s.week);
   const acts = actions(s);
@@ -145,7 +145,7 @@ function main() {
   $('#ph-mail').onclick = () => { modal('✉ メール', mailHtml(s)); }; $('#ph-book').onclick = () => modal('📒 プロフィール帳', bookHtml(s));
   $('#ph-send').onclick = () => { const id = $<HTMLSelectElement>('#ph-h').value; if (!HMAP[id]) return toast('メールを送る相手を選んでください'); audio.se('message'); playLines('✉ メール', sendMail(s, id), () => main(), id); };
   document.getElementById('ph-conf')?.addEventListener('click', () => { const id = $<HTMLSelectElement>('#ph-h').value; if (!HMAP[id]) return toast('想いを伝える相手を選んでください'); if (!confirm(`${HMAP[id].sei}${HMAP[id].mei}に告白しますか？（一度きり）`)) return; startConfess(s, id); main(); });
-  document.querySelectorAll<HTMLButtonElement>('.hl').forEach(b => b.onclick = () => { audio.se('confirm'); const ls = hallTalk(s, +b.dataset.i!); const vac = cal(s.week).vacation; if (vac) { const m = cal(s.week).m; outfitNow = m >= 4 && m <= 9 ? 'cs' : 'cw'; } if (ls.length) playLines(vac ? '🚶 街で' : '🚶 廊下で', ls, () => main(), ls.find(l => HMAP[l.who])?.who); });
+  document.querySelectorAll<HTMLButtonElement>('.hl').forEach(b => b.onclick = () => { audio.se('confirm'); const ls = hallTalk(s, +b.dataset.i!); const vac = cal(s.week).vacation; if (vac) { const m = cal(s.week).m; outfitNow = m >= 4 && m <= 9 ? 'cs' : 'cw'; } bgFor(vac ? 'station' : 'classroom', 'day'); if (ls.length) playLines(vac ? '🚶 街で' : '🚶 廊下で', ls, () => main(), ls.find(l => HMAP[l.who])?.who); });
   $('#sh-buy').onclick = () => { const o = $<HTMLSelectElement>('#sh-o').value; if (!o) return; if (buyOutfit(s, o)) { toast(`${o}の服を買った`); main(); } else toast('お金が足りない'); };
   $('#jb-set').onclick = () => { setJob(s, $<HTMLSelectElement>('#jb').value as Job | ''); toast('バイト先を変更した'); main(); };
   document.querySelectorAll<HTMLElement>('.cw').forEach(b => b.onclick = () => { const id = b.dataset.h!; if (s.hs[id]?.met && !s.hs[id].withRival) week('talk', id); });
@@ -212,6 +212,7 @@ function scene() {
   const sc0 = s.queue[0]; const txt = v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '); // つなぎの一文（――その夜。等）で時間帯を決めない
   let sbg = '', stod: string | undefined;
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
+  else if (tm4Bg(sc0)) { const tb = tm4Bg(sc0, s.queue.find(q => q.kind === 'date')?.data?.loc || lastDateLoc)!; sbg = tb.bg; stod = tb.tod; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
   else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || ''), { text: v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '), dated: !!sc0?.id && (CAL_IDS.has(sc0.id) || isDated(sc0.id)) && !sc0.id.startsWith('d_sis'), vacation: cal(s.week).vacation, heroine: !!v.h }); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }
   if (sc0?.kind === 'date') lastDateLoc = sc0.data?.loc;
   outfitNow = sceneOutfit(sc0, { kind: v.kind, loc: sc0?.data?.loc, bg: sbg, text: txt, month: cal(s.week).m, vacation: cal(s.week).vacation }, s.queue.find(q => q.kind === 'date')?.data?.loc || lastDateLoc);
