@@ -118,7 +118,7 @@ export function playEndingMovie(m: EndingMovie, hooks: MovieHooks) {
   const startMono = () => { phase = 'mono'; ttl.classList.remove('on'); hooks.music('mono'); setTimeout(nextSlide, 900); };
   const startRoll = () => {
     if (phase === 'roll' || phase === 'end') return; phase = 'roll'; clearTimeout(timer); txt.classList.remove('on'); el.classList.add('rolling'); hooks.music('roll');
-    roll.innerHTML = `<div class="em-col">${m.credits.map((c, k) => `<section${k === 0 ? ' class="logo"' : ''}><h3>${escH(c.role)}</h3>${c.names.map(n => `<p>${escH(n)}</p>`).join('')}</section>`).join('')}<section class="fin"><p>${escH(m.epilogue)}</p><h2>FIN</h2></section></div>`;
+    roll.innerHTML = `<div class="em-col">${m.credits.map((c, k) => `<section${k === 0 ? ' class="em-logo"' : ''}><h3>${escH(c.role)}</h3>${c.names.map(n => `<p>${escH(n)}</p>`).join('')}</section>`).join('')}<section class="fin"><p>${escH(m.epilogue)}</p><h2>FIN</h2></section></div>`;
     const col = roll.querySelector('.em-col') as HTMLElement;
     const dur = m.tier === 'good' ? 52 : 34; col.style.animationDuration = dur + 's'; roll.classList.add('on');
     // 背景は見たCGをゆっくり順番に
