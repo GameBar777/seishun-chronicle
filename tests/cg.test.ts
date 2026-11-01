@@ -14,7 +14,7 @@ describe('イベントCG', () => {
   });
   it('every cg: reference in scenario data is registered, and every CG is used', () => {
     const used = new Set<string>();
-    for (const f of readdirSync('src/sc/data')) for (const m of readFileSync(`src/sc/data/${f}`, 'utf8').matchAll(/'cg:([a-z0-9_]+)'/g)) used.add(m[1]);
+    for (const f of readdirSync('src/sc/data').filter(f => f.endsWith('.ts'))) for (const m of readFileSync(`src/sc/data/${f}`, 'utf8').matchAll(/'cg:([a-z0-9_]+)'/g)) used.add(m[1]);
     for (const id of used) if (id !== 'off') expect(CG_MAP[id], id).toBeTruthy();
     for (const c of CG_LIST) expect(used.has(c.id), c.id).toBe(true);
   });
