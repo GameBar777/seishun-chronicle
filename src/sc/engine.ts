@@ -14,8 +14,19 @@ import { SISTER } from './data/sister';
 import { FRIENDS } from './data/friends';
 const DAILY = [...DAILY1, ...DAILY2, ...DAILY3, ...DAILY4, ...SISTER, ...FRIENDS];
 const HEVENTS = [...HEV0, ...SIDE_EVENTS, ...SIDE_EVENTS2];
+// 本文に季節が書かれている個別イベントの発生月（v1.15: 「三年の秋」が4月に起きる等の時系列ずれ対策）
+export const EV_WHEN: Record<string, number[]> = {
+  hinata_3: [6, 7, 8, 9], hinata_4: [9, 10, 11], mio_3: [9, 10, 11], mio_4: [9, 10, 11], yura_2: [12, 1, 2], yura_4: [10, 11, 12, 1],
+  kaho_3: [5, 6, 7, 8], kaho_4: [6, 7, 8], kotoha_3: [9, 10, 11], rin_3: [12, 1, 2],
+  shizuku_3: [11, 12, 1, 2], yura_s2: [12, 1, 2], kaho_s2: [7, 8], kotoha_s2: [9, 10], mio_s4: [9, 10],
+};
+for (const e of HEVENTS) if (EV_WHEN[e.id]) e.when = EV_WHEN[e.id];
+// 前提イベント（続編的な内容のものは前提を見てから）と、三年の引退後には起きないもの
+export const EV_AFTER: Record<string, string> = { hinata_s4: 'hinata_2', kaho_4: 'kaho_3', kotoha_4: 'kotoha_3', rin_4: 'rin_3', mio_4: 'mio_3', yura_4: 'yura_3', hinata_4: 'hinata_3', shizuku_3: 'shizuku_2' };
+const EV_RETIRE = new Set(['kaho_s1', 'kaho_s2']);
+const evTimeOk = (e: Ev, s: GameState, c: ReturnType<typeof cal>) => (!e.when || e.when.includes(c.m)) && (!EV_AFTER[e.id] || s.seen.includes(EV_AFTER[e.id])) && !(/_[234]$/.test(e.id) && !s.seen.includes(e.id.slice(0, -1) + (Number(e.id.slice(-1)) - 1))) && !(EV_RETIRE.has(e.id) && c.Y === 3 && (c.m >= 9 || c.m <= 3));
 import { CAL } from './data/calendar';
-import { WADA_INTRO, WADA_INTRO_CH, WADA_SC, WADA_CH, WADA_STAGE_T, WADA_REACT_WIN, WADA_REACT_LOSE, WADA_END } from './data/wada';
+import { WADA_INTRO, WADA_INTRO_CH, WADA_SC, WADA_CH, WADA_REACT_WIN, WADA_REACT_LOSE, WADA_END, WADA_STAGE_T2, WADA_SEEN, WADA_SEEN_OPEN, WADA_SEEN_W, WADA_SEEN_END, WADA_SEEN_CH, WADA_WAR, WADA_WAR_CH, WADA_WAR_RES, WADA_EVE, WADA_EVE_OPEN, WADA_EVE_CH, WADA_CLIMAX_CH, WADA_CLIMAX_WIN, WADA_CLIMAX_LOSE } from './data/wada';
 import type { Ev, Eff, Choice } from './data/schema';
 
 export const SAVE_VERSION = 1;
@@ -76,7 +87,7 @@ export function render(t: string, s: GameState, hid: string | undefined, reading
   let callT = '{S}くん';
   if (hid && HMAP[hid]) callT = HMAP[hid].call[s.hs[hid].callTier] ?? HMAP[hid].call[0];
   // 呼び名に「くん」が含まれるヒロインの「{C}くん」が「くん……くん」と重ならないように
-  return t.replace(/\{C\}くん/g, /くん/.test(callT) ? '{C}' : '{C}くん').replace(/\{C\}/g, callT).replace(/\{S\}/g, S).replace(/\{M\}/g, M);
+  return t.replace(/\{C\}くん/g, /くん/.test(callT) ? '{C}' : '{C}くん').replace(/\{C\}/g, callT).replace(/\{S\}/g, S).replace(/\{M\}/g, M).replace(/\{H\}/g, hid && HMAP[hid] ? HMAP[hid].mei : '').replace(/\{季\}/g, () => { const c = cal(s.week); return `${'一二三'[c.Y - 1] ?? '三'}年の${season(c.m)}`; });
 }
 const NPC_COLOR = '#636e72';
 // 進路に合わせたセリフの言い換え（就職・専門学校で「大学」と言われないように）。voiceId も言い換え後で引く
@@ -332,11 +343,24 @@ function wadaTarget(s: GameState): string | undefined {
 function wadaWeek(s: GameState, res: string[]) {
   if (s.week < WADA_START || !s.wada) return;
   const w = s.wada; const D = DIFF[s.setup.diff];
-  if (w.won.length) return;
-  if (!w.t || w.out.includes(w.t) || s.hs[w.t].withRival) w.t = wadaTarget(s);
-  if (!w.t) return; const h = s.hs[w.t]; const gap = s.week - h.lastContact;
-  w.m[w.t] = clamp((w.m[w.t] || 0) + (h.toki >= 60 ? 0.3 : (1 + (60 - h.toki) / 40) * D.rival) * (gap > 4 ? 1.5 : 1), 0, 100);
+  if (w.won.length || w.done) return;
+  const st0 = w.t ? w.st[w.t] || 0 : 0;
+  // 目撃（段階2）以降は狙いを固定する
+  if (!w.t || w.out.includes(w.t) || s.hs[w.t].withRival || (st0 < 2 && chance(s, 0.3))) { const nt = wadaTarget(s); if (nt !== w.t && w.t && st0 >= 2 && !s.hs[w.t].withRival) { /* 固定 */ } else w.t = nt; }
+  if (!w.t) return; const h = s.hs[w.t]; const gap = s.week - h.lastContact; const st = w.st[w.t] || 0;
+  const inc = Math.max(0.35, 1 + (60 - h.toki) / 40) * D.rival * (gap > 4 ? 1.5 : 1) * (st >= 2 ? 1.25 : 1);
+  w.m[w.t] = clamp((w.m[w.t] || 0) + inc, 0, 100);
+  if (st >= 1 && s.week % 4 === 0) { const H = HMAP[w.t]; res.push(`⚠ 和田が${H.sei}${H.mei}に接近中（和田の本気度 ${Math.round(w.m[w.t])}）`); }
 }
+// ライバル編の進行：段階ごとの発生週（クライマックスは三年の12月はじめ）
+export const WADA_CLIMAX_W = (() => { for (let w = 120; w < 160; w++) { const c = cal(w); if (c.Y === 3 && c.m === 12) return w; } return 139; })();
+export const WADA_AT = [WADA_START + 4, WADA_START + 16, WADA_START + 30, WADA_START + 46, WADA_CLIMAX_W - 1, WADA_CLIMAX_W];
+export function wadaScore(s: GameState, id: string): number {
+  const w = s.wada!; const h = s.hs[id]; const st = s.stats as any;
+  const stat = Math.min(10, ((st.yo || 0) + ((st.gei || 0) + (st.bun || 0) + (st.ri || 0) + (st.un || 0)) / 4) / 20);
+  return h.toki * 0.55 + h.trust * 0.35 + h.friend * 0.15 + (w.p?.[id] || 0) + stat - (w.m[id] || 0) * 0.6 - (s.week - h.lastContact > 3 ? 12 : 0);
+}
+export const WADA_WIN_AT = 28;
 function takeBy(s: GameState, id: string, wada: boolean) {
   const H = HMAP[id]; const h = s.hs[id]; h.withRival = true; h.bomb = 0; const nm = wada ? wadaName : H.rivalName;
   if (wada) s.wada!.won.push(id);
@@ -344,24 +368,47 @@ function takeBy(s: GameState, id: string, wada: boolean) {
 }
 function wadaView(s: GameState, sc: Scene): View {
   if (sc.id === 'wada_intro') return { kind: 'event', title: '生意気な後輩', lines: WADA_INTRO.map(l => parseLine(l, s)), choices: WADA_INTRO_CH.map(c => c[0]) };
-  const st = s.wada!.st[sc.h!] || 0; const H = HMAP[sc.h!]; const S = WADA_SC[sc.h!][st];
-  return { kind: 'event', title: `${WADA_STAGE_T[st]}――${H.sei}${H.mei}`, h: sc.h, lines: S.lines.map(l => parseLine(l, s, sc.h)), choices: WADA_CH };
+  const id = sc.h!; const st = Math.min(5, s.wada!.st[id] || 0); const H = HMAP[id]; const nm = H.sei + H.mei; const P = (l: string) => parseLine(l, s, id);
+  const subH = (x: string) => x.replace(/\{H\}/g, H.mei);
+  let lines: string[]; let ch: string[];
+  if (st <= 1) { lines = WADA_SC[id][st].lines; ch = WADA_CH; }
+  else if (st === 2) { const S = WADA_SEEN[id]; lines = [...WADA_SEEN_OPEN(S.spot, nm), S.lines[0], pickL(s, WADA_SEEN_W), S.lines[1], ...WADA_SEEN_END]; ch = WADA_SEEN_CH; }
+  else if (st === 3) { lines = WADA_WAR; ch = WADA_WAR_CH; }
+  else if (st === 4) { lines = [...WADA_EVE_OPEN(nm), WADA_EVE[id]]; ch = WADA_EVE_CH; }
+  else { lines = WADA_SC[id][2].lines; ch = WADA_CLIMAX_CH; }
+  return { kind: 'event', title: `${WADA_STAGE_T2[st]}――${nm}`, h: id, lines: lines.map(P), choices: ch.map(subH) };
 }
 function wadaResolve(s: GameState, sc: Scene, idx: number): Line[] {
   const L = (x: string) => parseLine(x, s, sc.h);
   if (sc.id === 'wada_intro') { s.seen.push('wada_intro'); return (WADA_INTRO_CH[idx]?.[1] || []).map(L); }
-  const w = s.wada!; const id = sc.h!; const h = s.hs[id]; const st = w.st[id] || 0; const S = WADA_SC[id][st];
-  w.st[id] = st + 1; w.next = s.week + WADA_GAP;
-  const cut = idx === 0 && (h.toki >= 25 || h.friend >= 40);
-  if (idx === 0) { applyH(s, id, cut ? { t: 3, tr: 2 } : { f: 1, tr: -1 }); w.m[id] = clamp((w.m[id] || 0) - (cut ? 25 : 8), 0, 100); }
-  else { w.m[id] = clamp((w.m[id] || 0) + 12, 0, 100); (w.watch ||= {})[id] = (w.watch[id] || 0) + 1; }
-  const out = (cut ? S.win : S.lose).map(L);
-  if (st >= 2) {
-    // 告白：ほったらかしなら和田の勝ち
-    if (w.m[id] >= 85 && h.toki < 40 && h.friend >= 30 && (w.watch?.[id] || 0) >= 3 && s.week - h.lastContact > 3) { takeBy(s, id, true); out.push(L(pickL(s, WADA_REACT_LOSE))); }
-    else { w.out.push(id); w.t = undefined; out.push(L(pickL(s, WADA_REACT_WIN))); }
+  const w = s.wada!; const id = sc.h!; const h = s.hs[id]; const st = Math.min(5, w.st[id] || 0); const S = WADA_SC[id];
+  const p = (n: number) => { (w.p ||= {})[id] = (w.p[id] || 0) + n; }; const m = (n: number) => { w.m[id] = clamp((w.m[id] || 0) + n, 0, 100); };
+  w.st[id] = st + 1; w.next = st === 4 ? s.week + 1 : Math.max(s.week + 3, WADA_AT[st + 1] ?? LAST_WEEK);
+  const out: string[] = [];
+  if (st <= 1) {
+    const cut = idx === 0 && (h.toki >= 25 || h.friend >= 40);
+    if (idx === 0) { applyH(s, id, cut ? { t: 3, tr: 2 } : { f: 1, tr: -1 }); m(cut ? -15 : -4); p(cut ? 3 : -1); } else { m(12); p(-3); (w.watch ||= {})[id] = (w.watch[id] || 0) + 1; }
+    out.push(...(cut ? S[st].win : S[st].lose));
+  } else if (st === 2) {
+    if (idx === 0) { if (h.toki >= 35) { applyH(s, id, { t: 2 }); m(-12); p(5); out.push('n:声をかけると、彼女は驚いて――少しだけ、ほっとした顔をした。', '@和田:……ちぇ。いいとこだったのに'); } else { applyH(s, id, { h: 5 }); m(3); p(1); out.push('n:声をかけた瞬間、空気が凍った。彼女は気まずそうに目をそらした。', '@和田:……先輩、空気読めないっすね'); } }
+    else if (idx === 1) { applyH(s, id, { tr: 4 }, false); m(-5); p(4); out.push('n:その夜、短いメッセージを送った。「今度、話せる？」――既読は、すぐについた。'); }
+    else { m(15); p(-6); out.push('n:何も見なかったことにして、来た道を引き返した。……胸の奥が、じくじくと痛んだ。'); }
+  } else if (st === 3) {
+    p([6, 3, -10][idx] ?? 0); if (idx === 2) m(10); if (idx === 1) applyH(s, id, { tr: 3 }, false);
+    out.push(...WADA_WAR_RES[idx] ?? []);
+  } else if (st === 4) {
+    if (idx === 0) { if (h.toki >= 50) { applyH(s, id, { t: 5 }); p(10); out.push('n:彼女は目を見開いて、それから、小さくうなずいた。'); } else { applyH(s, id, { h: 6 }); p(-4); out.push('n:「……ずるいよ、今さら」彼女はそう言って、うつむいた。'); } }
+    else if (idx === 1) { applyH(s, id, { tr: 5 }); p(7); out.push('n:彼女は何も言わずに、袖の端をつまんだ。'); }
+    else { p(h.trust >= 60 ? 2 : -3); out.push('n:「……そっか」それきり、彼女は黙ってしまった。'); }
+  } else {
+    p(idx === 0 ? (h.toki >= 45 ? 12 : -6) : idx === 1 ? (h.trust >= 55 ? 8 : 0) : -25);
+    const win = (w.m[id] || 0) < 50 || wadaScore(s, id) >= WADA_WIN_AT;
+    if (idx === 0) out.push('n:気づいたら、走り出していた。「待ってくれ！」');
+    else if (idx === 2) out.push('n:答えを聞くのが怖くて、背を向けた。');
+    if (win) { out.push(...S[2].win, ...WADA_CLIMAX_WIN, pickL(s, WADA_REACT_WIN)); w.out.push(id); w.done = true; w.t = undefined; s.flags.push(`wadaClimax:win:${id}`); applyH(s, id, { t: 6, tr: 6 }); diary(s, `和田との勝負に決着がついた。${HMAP[id].sei}${HMAP[id].mei}は、こっちを選んでくれた。`); }
+    else { out.push(...S[2].lose, ...WADA_CLIMAX_LOSE, pickL(s, WADA_REACT_LOSE)); takeBy(s, id, true); w.done = true; s.flags.push(`wadaClimax:lose:${id}`); }
   }
-  return out;
+  return out.map(L);
 }
 function explode(s: GameState, id: string, res: string[]) {
   const H = HMAP[id], h = s.hs[id];
@@ -437,7 +484,7 @@ function scheduleRaw(s: GameState) {
   if (s.week >= WADA_START) {
     s.wada ||= { m: {}, st: {}, next: WADA_START + 4, out: [], won: [] };
     if (!s.seen.includes('wada_intro')) s.queue.push({ kind: 'event', id: 'wada_intro' });
-    else if (!s.wada.won.length && s.week >= s.wada.next && s.week < LAST_WEEK - 2) { const t = s.wada.t || wadaTarget(s); if (t && !s.hs[t].withRival) { s.wada.t = t; s.queue.push({ kind: 'event', id: 'wada', h: t }); s.wada.next = s.week + WADA_GAP; } }
+    else if (!s.wada.won.length && !s.wada.done && s.week >= s.wada.next && s.week < LAST_WEEK - 2) { const t = s.wada.t || wadaTarget(s); if (t && !s.hs[t].withRival) { s.wada.t = t; s.queue.push({ kind: 'event', id: 'wada', h: t }); s.wada.next = s.week + 3; } }
   }
   const c = cal(s.week);
   // 自動の出会い
@@ -465,7 +512,7 @@ function scheduleRaw(s: GameState) {
   }
   // 個別イベント（1週1件。前回から3週以上）
   const lastH = Number(s.flags.find(f => f.startsWith('lastHE:'))?.slice(7) ?? -99);
-  const cands = HEVENTS.filter(e => !s.seen.includes(e.id) && !(c.vacation && schoolDay(e)) && !s.queue.some(q => q.id === e.id) && e.cond(s) && (e.id.endsWith('_meet') || s.week - lastH >= 3) && !(e.h && s.hs[e.h].flags.includes('exploded') && /_[34]$/.test(e.id) && s.week - (s.hs[e.h].lastContact) < 6));
+  const cands = HEVENTS.filter(e => !s.seen.includes(e.id) && !(c.vacation && schoolDay(e)) && !s.queue.some(q => q.id === e.id) && evTimeOk(e, s, c) && e.cond(s) && (e.id.endsWith('_meet') || s.week - lastH >= 3) && !(e.h && s.hs[e.h].flags.includes('exploded') && /_[34]$/.test(e.id) && s.week - (s.hs[e.h].lastContact) < 6));
   cands.sort((a, b) => (b.prio || 0) - (a.prio || 0));
   if (cands.length) { s.queue.push({ kind: 'event', id: cands[0].id }); }
   // 街での偶然の遭遇
