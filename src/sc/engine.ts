@@ -1,6 +1,6 @@
 import { STAT_LABEL } from './types';
 import { DATEQ_EXTRA, DATE_R } from './data/dateq2';
-import { DATE_TALK, OUT_GOOD, OUT_PLAIN, OUT_MEH, END_NARR, DATE_OUTFIT, KENTA_ENC, KENTA_REACT } from './data/datetalk/index';
+import { DATE_TALK, OUT_GOOD, OUT_PLAIN, OUT_MEH, END_NARR, DATE_OUTFIT, KENTA_ENC, KENTA_REACT, SPOT_EV, EV_REACT, MID_TALK, WALK_HOME } from './data/datetalk/index';
 import type { GameState, Setup, HState, StatKey, Scene, Difficulty, Club, Job, Course, Emo } from './types';
 import { STAGES } from './types';
 import { rand, ri, pick, chance } from './rng';
@@ -691,6 +691,7 @@ function dateMid(s: GameState, sc: Scene): string[][] {
   const r: string[][] = [[], [], []];
   const m = T.spot[sc.data.loc]?.[3]; if (m) r[1].push(...sp(m));
   const cb = Object.keys(T.cb).filter(id => s.seen.includes(id) && !h.flags.includes(`dcb:${id}`));
+  if (MID_TALK[sc.h!] && chance(s, 0.6)) r[0].push(pickL(s, MID_TALK[sc.h!]));
   if (cb.length && chance(s, 0.7)) { const id = pick(s, cb); h.flags.push(`dcb:${id}`); r[2].push(T.cb[id]); }
   else if (cal(s.week).Y >= 3 && chance(s, 0.5)) r[2].push(pickL(s, T.y3));
   else if (Object.keys(T.cb).some(id => s.seen.includes(id)) && chance(s, 0.15)) r[2].push(T.cb[pick(s, Object.keys(T.cb).filter(id => s.seen.includes(id)))]);
@@ -707,9 +708,18 @@ export function dateView(s: GameState, sc: Scene): View {
     const mid = ((sc.data.mid ||= dateMid(s, sc)) as string[][])[step - 1] || [];
     lines.unshift(...mid.map(L));
     if (step === 2 && sc.data.enc) lines.unshift(...sc.data.enc.map((x: string) => parseLine(x, s, sc.h)));
+    const ev = step === 2 ? spotEv(sc) : null;
+    if (ev) { lines.pop(); lines.push(...ev.n.map(L)); return { kind: 'date', title: `デート：${loc.name}（${step}/3）`, h: sc.h, lines, choices: ev.ch.map(c => c[0]) }; }
     return { kind: 'date', title: `デート：${loc.name}（${step}/3）`, h: sc.h, lines, choices: q.a.map(a => a[0]) };
   }
   return { kind: 'date', title: 'デート終了', h: sc.h, lines: (sc.data.endLines as string[]).map(L), choices: ['帰る'] };
+}
+/** スポットのミニイベント（2問目の代わりに起きる）。未体験のものを優先 */
+const spotEv = (sc: Scene) => sc.data.ev != null ? SPOT_EV[sc.data.loc]?.[sc.data.ev] : null;
+function pickSpotEv(s: GameState, sc: Scene) {
+  const L = SPOT_EV[sc.data.loc]; if (!L || !chance(s, 0.7)) return;
+  const f = s.hs[sc.h!].flags; const idx = L.map((_, i) => i); const fresh = idx.filter(i => !f.includes(`dev:${sc.data.loc}:${i}`));
+  const i = pick(s, fresh.length ? fresh : idx); sc.data.ev = i; if (!f.includes(`dev:${sc.data.loc}:${i}`)) f.push(`dev:${sc.data.loc}:${i}`);
 }
 function dateStart(s: GameState, sc: Scene, outfit: string): string[] {
   const H = HMAP[sc.h!], h = s.hs[sc.h!], locId = sc.data.loc, loc = LOCATIONS[locId];
@@ -725,7 +735,7 @@ function dateStart(s: GameState, sc: Scene, outfit: string): string[] {
   if (s.money < loc.cost) { sc0 -= 4; out.push('n:財布の中身が足りず、彼女に半分出してもらった……。'); s.money = 0; } else s.money -= loc.cost;
   if (h.bomb > 0) { sc0 -= 2; }
   sc.data.score = sc0;
-  sc.data.outfit = outfit;
+  sc.data.outfit = outfit; pickSpotEv(s, sc);
   // ランダム遭遇
   const others = HEROINES.filter(o => o.id !== sc.h && s.hs[o.id].met && !s.hs[o.id].withRival && s.hs[o.id].toki >= 25);
   if (chance(s, 0.25)) {
@@ -745,7 +755,7 @@ function dateEnd(s: GameState, sc: Scene) {
     [`h(照):……帰りたくないな、なんて。{C}、また誘ってね`, pickL(s, END_NARR[3])],
   ][grade].slice();
   const T = DATE_TALK[sc.h!]; if (T) msg[0] = pickL(s, T.end[grade]);
-  if (DATE_FLAVOR[sc.data.loc]) lines.push(DATE_FLAVOR[sc.data.loc].leave[s.week % 2]);
+  if (DATE_FLAVOR[sc.data.loc] && chance(s, 0.5)) lines.push(DATE_FLAVOR[sc.data.loc].leave[s.week % 2]); else lines.push(pickL(s, WALK_HOME));
   lines.push(...msg);
   applyH(s, sc.h!, { f: [-3, 3, 6, 9][grade], t: [-4, 2, 6, 10][grade], tr: [-2, 1, 3, 5][grade], h: -35, pt: grade });
   h.dates++; h.lastLocs.push(sc.data.loc); if (h.lastLocs.length > 6) h.lastLocs.shift();
@@ -802,6 +812,8 @@ export function resolve(s: GameState, idx: number): Line[] {
   if (sc.kind === 'date') {
     const H = HMAP[sc.h!];
     if (sc.step === 0) { const outs = dateStart(s, sc, s.outfits[idx] || 'カジュアル'); sc.step = 1; return outs.map(x => L(x, sc.h)); }
+    const ev = sc.step === 2 ? spotEv(sc) : null;
+    if (ev) { const c = ev.ch[idx] || ev.ch[0]; sc.data.score += c[1]; const R = EV_REACT[sc.h!]; sc.step!++; return [L(c[2]), ...(R ? [L(pickL(s, R[c[1] >= 2 ? 0 : c[1] >= 0 ? 1 : 2]), sc.h)] : [])]; }
     if (sc.step! >= 1 && sc.step! <= 3) {
       const q = dqs(H)[sc.data.order[sc.step! - 1]]; const a = q.a[idx]; const hq = s.hs[sc.h!]; const k = `dq:${sc.data.order[sc.step! - 1]}`; if (!hq.flags.includes(k)) hq.flags.push(k); sc.data.score += a[1];
       const T = DATE_TALK[sc.h!]; const R = DATE_R[sc.h!]; const r = T ? pickL(s, T.react[a[1] >= 3 ? 0 : a[1] >= 1 ? 1 : a[1] >= 0 ? 2 : 3]) : R ? R[a[1] >= 3 ? 0 : a[1] >= 1 ? 1 : a[1] >= 0 ? 2 : 3] : a[1] >= 3 ? 'h(嬉):……うん。そういうとこ、いいと思う' : a[1] >= 1 ? 'h:ふふ、そっか' : a[1] >= 0 ? 'h:……ふうん' : 'h(冷):……そう';

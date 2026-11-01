@@ -2,11 +2,16 @@ import type { DateTalk } from './types';
 import hinata from './hinata'; import mio from './mio'; import yura from './yura'; import kaho from './kaho'; import reika from './reika';
 import kotoha from './kotoha'; import ruka from './ruka'; import rin from './rin'; import shizuku from './shizuku';
 export type { DateTalk } from './types';
+import { SPOT_EV, EV_REACT, MID_TALK, WALK_HOME } from './beats';
+import { GREET2, OUTFIT2, MID2, EVR2, REACT2 } from './more2';
+export { SPOT_EV, EV_REACT, MID_TALK, WALK_HOME };
 import { REACT_MORE, END_MORE, OUTFIT, KENTA_ENC, KENTA_REACT } from './more';
 export { KENTA_ENC, KENTA_REACT };
 export const DATE_OUTFIT = OUTFIT;
 export const DATE_TALK: Record<string, DateTalk> = { hinata, mio, yura, kaho, reika, kotoha, ruka, rin, shizuku };
-for (const [k, T] of Object.entries(DATE_TALK)) for (let i = 0; i < 4; i++) { T.react[i].push(...(REACT_MORE[k]?.[i] || [])); T.end[i].push(...(END_MORE[k]?.[i] || [])); }
+for (const [k, T] of Object.entries(DATE_TALK)) for (let i = 0; i < 3; i++) { T.greet[i].push(...(GREET2[k]?.[i] || [])); OUTFIT[k]?.[i]?.push(...(OUTFIT2[k]?.[i] || [])); EV_REACT[k]?.[i]?.push(...(EVR2[k]?.[i] || [])); }
+for (const [k, L] of Object.entries(MID2)) MID_TALK[k]?.push(...L);
+for (const [k, T] of Object.entries(DATE_TALK)) for (let i = 0; i < 4; i++) { T.react[i].push(...(REACT_MORE[k]?.[i] || []), ...(REACT2[k]?.[i] || [])); T.end[i].push(...(END_MORE[k]?.[i] || [])); }
 
 // 汎用（服装への反応・別れのナレーション）
 export const OUT_GOOD = ['h(照):その服、いいね。{C}に似合ってる', 'h(嬉):あ、その服……私の好きな感じ', 'h(照):……今日の{C}、ちょっとかっこいいかも', 'h(嬉):その服、選んでくれたの？ ……うれしい'];
@@ -25,5 +30,6 @@ export const DATE_TALK_LINES: string[] = (() => {
     [...T.greet.flat(), ...Object.values(T.spot).flat(), ...T.react.flat(), ...T.end.flat(), ...Object.values(T.season).flat(), ...T.rain, ...T.again, ...Object.values(T.cb), ...T.y3, ...T.qs.map(q => q[0])].forEach(add);
   }
   [...OUT_GOOD, ...OUT_PLAIN, ...OUT_MEH, ...Object.values(OUTFIT).flat(2), ...Object.values(KENTA_REACT).flat(), ...KENTA_ENC.map(x => x.replace(/^@健太:/, ''))].forEach(add);
+  [...Object.values(EV_REACT).flat(2), ...Object.values(MID_TALK).flat()].forEach(add);
   return o;
 })();
