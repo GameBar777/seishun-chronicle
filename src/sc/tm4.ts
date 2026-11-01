@@ -100,7 +100,7 @@ export function profile(s: GameState, id: string): { k: string; v: string }[] {
 
 // ───────── 情報屋（健太）：居場所と様子 ─────────
 const SPOTS = ['図書室', '屋上', '中庭のベンチ', '購買の前', '音楽室', '昇降口', '部室棟', '渡り廊下', '校庭'];
-export function spotOf(s: GameState, id: string): string { const t = tm(s); if (t.hall?.w === s.week && t.hall.h === id && !t.hall.done) return '2階の廊下（すれ違えそうだ）'; const i = (s.week * 5 + id.charCodeAt(0) * 3 + id.length) % SPOTS.length; return SPOTS[i]; }
+export function spotOf(s: GameState, id: string): string { const t = tm(s); if (t.hall?.w === s.week && t.hall.h === id && !t.hall.done) return cal(s.week).vacation ? '駅前の通り（ばったり会えそうだ）' : '2階の廊下（すれ違えそうだ）'; const i = (s.week * 5 + id.charCodeAt(0) * 3 + id.length) % SPOTS.length; return SPOTS[i]; }
 export function informant(s: GameState): { id: string; name: string; heart: string; color: string; where: string; note: string }[] {
   return HEROINES.filter(H => s.hs[H.id].met).map(H => {
     const h = s.hs[H.id], hc = heartOf(h), b = bombStage(h);
@@ -120,7 +120,7 @@ export function hallTalk(s: GameState, idx: number): Line[] {
   const id = hallNow(s); if (!id) return [];
   const t = tm(s); t.hall!.done = true; const h = s.hs[id], tr = tierOf(h), b = bombStage(h);
   const L = (x: string) => parseLine(x, s, id);
-  const out = [L(`n:休み時間、廊下で${nm(id)}とすれ違った。`)];
+  const out = [L(cal(s.week).vacation ? `n:休みの日、駅前の通りで${nm(id)}とばったり会った。` : `n:休み時間、廊下で${nm(id)}とすれ違った。`)];
   if (idx === 0) { applyH(s, id, { f: b ? 0 : 1 }, false); out.push(L(b ? 'h(冷):……おはよ' : tr ? 'h(嬉):あ、{C}！ おはよ！' : 'h:……おはよう')); }
   else if (idx === 1) { const ok = tr >= 1 && !b; applyH(s, id, ok ? { t: 1 } : { f: -1, h: 3 }, false); out.push(L(ok ? 'h(照):……気づいてくれたんだ。ちょっと、嬉しいかも' : 'h(驚):え、なに急に……？ ……ありがと')); }
   else if (idx === 2) { const ok = tr >= 2 && !b; applyH(s, id, ok ? { t: 1, tr: 1 } : { tr: -2 }, false); out.push(L(ok ? 'h(照):わっ……もう、びっくりさせないでよ、{C}' : 'h(驚):っ……！ ……びっくりした。急に触らないで')); }
@@ -141,13 +141,13 @@ export function beforeDate(s: GameState) {
   const t = tm(s); if (!t.dbl) return;
   const i = s.queue.findIndex(q => q.kind === 'date');
   if (i < 0) { t.dbl = undefined; return; }
-  s.queue.splice(i, 0, sc('dbl', s.queue[i].h!, { b: t.dbl.h, loc: t.dbl.loc })); t.dbl = undefined;
+  s.queue.splice(i, 0, sc('dbl', s.queue[i].h!, { b: t.dbl.h, loc: t.dbl.loc, dloc: s.queue[i].data.loc })); t.dbl = undefined;
 }
 export function afterDate(s: GameState, q: Scene, grade: number) {
-  const h = s.hs[q.h!], add: Scene[] = [];
-  if (!q.data.dbl && chance(s, 0.1)) add.push(sc('nanpa', q.h!));
-  if (grade === 3 && tierOf(h) >= 1 && !q.data.dbl && chance(s, 0.5)) add.push(sc('extra', q.h!));
-  if (grade >= 2) add.push(sc('hand', q.h!));
+  const h = s.hs[q.h!], add: Scene[] = [], dd = { dloc: q.data.loc }; // デート後の場面はデートの服装を引き継ぐ
+  if (!q.data.dbl && chance(s, 0.1)) add.push(sc('nanpa', q.h!, dd));
+  if (grade === 3 && tierOf(h) >= 1 && !q.data.dbl && chance(s, 0.5)) add.push(sc('extra', q.h!, dd));
+  if (grade >= 2) add.push(sc('hand', q.h!, dd));
   s.queue.splice(1, 0, ...add.slice(0, 2));
 }
 export const mkDate = (s: GameState, h: string, loc: string, extra: any = {}): Scene => ({ kind: 'date', id: 'date', h, step: 0, data: { loc, score: 0, order: dateOrder(s, h, loc), ...extra } });

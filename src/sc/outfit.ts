@@ -25,3 +25,10 @@ export function outfitFor(c: OutfitCtx): Outfit {
   if (c.vacation || c.holiday || /休日|日曜|土曜|デート|週末/.test(t)) return casual(m);
   return 'u';
 }
+/** デートに付随する場面（ダブルブッキング・ナンパ・延長・帰り道の手つなぎ） */
+export const DATE_FOLLOW = new Set(['dbl', 'nanpa', 'extra', 'hand']);
+/** キュー先頭の場面からデート文脈を補う: デート付随場面ならデート場所(dloc)、古いセーブはキュー内/直前のデートから */
+export function sceneOutfit(sc: { kind?: string; id?: string; data?: any } | undefined, ctx: OutfitCtx, lastDateLoc?: string): Outfit {
+  if (sc?.id === 'tm4' && DATE_FOLLOW.has(sc.data?.t)) return outfitFor({ ...ctx, kind: 'date', loc: sc.data.dloc || lastDateLoc || 'park' });
+  return outfitFor(ctx);
+}

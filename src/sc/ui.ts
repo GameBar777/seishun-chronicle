@@ -11,7 +11,7 @@ import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voi
 import { voiceId, isDated } from './engine';
 import * as audio from './audio';
 import { bgmForAct, bgmForScene } from './bgm';
-import { outfitFor, OUTFIT_HEROINES, type Outfit } from './outfit';
+import { sceneOutfit, OUTFIT_HEROINES, type Outfit } from './outfit';
 import { setBg, guessBg, pickBg, LOC_BG, sceneWeather, type Tod } from './bg';
 import { CAL } from './data/calendar';
 const CAL_IDS = new Set(CAL.map(e => e.id));
@@ -145,7 +145,7 @@ function main() {
   $('#ph-mail').onclick = () => { modal('✉ メール', mailHtml(s)); }; $('#ph-book').onclick = () => modal('📒 プロフィール帳', bookHtml(s));
   $('#ph-send').onclick = () => { const id = $<HTMLSelectElement>('#ph-h').value; if (!HMAP[id]) return toast('メールを送る相手を選んでください'); audio.se('message'); playLines('✉ メール', sendMail(s, id), () => main(), id); };
   document.getElementById('ph-conf')?.addEventListener('click', () => { const id = $<HTMLSelectElement>('#ph-h').value; if (!HMAP[id]) return toast('想いを伝える相手を選んでください'); if (!confirm(`${HMAP[id].sei}${HMAP[id].mei}に告白しますか？（一度きり）`)) return; startConfess(s, id); main(); });
-  document.querySelectorAll<HTMLButtonElement>('.hl').forEach(b => b.onclick = () => { audio.se('confirm'); const ls = hallTalk(s, +b.dataset.i!); if (ls.length) playLines('🚶 廊下で', ls, () => main(), ls.find(l => HMAP[l.who])?.who); });
+  document.querySelectorAll<HTMLButtonElement>('.hl').forEach(b => b.onclick = () => { audio.se('confirm'); const ls = hallTalk(s, +b.dataset.i!); const vac = cal(s.week).vacation; if (vac) { const m = cal(s.week).m; outfitNow = m >= 4 && m <= 9 ? 'cs' : 'cw'; } if (ls.length) playLines(vac ? '🚶 街で' : '🚶 廊下で', ls, () => main(), ls.find(l => HMAP[l.who])?.who); });
   $('#sh-buy').onclick = () => { const o = $<HTMLSelectElement>('#sh-o').value; if (!o) return; if (buyOutfit(s, o)) { toast(`${o}の服を買った`); main(); } else toast('お金が足りない'); };
   $('#jb-set').onclick = () => { setJob(s, $<HTMLSelectElement>('#jb').value as Job | ''); toast('バイト先を変更した'); main(); };
   document.querySelectorAll<HTMLElement>('.cw').forEach(b => b.onclick = () => { const id = b.dataset.h!; if (s.hs[id]?.met && !s.hs[id].withRival) week('talk', id); });
@@ -213,7 +213,8 @@ function scene() {
   let sbg = '', stod: string | undefined;
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
   else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || ''), { text: v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '), dated: !!sc0?.id && (CAL_IDS.has(sc0.id) || isDated(sc0.id)) && !sc0.id.startsWith('d_sis'), vacation: cal(s.week).vacation, heroine: !!v.h }); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }
-  outfitNow = outfitFor({ kind: v.kind, loc: sc0?.data?.loc, bg: sbg, text: txt, month: cal(s.week).m, vacation: cal(s.week).vacation });
+  if (sc0?.kind === 'date') lastDateLoc = sc0.data?.loc;
+  outfitNow = sceneOutfit(sc0, { kind: v.kind, loc: sc0?.data?.loc, bg: sbg, text: txt, month: cal(s.week).m, vacation: cal(s.week).vacation }, s.queue.find(q => q.kind === 'date')?.data?.loc || lastDateLoc);
   const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
   const conf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
   const rivalSc = /wada|rival/.test(sc0?.id || '') || v.lines.some(l => /和田|ライバル/.test(l.who || ''));
@@ -337,7 +338,7 @@ const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '�
 export const EXPR: Record<string, string> = { 嬉: 'h', 照: 'b', 告: 'b', 囁: 'h', 哀: 's', 怒: 'a', 嫉: 'a', 冷: 'n', 驚: 'o', 通常: 'n' };
 export const EXPR_FILES = ['n', 'h', 's', 'o', 'a', 'b'];
 const SMALL = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width:720px)').matches;
-let outfitNow: Outfit = 'u';
+let outfitNow: Outfit = 'u'; let lastDateLoc: string | undefined;
 /** 衣装別ファイル: 制服以外は n/h の2表情（照れ→h、哀/怒/驚→n） */
 export const outfitFile = (h: string, e: string, o: Outfit) => o === 'u' || !OUTFIT_HEROINES.includes(h) ? `${h}_${e}` : `${h}_${o}_${e === 'h' || e === 'b' ? 'h' : 'n'}`;
 const pSrc = (h: string, e: string, o: Outfit = outfitNow) => `${BASE}img/ch/${outfitFile(h, e, o)}${SMALL() ? '-s' : ''}.webp`;
