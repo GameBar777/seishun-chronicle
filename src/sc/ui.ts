@@ -1,3 +1,4 @@
+import { portraitAfterLine } from './speaker';
 import type { GameState, Difficulty, Job, StatKey } from './types';
 import { affinityHtml } from './affinity';
 import { STAT_LABEL } from './types';
@@ -268,7 +269,7 @@ function cgGallery() {
 }
 let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
-  let i = 0, tamed = false, hold = false;
+  let i = 0, tamed = false, hold = false; const sceneH = h;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
   <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint bl-row-hint"><button class="bl-btn" id="bl-open" aria-label="会話ログ">📜 ログ</button><span>クリック / Enter で進む</span></div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
   bindCmd(); preloadCgs(lines);
@@ -292,7 +293,9 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
     speak(L.who, L.voice, L.emo, tier, set, undefined, L.vid);
     for (const nx of lines.slice(i, i + 2)) preloadClip(nx.who, nx.vid);
     const isH = hasPortrait(L.who), pid = porId(L.who);
-    if (isH && pid) { showSpeaker(pid); h = pid; }
+    { const cur = document.getElementById('por')?.dataset.h ?? null, want = portraitAfterLine(cur, L.who, isH ? pid : undefined, sceneH, id => !!HMAP[id]);
+      if (want !== cur) { if (want) showSpeaker(want); else { const el = document.getElementById('por'); el?.classList.add('exit'); setTimeout(() => el?.remove(), 220); } }
+      h = want ?? undefined; }
     const apply = () => { const em = document.getElementById('emo'); if (em && h && (isH || L.who === 'me')) { if (isH) { em.textContent = emoIcon(L.emo); setExpr(h, L.emo); if (L.emo === '嬉' || L.emo === '照' || L.emo === '告') heartPop('up'); else if (L.emo === '哀' || L.emo === '怒' || L.emo === '冷') heartPop('down'); } } if (isH) talking(true); };
     if (isH && document.getElementById('por')?.classList.contains('exit')) setTimeout(apply, 260); else apply();
     const t = L.who === 'n' || !L.name ? L.text : `「${L.text}」`;
