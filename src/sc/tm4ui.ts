@@ -2,7 +2,7 @@
 import type { GameState } from './types';
 import { HEROINES, HMAP } from './data/index';
 import { render } from './engine';
-import { fmtDate } from './time';
+import { fmtDate, cal } from './time';
 import { OUTFITS, OUTFIT_LABEL, OUTFIT_HEROINES } from './outfit';
 const OBASE = (import.meta as any).env?.BASE_URL ?? '/';
 /** プロフィール帳の衣装ギャラリー（知り合った相手のみ） */
@@ -35,7 +35,7 @@ export function informantHtml(s: GameState): string {
 export function hallHtml(s: GameState): string {
   const id = hallNow(s); if (!id) return '';
   const H = HMAP[id];
-  return `<div class="hall" style="--hc:${H.color}"><div>🚶 廊下の向こうから<b>${esc(H.sei + H.mei)}</b>が歩いてくる……</div><div class="hb">${HALL_CH.map((c, i) => `<button class="hl" data-i="${i}">${esc(c)}</button>`).join('')}</div></div>`;
+  return `<div class="hall" style="--hc:${H.color}"><div>🚶 ${cal(s.week).vacation ? '通りの向こうから' : '廊下の向こうから'}<b>${esc(H.sei + H.mei)}</b>が歩いてくる……</div><div class="hb">${HALL_CH.map((c, i) => `<button class="hl" data-i="${i}">${esc(c)}</button>`).join('')}</div></div>`;
 }
 export function calStripHtml(s: GameState): string {
   return `<div class="calstrip">${calendarStrip(s).map((c, i) => `<div class="cs ${i === 0 ? 'now' : ''}"><small>${esc(c.label)}</small>${c.marks.map(m => `<span>${esc(m)}</span>`).join('')}</div>`).join('')}</div>`;

@@ -46,6 +46,42 @@ describe('outfitFor', () => {
   it('every heroine has all outfit files (+small)', () => {
     for (const h of OUTFIT_HEROINES) for (const o of OUTFITS.filter(o => o !== 'u')) for (const e of ['n', 'h']) for (const s of ['', '-s'])
       expect(existsSync(`public/img/ch/${h}_${o}_${e}${s}.webp`), `${h}_${o}_${e}${s}`).toBe(true);
-    expect(readFileSync('src/sc/ui.ts', 'utf8')).toContain('outfitFor(');
+    expect(readFileSync('src/sc/ui.ts', 'utf8')).toContain('sceneOutfit(');
+  });
+});
+
+import { newGame, view, resolve, PERSONAS } from './engine';
+import { mkDate, afterDate } from './tm4';
+import { sceneOutfit } from './outfit';
+describe('date sequence keeps one outfit end-to-end (v1.18.1)', () => {
+  const mk = (seed: number) => newGame({ sei: '青木', mei: '湊', seiYomi: 'あおき', meiYomi: 'みなと', bm: 4, bd: 2, persona: Object.keys(PERSONAS)[0], look: '', diff: 'NORMAL', seed } as any);
+  const cases: [string, number, string][] = [['cafe', 5, 'cs'], ['cafe', 31, 'cw'], ['sea', 18, 'sw'], ['festival', 18, 'yk'], ['shrine', 39, 'cw']];
+  for (const [loc, week, want] of cases) it(`${loc} week ${week} → ${want} for date, mini-events, walk home, hand-hold, nanpa, extra`, () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = mk(seed); s.week = week; Object.assign(s.hs.hinata, { met: true, friend: 90, toki: 95, trust: 90 });
+      s.queue = [mkDate(s, 'hinata', loc)];
+      let lastLoc: string | undefined;
+      for (let i = 0; i < 40 && s.queue.length; i++) {
+        const q = s.queue[0]; const v = view(s); if (!v) break;
+        if (q.kind === 'date') lastLoc = q.data.loc;
+        if (q.kind !== 'date' && !(q.id === 'tm4')) break; // デート関連の場面が終わった
+        seen.add(q.kind === 'date' ? 'date' : q.data.t);
+        // 背景推定が学校になっても（最悪ケース）デート服を維持すること
+        const o = sceneOutfit(q, { kind: v.kind, loc: q.data?.loc, bg: 'classroom', text: '放課後 授業', month: cal(s.week).m, vacation: false }, s.queue.find(x => x.kind === 'date')?.data?.loc || lastLoc);
+        expect(o, `${seed} ${q.kind}/${q.data?.t}`).toBe(want);
+        resolve(s, 0);
+      }
+    }
+    expect(seen.has('date')).toBe(true); expect(seen.has('hand')).toBe(true);
+  });
+  it('follow-up scenes carry the date location (afterDate stamps dloc)', () => {
+    const s = mk(3); s.week = 18; Object.assign(s.hs.hinata, { met: true, friend: 90, toki: 95 }); const d = mkDate(s, 'hinata', 'sea'); s.queue = [d];
+    afterDate(s, d, 3); for (const q of s.queue.slice(1)) expect(q.data.dloc).toBe('sea');
+  });
+  it('old saves without dloc fall back to the last date, never uniform', () => {
+    expect(sceneOutfit({ kind: 'event', id: 'tm4', data: { t: 'hand' } }, { bg: 'classroom', month: 8 }, 'festival')).toBe('yk');
+    expect(sceneOutfit({ kind: 'event', id: 'tm4', data: { t: 'hand' } }, { bg: 'classroom', month: 11 })).toBe('cw');
+    expect(sceneOutfit({ kind: 'event', id: 'tm4', data: { t: 'confess' } }, { bg: 'rooftop', month: 2 })).toBe('u');
   });
 });
