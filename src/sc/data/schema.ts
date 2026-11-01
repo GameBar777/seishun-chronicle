@@ -10,6 +10,7 @@ export interface Ev {
   id: string; h?: string; title: string;
   cond: (s: GameState) => boolean;
   lines: string[]; choices: Choice[]; prio?: number; dyn?: (s: GameState) => Choice[]; dynLines?: (s: GameState) => string[];
+  when?: number[]; // 発生可能な月（本文の季節描写と合わせる）
 }
 export interface DateQ { q: string; a: [string, number][]; nv?: boolean } // nv: テキストのみ（未ボイス）
 export interface Heroine {

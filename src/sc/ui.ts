@@ -1,4 +1,5 @@
 import type { GameState, Difficulty, Job, StatKey } from './types';
+import { affinityHtml } from './affinity';
 import { STAT_LABEL } from './types';
 import { HEROINES, HMAP, LOCATIONS, OUTFITS, JOBS } from './data/index';
 import { newGame, view, resolve, doWeek, actions, phone, stage, tierOf, setJob, buyOutfit, PERSONAS, DIFF, judgeEnding, type Line, STAGES } from './engine';
@@ -395,11 +396,12 @@ function endingBox() {
 }
 
 // ───────── コマンド ─────────
-function cmdBar() { return `<div class="cmd"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS RELATION SCHEDULE DIARY HELP"><button id="cmd-go">実行</button><button id="b-st" title="ステータス">📊</button><button id="b-set">⚙</button><button id="b-title">タイトル</button></div>`; }
+function cmdBar() { return `<div class="cmd"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS RELATION SCHEDULE DIARY LOVE HELP"><button id="cmd-go">実行</button><button id="b-st" title="ステータス">📊</button><button id="b-aff" title="好感度">💗</button><button id="b-set">⚙</button><button id="b-title">タイトル</button></div>`; }
 function bindCmd() {
   const run = () => { const v = $<HTMLInputElement>('#cmd').value.trim(); $<HTMLInputElement>('#cmd').value = ''; command(v); };
   $('#cmd-go').onclick = run; $<HTMLInputElement>('#cmd').onkeydown = e => { if (e.key === 'Enter') run(); };
   $('#b-st').onclick = () => { if (S) modal('STATUS', statusHtml()); };
+  $('#b-aff').onclick = () => { if (S) modal('💗 好感度', affinityHtml(S)); };
   $('#b-set').onclick = settings; $('#b-title').onclick = () => { if (confirm('タイトルに戻りますか？（オートセーブ済み）')) title(); };
 }
 export function command(raw: string) {
@@ -416,6 +418,7 @@ export function command(raw: string) {
     case 'LOAD': return loadDialog();
     case 'STATUS': return modal('STATUS', statusHtml());
     case 'RELATION': return modal('RELATION', relationHtml());
+    case 'LOVE': case '好感度': return modal('💗 好感度', affinityHtml(S));
     case 'SCHEDULE': return modal('SCHEDULE', scheduleHtml());
     case 'DIARY': return modal('DIARY', `<div class="diary">${S.diary.slice().reverse().map(d => `<div><small>${fmtDate(d.week)}</small> ${esc(d.text)}</div>`).join('')}</div>`);
     case 'HELP': return modal('HELP', helpText());
