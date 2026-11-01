@@ -1,6 +1,7 @@
 06af10ac49a20af2	@健太	gender?
 07e2d9db4f2b266f	@健太	f0_outlier
 25239fb3bcffb2f1	@健太	f0_outlier
+4d45b800926d9e52	@健太	f0_outlier
 550dc07c2ff12852	@健太	f0_outlier
 7022f9b60e3294fb	@健太	gender?
 8694993b08248622	@健太	f0_outlier
@@ -19,3 +20,11 @@ d4e6d5f73248dba7	shizuku	silent
 e24cf2371f1d2413	hinata	f0_outlier
 0934e58f8686ff2b	kaho	silent
 b76f8e03df676bf6	kotoha	f0_outlier
+f2f86a8509df86cd	rin	silent
+a11376d545aadfcc	rin	silent
+24fa1648ad3b6822	yura	gender?
+aefc9436117bfb17	yura	gender?
+b3a2e4bcfd32db00	yura	gender?
+73d0762af4eaf844	rin	silent
+efc95ae87c23bf7b	kotoha	f0_outlier
+867bf8aa064cb705	kotoha	f0_outlier
