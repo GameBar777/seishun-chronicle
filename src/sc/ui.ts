@@ -11,6 +11,7 @@ import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voi
 import { voiceId, isDated } from './engine';
 import * as audio from './audio';
 import { bgmForAct, bgmForScene } from './bgm';
+import { outfitFor, OUTFIT_HEROINES, type Outfit } from './outfit';
 import { setBg, guessBg, pickBg, LOC_BG, sceneWeather, type Tod } from './bg';
 import { CAL } from './data/calendar';
 const CAL_IDS = new Set(CAL.map(e => e.id));
@@ -118,6 +119,7 @@ function main() {
   cgOff(); if (!S) return title();
   store.save('auto', S);
   if (S.queue.length) return scene();
+  outfitNow = 'u'; // ハブ画面は教室/校門背景なので制服
   audio.playTrack(bgmForAct(S.lastAct, S.week)); bgFor(S.week % 2 ? 'classroom' : 'gate', 'day');
   if (S.ended) return title();
   const s = S, c = cal(s.week);
@@ -191,7 +193,7 @@ function weekSe(id: string, res: string[], before: Snap, ill0: { c: unknown; i: 
 function call(mode: 'talk' | 'invite') {
   if (!S) return; const id = $<HTMLSelectElement>('#ph-h').value; const loc = $<HTMLSelectElement>('#ph-loc').value;
   audio.se('phone');
-  const used = S.phoneUsed; const lines = phone(S, id, mode, loc); const st = S; bgFor('room', 'night'); audio.playTrack('night'); playLines('📱 電話', lines, () => { main(); if (id === 'kenta' && !used && st.phoneUsed) modal('📒 健太の情報メモ', informantHtml(st)); }, HMAP[id] || NPC_BY_ID[id] ? id : undefined);
+  const used = S.phoneUsed; const lines = phone(S, id, mode, loc); const st = S; { const m = cal(S!.week).m; outfitNow = m >= 4 && m <= 9 ? 'cs' : 'cw'; } bgFor('room', 'night'); audio.playTrack('night'); playLines('📱 電話', lines, () => { main(); if (id === 'kenta' && !used && st.phoneUsed) modal('📒 健太の情報メモ', informantHtml(st)); }, HMAP[id] || NPC_BY_ID[id] ? id : undefined);
 }
 function hud() {
   const s = S!, c = cal(s.week);
@@ -211,6 +213,7 @@ function scene() {
   let sbg = '', stod: string | undefined;
   if (v.kind === 'date' && sc0?.data?.loc) { const loc = sc0.data.loc; sbg = LOC_BG[loc] || 'park'; stod = loc === 'festival' || loc === 'shrine' ? 'evening' : 'day'; bgFor(sbg, stod as Tod, sceneWeather(txt, s.weather, false)); }
   else if (v.kind === 'ending') { sbg = 'gate'; bgFor('gate', 'day'); } else { const fn = v.lines.find(l => l.who === 'n' && !l.text.startsWith('――'))?.text || v.title; const g = pickBg(sc0?.id || '', fn, [s.setup.sei, s.setup.mei, s.setup.seiYomi, s.setup.meiYomi], s.lastAct, sc0?.id === 'sister' || /^d_sis|^sis/.test(sc0?.id || ''), { text: v.title + ' ' + v.lines.filter(l => !l.text.startsWith('――')).map(l => l.text).join(' '), dated: !!sc0?.id && (CAL_IDS.has(sc0.id) || isDated(sc0.id)) && !sc0.id.startsWith('d_sis'), vacation: cal(s.week).vacation, heroine: !!v.h }); sbg = g.bg; stod = g.tod || (/夜/.test(txt) ? 'night' : /夕/.test(txt) ? 'evening' : 'day'); bgFor(g.bg, stod as Tod, sceneWeather(fn + ' ' + txt, s.weather, !!sc0?.id && !sc0.id.startsWith('d_fr') && (CAL_IDS.has(sc0.id) || sc0.id.startsWith('d_')))); }
+  outfitNow = outfitFor({ kind: v.kind, loc: sc0?.data?.loc, bg: sbg, text: txt, month: cal(s.week).m, vacation: cal(s.week).vacation });
   const sadN = v.lines.filter(l => l.emo === '哀' || l.emo === '怒').length;
   const conf = /告白|好きです|付き合/.test(txt) || v.lines.some(l => l.emo === '告');
   const rivalSc = /wada|rival/.test(sc0?.id || '') || v.lines.some(l => /和田|ライバル/.test(l.who || ''));
@@ -334,9 +337,12 @@ const emoIcon = (e: string) => ({ 通常: '', 嬉: '♪', 照: '💗', 怒: '�
 export const EXPR: Record<string, string> = { 嬉: 'h', 照: 'b', 告: 'b', 囁: 'h', 哀: 's', 怒: 'a', 嫉: 'a', 冷: 'n', 驚: 'o', 通常: 'n' };
 export const EXPR_FILES = ['n', 'h', 's', 'o', 'a', 'b'];
 const SMALL = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width:720px)').matches;
-const pSrc = (h: string, e: string) => `${BASE}img/ch/${h}_${e}${SMALL() ? '-s' : ''}.webp`;
+let outfitNow: Outfit = 'u';
+/** 衣装別ファイル: 制服以外は n/h の2表情（照れ→h、哀/怒/驚→n） */
+export const outfitFile = (h: string, e: string, o: Outfit) => o === 'u' || !OUTFIT_HEROINES.includes(h) ? `${h}_${e}` : `${h}_${o}_${e === 'h' || e === 'b' ? 'h' : 'n'}`;
+const pSrc = (h: string, e: string, o: Outfit = outfitNow) => `${BASE}img/ch/${outfitFile(h, e, o)}${SMALL() ? '-s' : ''}.webp`;
 const preloaded = new Set<string>();
-function preloadExpr(h: string) { if (preloaded.has(h)) return; preloaded.add(h); for (const e of EXPR_FILES) { const im = new Image(); im.src = pSrc(h, e); } }
+function preloadExpr(h: string) { const k = h + ':' + outfitNow; if (preloaded.has(k)) return; preloaded.add(k); for (const e of EXPR_FILES) { const im = new Image(); im.src = pSrc(h, e); } }
 function setExpr(h: string | undefined, emo: string) {
   const img = document.getElementById('pimg') as HTMLImageElement | null; if (!img || !h) return; const src = pSrc(h, EXPR[emo] || 'n');
   if (img.src.endsWith(src.replace(/^\./, ''))) { img.classList.remove('bounce'); void img.offsetWidth; img.classList.add('bounce'); return; }
