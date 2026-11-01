@@ -75,7 +75,8 @@ export function render(t: string, s: GameState, hid: string | undefined, reading
   const st = s.setup; const S = reading ? st.seiYomi || st.sei : st.sei; const M = reading ? st.meiYomi || st.mei : st.mei;
   let callT = '{S}くん';
   if (hid && HMAP[hid]) callT = HMAP[hid].call[s.hs[hid].callTier] ?? HMAP[hid].call[0];
-  return t.replace(/\{C\}/g, callT).replace(/\{S\}/g, S).replace(/\{M\}/g, M);
+  // 呼び名に「くん」が含まれるヒロインの「{C}くん」が「くん……くん」と重ならないように
+  return t.replace(/\{C\}くん/g, /くん/.test(callT) ? '{C}' : '{C}くん').replace(/\{C\}/g, callT).replace(/\{S\}/g, S).replace(/\{M\}/g, M);
 }
 const NPC_COLOR = '#636e72';
 // 進路に合わせたセリフの言い換え（就職・専門学校で「大学」と言われないように）。voiceId も言い換え後で引く
@@ -280,7 +281,7 @@ export function doWeek(s: GameState, act: string, talkTo?: string): string[] {
   else if (s.slump > 0) s.slump--;
   gainStat(s, 'hp', STA.nat); // 自然回復
   weeklyHeroines(s, res);
-  if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: dateOrder(s, d.h) } }); s.dateBooked = null; }
+  if (s.dateBooked) { const d = s.dateBooked; s.queue.push({ kind: 'date', id: 'date', h: d.h, step: 0, data: { loc: d.loc, score: 0, order: dateOrder(s, d.h, d.loc) } }); s.dateBooked = null; }
   // 次の週へ
   s.week++; s.phoneUsed = false;
   s.weather = rollWeather(s);
@@ -603,9 +604,18 @@ export function rumorLines(s: GameState): string[] {
 // デートの質問：既存＋追加（追加分はテキストのみ）。まだ聞かれていない質問を優先
 const TQ: Record<string, any[]> = Object.fromEntries(Object.entries(DATE_TALK).map(([k, T]) => [k, T.qs.map(([q, a, b, c]) => ({ q, a: [a, b, c], nv: true, deep: true }))]));
 export const dqs = (H: { id: string; dateQ: any[] }) => [...H.dateQ, ...(DATEQ_EXTRA[H.id] || []), ...(TQ[H.id] || [])];
-export function dateOrder(s: GameState, hid: string): number[] {
+// その場所でしか成り立たない質問（水族館で「何歌おう」と言わないように）
+const OUTDOOR = ['park', 'mountain', 'sea', 'zoo', 'amuse', 'festival', 'shrine'];
+export const Q_PLACE: [RegExp, string[]][] = [
+  [/何歌おう/, ['karaoke']], [/この魚/, ['aquarium']], [/^……この絵/, ['museum']], [/頂上まで/, ['mountain']],
+  [/このお店、メニュー/, ['restaurant', 'cafe']], [/クレーンゲーム|ぷりくら|プリクラ/, ['arcade', 'mall', 'amuse']], [/この神社/, ['shrine']],
+  [/このレッサーパンダ/, ['zoo']], [/あの星の光|月がきれい/, OUTDOOR], [/ラムネのビー玉/, ['festival', 'sea', 'park']], [/貝殻/, ['sea']],
+  [/弁当、作ってきた|お昼、わたくしが作って/, OUTDOOR], [/この服とこっち/, ['mall']], [/喫茶店の、窓際/, ['cafe']],
+];
+export const qFits = (q: string, loc?: string) => !loc || Q_PLACE.every(([re, ls]) => !re.test(q) || ls.includes(loc));
+export function dateOrder(s: GameState, hid: string, loc?: string): number[] {
   const all = dqs(HMAP[hid]), f = s.hs[hid].flags, deepOk = tierOf(s.hs[hid]) >= 1;
-  const idx = all.map((_, i) => i).filter(i => deepOk || !all[i].deep);
+  const idx = all.map((_, i) => i).filter(i => (deepOk || !all[i].deep) && qFits(all[i].q, loc));
   const fresh = shuffle(s, idx.filter(i => !f.includes(`dq:${i}`))), old = shuffle(s, idx.filter(i => f.includes(`dq:${i}`)));
   return [...fresh, ...old].slice(0, 3);
 }
@@ -619,7 +629,7 @@ function dateOpen(s: GameState, sc: Scene): string[] {
   if (!T) return [...out, `h:お待たせ、{C}。`, ...(DATE_FLAVOR[sc.data.loc] ? [DATE_FLAVOR[sc.data.loc].arrive[s.week % 3]] : [])];
   out.push(pickL(s, T.greet[t]));
   const ss = season(cal(s.week).m) as typeof SEASONS[number];
-  if (s.weather === '雨' || s.weather === '雪') out.push(pickL(s, T.rain)); else if (chance(s, 0.5)) out.push(pickL(s, T.season[ss]));
+  if (s.weather === '雨') out.push(pickL(s, T.rain)); else if (s.weather === '雪') out.push(pickL(s, T.season['冬'])); else if (chance(s, 0.5)) out.push(pickL(s, T.season[ss]));
   const sp4 = T.spot[sc.data.loc];
   // 到着時：その段階の一言を優先し、見たことがあれば他の段階の一言や場所の描写と入れ替える
   const pool = sp4 ? [sp4[t], ...(t > 0 ? [sp4[t - 1]] : []), ...(DATE_FLAVOR[sc.data.loc]?.arrive || [])] : DATE_FLAVOR[sc.data.loc]?.arrive || [];

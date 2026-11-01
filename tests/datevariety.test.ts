@@ -30,3 +30,19 @@ describe('デート会話のバリエーション (v1.14.0)', () => {
     expect(all).not.toMatch(/殺す/);
   });
 });
+
+import { newGame, dateOrder, dqs, Q_PLACE, render } from '../src/sc/engine';
+import { HMAP } from '../src/sc/data/index';
+describe('デートの質問と場所', () => {
+  it('場所限定の質問は、その場所のデートでしか出ない', () => {
+    const s: any = newGame({ sei: 'a', mei: 'b', seiYomi: '', meiYomi: '', persona: '熱血', diff: 'NORMAL', seed: 3 } as any);
+    for (const H of HEROINES) for (const loc of SPOTS) for (let k = 0; k < 6; k++) {
+      for (const i of dateOrder(s, H.id, loc)) { const q = dqs(H)[i].q; for (const [re, ls] of Q_PLACE) if (re.test(q)) expect(ls, `${H.id}@${loc}: ${q}`).toContain(loc); s.hs[H.id].flags.push('dq:' + i); }
+    }
+  });
+  it('「{C}くん」で「くん」が重ならない', () => {
+    const s: any = newGame({ sei: '相沢', mei: '悠斗', seiYomi: '', meiYomi: '', persona: '熱血', diff: 'NORMAL', seed: 3 } as any);
+    expect(render('……{C}くんは、どんな本が好き？', s, 'kotoha', false)).not.toMatch(/くん.*くん/);
+    expect(render('{C}くん', s, 'hinata', false)).toBeTruthy(); void HMAP;
+  });
+});
