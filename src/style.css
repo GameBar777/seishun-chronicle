@@ -525,3 +525,4 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 .box{margin-bottom:10px}
 .choices{margin-bottom:8px}
 @media(max-width:720px){.box{min-height:100px}#app:has(.stage){padding-bottom:calc(28px + env(safe-area-inset-bottom))}}
+@media(max-width:720px){#app:has(.stage) .hud .hs{display:none}}
