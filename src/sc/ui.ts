@@ -40,7 +40,64 @@ function loadSettings(): VoiceSettings { try { return { ...defaultSettings(), ..
 function saveSettings() { try { localStorage.setItem('seishun:set', JSON.stringify(set)); } catch { } audio.setVolumes(set.master, set.bgm, set.se); }
 const app = () => $('#app');
 
-export function boot() { audio.setBase(BASE); audio.installUnlock(); audio.setVolumes(set.master, set.bgm, set.se); audio.preloadSe(); const q = new URLSearchParams(location.search); if (q.get('debug') === 'end') return debugEnding(q); title(); }
+const rmotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function hideBoot() { const b = document.getElementById('boot'); if (b) { b.classList.add('go'); setTimeout(() => b.remove(), 800); } }
+function trans(fn: () => void) {
+  if (rmotion()) { fn(); return; }
+  let el = document.getElementById('wipe') as HTMLElement | null;
+  if (!el) { el = document.createElement('div'); el.id = 'wipe'; document.body.appendChild(el); }
+  el.className = 'in';
+  setTimeout(() => { fn(); el!.className = 'out'; setTimeout(() => { if (el) el.className = ''; }, 520); }, 300);
+}
+let skipOn = false, autoT: any = 0, skipHook: (() => void) | null = null;
+function startSkip() { skipOn = true; document.getElementById('adv-skip')?.classList.add('on'); skipHook?.(); }
+function stopSkip() { skipOn = false; document.getElementById('adv-skip')?.classList.remove('on'); }
+function quickSave() { if (!S) return; store.save('quick', S); store.save('auto', S); audio.se('confirm'); toast('クイックセーブしました（F7でロード）'); }
+function quickLoad() {
+  const g = store.load('quick') || store.load('auto'); if (!g) return toast('クイックセーブがありません');
+  S = g; syncCg(); audio.se('confirm'); trans(() => main()); toast('クイックロードしました');
+}
+function bindUiChrome() {
+  document.documentElement.classList.add('gamecur');
+  if ((bindUiChrome as any)._ok) return; (bindUiChrome as any)._ok = 1;
+  let last = 0, lastEl: EventTarget | null = null;
+  document.addEventListener('pointerover', e => {
+    const t = (e.target as HTMLElement)?.closest?.('button');
+    if (!t || (t as HTMLButtonElement).disabled) return;
+    if (t === lastEl) return; lastEl = t;
+    const now = performance.now(); if (now - last < 100) return; last = now;
+    audio.se('select', { vol: .2 });
+  }, true);
+  document.addEventListener('pointerdown', e => { const t = (e.target as HTMLElement)?.closest?.('button'); t?.classList.add('pressed'); }, true);
+  document.addEventListener('pointerup', () => document.querySelectorAll('.pressed').forEach(x => x.classList.remove('pressed')), true);
+  document.addEventListener('keydown', e => {
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.key === 'Escape') { if (document.getElementById('backlog')) return; if (document.getElementById('modal')) { e.preventDefault(); closeModal(); } return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (S) quickSave(); }
+    if (e.key === 'F6') { e.preventDefault(); if (S) quickSave(); }
+    if (e.key === 'F7') { e.preventDefault(); quickLoad(); }
+    if (e.key === 'a' || e.key === 'A') { if (document.querySelector('.stage #box')) { set.autoPlay = !set.autoPlay; saveSettings(); document.getElementById('adv-auto')?.classList.toggle('on', !!set.autoPlay); if (set.autoPlay) skipHook?.(); } }
+    if (e.key === 'Control') startSkip();
+  });
+  document.addEventListener('keyup', e => { if (e.key === 'Control') stopSkip(); });
+  document.addEventListener('contextmenu', e => { if ((e.target as HTMLElement)?.closest?.('img, .stage, .pwrap, #bg')) e.preventDefault(); });
+}
+function gameConfirm(msg: string, yes: () => void) {
+  modal('確認', `<p>${esc(msg)}</p><div class="row" style="justify-content:center"><button type="button" id="cf-y" class="primary">はい</button><button type="button" id="cf-n">いいえ</button></div>`);
+  audio.se('page', { vol: .45 });
+  $('#cf-y').onclick = () => { closeModal(); audio.se('confirm'); yes(); };
+  $('#cf-n').onclick = () => { closeModal(); };
+}
+
+
+export function boot() {
+  audio.setBase(BASE); audio.installUnlock(); audio.setVolumes(set.master, set.bgm, set.se); audio.preloadSe();
+  bindUiChrome();
+  const q = new URLSearchParams(location.search);
+  const go = () => { if (q.get('debug') === 'end') debugEnding(q); else title(); hideBoot(); };
+  if (rmotion() || q.get('debug') || import.meta.env.DEV) go(); else setTimeout(go, 600);
+}
 
 // ───────── タイトル ─────────
 function title() {
@@ -52,10 +109,10 @@ function title() {
     const go = () => { if (!S) audio.unlockTitleSong(BASE); setTimeout(() => { if (audio.songPlaying() || audio.titleFallbackOn() || S) { EVS.forEach(e => document.removeEventListener(e, go, true)); h.remove(); } }, 300); };
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
-  <div class="menu"><button id="t-new">はじめから</button><button id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button id="t-load">セーブ文字列から再開</button><button id="t-set">音声・音量設定</button><button id="t-song">🎵 主題歌</button><button id="t-cg">🖼 CGモード</button><button id="t-help">遊び方</button></div>
+  <div class="menu"><button type="button" id="t-new" class="primary menu-btn">はじめから</button><button type="button" class="menu-btn" id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button type="button" class="menu-btn" id="t-load">セーブ文字列から再開</button><button type="button" class="menu-btn" id="t-set">音声・音量設定</button><button type="button" class="menu-btn" id="t-song">🎵 主題歌</button><button type="button" class="menu-btn" id="t-cg">🖼 CGモード</button><button type="button" class="menu-btn" id="t-help">遊び方</button></div>
   <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><span class="credit">主題歌：「Shine Again」 歌：<a href="https://youtube.com/@mirai_official19" target="_blank" rel="noopener">MIRAi</a>／音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://otologic.jp/" target="_blank" rel="noopener">OtoLogic</a>（CC BY 4.0）・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
-  $('#t-new').onclick = () => { audio.resume(); setup(); };
-  $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); main(); } };
+  $('#t-new').onclick = () => { audio.resume(); trans(setup); };
+  $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); trans(main); } };
   $('#t-load').onclick = () => loadDialog();
   $('#t-set').onclick = () => settings();
   $('#t-help').onclick = () => modal('遊び方', helpText());
@@ -87,7 +144,9 @@ function helpText() {
   <li>電話で日曜のデートに誘えます（場所・天気・服装・会話の受け答えで評価）。同じ場所ばかりだと飽きられます。</li>
   <li>「ヒロインと交流」を選ぶと<b>自由入力</b>で会話できます（端末内のキーワード判定。褒める・約束・謝る・好きな話題など。言ったことは覚えています）。</li>
   <li>2年目からライバルが現れます。卒業時、ときめき・信頼・個別イベント・隠し条件でエンディングが決まります。</li>
-  <li>下の入力欄で番号やコマンド：<code>SAVE</code> <code>LOAD</code> <code>STATUS</code> <code>RELATION</code> <code>SCHEDULE</code> <code>DIARY</code> <code>HELP</code></li></ul>`;
+  <li>会話中は AUTO（Aキー）で自動送り、SKIP（Ctrlキー長押し）で早送り。📜ログは上スワイプ／マウスホイール上でも開けます。</li>
+  <li>クイックセーブは💾ボタン、Ctrl+S、または F6。ロードは F7。Esc で窓を閉じます。</li>
+  <li>下の⌘から番号やコマンド：<code>SAVE</code> <code>LOAD</code> <code>STATUS</code> <code>RELATION</code> <code>SCHEDULE</code> <code>DIARY</code> <code>HELP</code></li></ul>`;
 }
 
 // ───────── 主人公設定 ─────────
@@ -103,7 +162,7 @@ function setup() {
   <div class="row"><label>難易度<select id="s-diff">${(Object.keys(DIFF) as Difficulty[]).map(d => `<option value="${d}" ${d === 'NORMAL' ? 'selected' : ''}>${d}：${DIFF[d].label}</option>`).join('')}</select></label></div>
   <div class="row"><button id="s-go" class="primary">入学する</button><button id="s-back">戻る</button></div></div>`;
   void days;
-  $('#s-back').onclick = title;
+  $('#s-back').onclick = () => trans(title);
   $('#s-test').onclick = () => { if (!testName($<HTMLInputElement>('#s-my').value || $<HTMLInputElement>('#s-mei').value, set)) toast(voiceSupported() ? '日本語音声が見つかりません（文字のみで遊べます）' : 'このブラウザは読み上げに未対応です'); };
   $('#s-go').onclick = () => {
     const v = (id: string) => ($<HTMLInputElement>(id).value || '').trim();
@@ -276,13 +335,35 @@ let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
   let i = 0, tamed = false, hold = false; const sceneH = h;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
-  <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint bl-row-hint"><button class="bl-btn" id="bl-open" aria-label="会話ログ">📜 ログ</button><span>クリック / Enter で進む</span></div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
+  <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint bl-row-hint"><div class="adv-ctrl"><button type="button" class="adv-btn${set.autoPlay ? ' on' : ''}" id="adv-auto" aria-pressed="${!!set.autoPlay}">AUTO</button><button type="button" class="adv-btn" id="adv-skip">SKIP</button><button type="button" class="bl-btn" id="bl-open" aria-label="会話ログ">ログ</button><button type="button" class="bl-btn" id="adv-qsave" title="クイックセーブ">💾</button><button type="button" class="bl-btn" id="adv-set" title="設定">⚙</button></div><span>クリック / Enter</span></div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
   bindCmd(); preloadCgs(lines);
   const box = $('#box'); bindBacklog(box);
+  const armAdvance = () => {
+    clearTimeout(autoT);
+    if (hold) return;
+    if (skipOn) {
+      if (typing) { clearInterval(typing); typing = null; const L = lines[i - 1]; if (L) $('#tx').textContent = L.text; }
+      autoT = setTimeout(() => next(), rmotion() ? 0 : 70);
+      return;
+    }
+    if (!set.autoPlay) return;
+    const tick = () => {
+      if (!set.autoPlay || skipOn) return;
+      if (typing || isSpeaking()) { autoT = setTimeout(tick, 180); return; }
+      autoT = setTimeout(() => next(), 900);
+    };
+    autoT = setTimeout(tick, 240);
+  };
+  skipHook = () => armAdvance();
+  const autoBtn = document.getElementById('adv-auto'); if (autoBtn) autoBtn.onclick = ev => { ev.stopPropagation(); set.autoPlay = !set.autoPlay; saveSettings(); autoBtn.classList.toggle('on', !!set.autoPlay); autoBtn.setAttribute('aria-pressed', String(!!set.autoPlay)); if (set.autoPlay) armAdvance(); else clearTimeout(autoT); };
+  const skBtn = document.getElementById('adv-skip'); if (skBtn) skBtn.onclick = ev => { ev.stopPropagation(); if (skipOn) stopSkip(); else startSkip(); };
+  const qs = document.getElementById('adv-qsave'); if (qs) qs.onclick = ev => { ev.stopPropagation(); quickSave(); };
+  const st = document.getElementById('adv-set'); if (st) st.onclick = ev => { ev.stopPropagation(); settings(); };
   const next = () => {
+    clearTimeout(autoT);
     if (hold) return;
     if (typing) { clearInterval(typing); typing = null; $('#tx').textContent = lines[i - 1].text; return; }
-    if (i >= lines.length) { box.onclick = null; document.onkeydown = null; stop(); talking(false); after(); return; }
+    if (i >= lines.length) { box.onclick = null; document.onkeydown = null; skipHook = null; stopSkip(); stop(); talking(false); after(); return; }
     const L = lines[i++];
     if (L.who === 'cg') { if (L.text === 'off') cgOff(); else setCG(L.text); return next(); }
     if (hold) { i--; return; }
@@ -305,10 +386,11 @@ function playLines(title: string, lines: Line[], after: () => void, h?: string) 
     if (isH && document.getElementById('por')?.classList.contains('exit')) setTimeout(apply, 260); else apply();
     const t = L.who === 'n' || !L.name ? L.text : `「${L.text}」`;
     backlog.line(L.who === 'n' ? '' : L.name, L.text, { color: L.color, who: L.who, vid: L.vid, narr: L.who === 'n' || !L.name });
-    if (set.textSpeed <= 0) { $('#tx').textContent = t; return; }
+    if (set.textSpeed <= 0) { $('#tx').textContent = t; lines[i - 1] = { ...L, text: t }; armAdvance(); return; }
     let k = 0; $('#tx').textContent = '';
-    typing = setInterval(() => { k++; $('#tx').textContent = t.slice(0, k); if (k >= t.length) { clearInterval(typing); typing = null; } }, set.textSpeed);
+    typing = setInterval(() => { k++; $('#tx').textContent = t.slice(0, k); if (k >= t.length) { clearInterval(typing); typing = null; armAdvance(); } }, set.textSpeed);
     lines[i - 1] = { ...L, text: t };
+    if (skipOn) armAdvance();
   };
   box.onclick = next; document.onkeydown = e => { if ((e.target as HTMLElement)?.tagName === 'INPUT' || document.getElementById('backlog')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } };
   next();
@@ -454,13 +536,18 @@ function debugEnding(q: URLSearchParams) {
   S = s; s.queue = [{ kind: 'ending', id: 'ending' }]; scene();
 }
 // ───────── コマンド ─────────
-function cmdBar() { return `<div class="cmd"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS RELATION SCHEDULE DIARY LOVE HELP"><button id="cmd-go">実行</button><button id="b-st" title="ステータス">📊</button><button id="b-aff" title="好感度">💗</button><button id="b-set">⚙</button><button id="b-title">タイトル</button></div>`; }
+function cmdBar() { return `<div class="cmd" id="cmdbar"><button type="button" id="b-st" title="ステータス">📊</button><button type="button" id="b-aff" title="好感度">💗</button><button type="button" id="b-qsave" title="クイックセーブ（Ctrl+S / F6）">💾</button><button type="button" id="b-qload" title="クイックロード（F7）"${store.has('quick') ? '' : ' disabled'}>📁</button><button type="button" id="b-set" title="設定">⚙</button><button type="button" id="b-title" title="タイトル">🏠</button><button type="button" id="b-cmd" title="コマンド入力">⌘</button><div class="cmd-x"><input id="cmd" placeholder="番号 / SAVE LOAD STATUS …" autocomplete="off"><button type="button" id="cmd-go">実行</button></div></div>`; }
 function bindCmd() {
-  const run = () => { const v = $<HTMLInputElement>('#cmd').value.trim(); $<HTMLInputElement>('#cmd').value = ''; command(v); };
-  $('#cmd-go').onclick = run; $<HTMLInputElement>('#cmd').onkeydown = e => { if (e.key === 'Enter') run(); };
+  const run = () => { const el = document.getElementById('cmd') as HTMLInputElement | null; if (!el) return; const v = el.value.trim(); el.value = ''; command(v); };
+  const go = document.getElementById('cmd-go'); if (go) go.onclick = run;
+  const inp = document.getElementById('cmd') as HTMLInputElement | null; if (inp) inp.onkeydown = e => { if (e.key === 'Enter') run(); };
   $('#b-st').onclick = () => { if (S) modal('STATUS', statusHtml()); };
   $('#b-aff').onclick = () => { if (S) modal('💗 好感度', affinityHtml(S)); };
-  $('#b-set').onclick = settings; $('#b-title').onclick = () => { if (confirm('タイトルに戻りますか？（オートセーブ済み）')) title(); };
+  $('#b-set').onclick = settings;
+  $('#b-qsave').onclick = () => quickSave();
+  const ql = document.getElementById('b-qload'); if (ql) ql.onclick = () => quickLoad();
+  $('#b-cmd').onclick = () => { document.getElementById('cmdbar')?.classList.toggle('open'); inp?.focus(); };
+  $('#b-title').onclick = () => { gameConfirm('タイトルに戻りますか？（オートセーブ済み）', () => trans(title)); };
 }
 export function command(raw: string) {
   const v = raw.toUpperCase().replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xfee0));
@@ -529,7 +616,7 @@ function settings() {
   const ja = hasJapaneseVoice();
   const r = (k: keyof VoiceSettings, label: string, min = 0, max = 1, step = 0.05) => `<label>${label}<input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${set[k]}"></label>`;
   modal('音声・音量設定', `<p class="note">🎙 ヒロイン9人・芽衣・健太・井上・真鍋先生：収録ボイス（ElevenLabs のAI音声）。<br>地の文・その他の人物：${voiceSupported() ? (ja ? '端末内蔵の読み上げ（Web Speech API）。' : '日本語音声が見つからないため文字のみ。') : 'このブラウザは読み上げ非対応のため文字のみ。'}</p>
-  <label><input type="checkbox" id="st-auto" ${set.auto ? 'checked' : ''}> ボイスON</label> <label><input type="checkbox" id="st-nar" ${set.narrate ? 'checked' : ''}> 地の文も読み上げ</label>
+  <label><input type="checkbox" id="st-auto" ${set.auto ? 'checked' : ''}> ボイスON</label> <label><input type="checkbox" id="st-nar" ${set.narrate ? 'checked' : ''}> 地の文も読み上げ</label> <label><input type="checkbox" id="st-autoplay" ${set.autoPlay ? 'checked' : ''}> メッセージ自動送り（AUTO）</label>
   <div class="sliders">${r('master', '全体音量')}${r('voice', 'ボイス音量')}${r('bgm', 'BGM音量')}${r('se', '効果音音量')}${r('voiceRate', '声の速さ', 0.6, 1.6, 0.05)}${r('textSpeed', '文字送り（ms/文字・0で瞬時）', 0, 80, 5)}</div>
   <h4>キャラ別音量</h4><div class="sliders">${HEROINES.map(H => `<label>${H.sei}${H.mei}<input type="range" data-c="${H.id}" min="0" max="1" step="0.05" value="${set.perChar[H.id] ?? 1}"><button class="vt" data-c="${H.id}">試聴</button></label>`).join('')}${[['@芽衣', '芽衣（妹）'], ['@健太', '健太'], ['@田中', '井上'], ['@担任・真鍋', '真鍋先生']].map(([id, nm]) => `<label>${nm}<input type="range" data-c="${id}" min="0" max="1" step="0.05" value="${set.perChar[id] ?? 1}"></label>`).join('')}</div>`);
   document.querySelectorAll<HTMLInputElement>('[data-k]').forEach(i => i.oninput = () => { (set as any)[i.dataset.k!] = +i.value; saveSettings(); });
@@ -537,11 +624,15 @@ function settings() {
   document.querySelectorAll<HTMLButtonElement>('.vt').forEach(b => b.onclick = () => { const H = HMAP[b.dataset.c!]; stop(); unlockVoice(); const t = H.greet[1][0]; const vid = voiceId(H.id, t); if (!speak(H.id, t, '嬉', 1, { ...set, auto: true }, undefined, vid)) toast(hasClip(H.id, vid) ? '再生できませんでした' : 'ボイスを読み込み中です。少し待ってからもう一度'); });
   $<HTMLInputElement>('#st-auto').onchange = e => { set.auto = (e.target as HTMLInputElement).checked; saveSettings(); };
   $<HTMLInputElement>('#st-nar').onchange = e => { set.narrate = (e.target as HTMLInputElement).checked; saveSettings(); };
+  $<HTMLInputElement>('#st-autoplay').onchange = e => { set.autoPlay = (e.target as HTMLInputElement).checked; saveSettings(); };
 }
 function modal(t: string, html: string) {
   closeModal(); const d = document.createElement('div'); d.className = 'modal'; d.id = 'modal';
-  d.innerHTML = `<div class="mbox"><div class="mh"><b>${esc(t)}</b><button id="m-x">×</button></div><div class="mb">${html}</div></div>`;
-  document.body.appendChild(d); $('#m-x').onclick = closeModal; d.onclick = e => { if (e.target === d) closeModal(); };
+  d.innerHTML = `<div class="mbox"><div class="mh"><b>${esc(t)}</b><button type="button" id="m-x" aria-label="閉じる">×</button></div><div class="mb">${html}</div></div>`;
+  document.body.appendChild(d); audio.se('page', { vol: .35 });
+  const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } };
+  (d as any)._esc = key; window.addEventListener('keydown', key);
+  $('#m-x').onclick = closeModal; d.onclick = e => { if (e.target === d) closeModal(); };
 }
-function closeModal() { document.getElementById('modal')?.remove(); }
+function closeModal() { const d = document.getElementById('modal'); if (d && (d as any)._esc) window.removeEventListener('keydown', (d as any)._esc); d?.remove(); }
 function toast(t: string) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
