@@ -15,7 +15,7 @@ describe('ending movie', () => {
   });
   it('credits include asset credits', () => {
     const t = JSON.stringify(buildCredits(mk()));
-    for (const k of ['魔王魂', 'OtoLogic', 'ElevenLabs']) expect(t).toContain(k);
+    for (const k of ['魔王魂', 'OtoLogic', 'ElevenLabs', 'Shine Again', 'MIRAi', 'Zen Maru Gothic']) expect(t).toContain(k);
   });
   it('monologue uses run data', () => {
     const s = mk(); s.club = '陸上部'; s.hs.hinata.met = true; s.hs.hinata.dates = 6;

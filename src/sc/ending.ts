@@ -65,6 +65,7 @@ export function buildCredits(s?: GameState): CreditSection[] {
     { role: '音楽', names: ['魔王魂（https://maou.audio/）', 'CC BY 4.0'] },
     { role: '効果音', names: ['OtoLogic（https://otologic.jp/）', '魔王魂（https://maou.audio/）', 'CC BY 4.0'] },
     { role: 'ボイス', names: ['ElevenLabs（AI音声合成）', 'ブラウザ音声合成（フォールバック）'] },
+    { role: 'フォント', names: ['Zen Maru Gothic / Shippori Mincho（SIL Open Font License）'] },
     { role: 'Special Thanks', names: ['「ときめきメモリアル」シリーズへのリスペクトを込めて', s ? `そして、${s.setup.sei} ${s.setup.mei} を演じてくれたあなた` : 'そして、プレイしてくれたあなた'] },
   ];
 }
