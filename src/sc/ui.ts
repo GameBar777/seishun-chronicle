@@ -1,13 +1,13 @@
 import { portraitAfterLine } from './speaker';
-import type { GameState, Difficulty, Job, StatKey } from './types';
+import type { GameState, Job, StatKey } from './types';
 import { affinityHtml } from './affinity';
 import { STAT_LABEL } from './types';
 import { HEROINES, HMAP, LOCATIONS, OUTFITS, JOBS } from './data/index';
-import { newGame, view, resolve, doWeek, actions, phone, stage, tierOf, setJob, buyOutfit, PERSONAS, DIFF, judgeEnding, type Line, STAGES } from './engine';
+import { newGame, view, resolve, doWeek, actions, phone, stage, tierOf, setJob, buyOutfit, PERSONAS, judgeEnding, type Line, STAGES } from './engine';
 import { cal, fmtDate, LAST_WEEK, season } from './time';
 import { chatReply, SUGGEST } from './chat';
 import { exportSave, importSave, store } from './save';
-import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, testName, initVoice, unlockVoice, preloadClip, isSpeaking, hasClip } from './voice';
+import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, initVoice, unlockVoice, preloadClip, isSpeaking, hasClip } from './voice';
 import { voiceId, isDated } from './engine';
 import * as audio from './audio';
 import { bgmForAct, bgmForScene } from './bgm';
@@ -110,7 +110,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button type="button" id="t-new" class="primary menu-btn">はじめから</button><button type="button" class="menu-btn" id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button type="button" class="menu-btn" id="t-load">セーブ文字列から再開</button><button type="button" class="menu-btn" id="t-set">音声・音量設定</button><button type="button" class="menu-btn" id="t-song">🎵 主題歌</button><button type="button" class="menu-btn" id="t-cg">🖼 CGモード</button><button type="button" class="menu-btn" id="t-help">遊び方</button></div>
-  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><span class="credit">主題歌：「Shine Again」 歌：<a href="https://youtube.com/@mirai_official19" target="_blank" rel="noopener">MIRAi</a>／音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://otologic.jp/" target="_blank" rel="noopener">OtoLogic</a>（CC BY 4.0）・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
+  <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><a href="https://gamebar777.github.io/guides/seishun-chronicle/" target="_blank" rel="noopener">📖 攻略ガイド（ヒロイン・エンディング・イベント）</a><br><span class="credit">主題歌：「Shine Again」 歌：<a href="https://youtube.com/@mirai_official19" target="_blank" rel="noopener">MIRAi</a>／音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://otologic.jp/" target="_blank" rel="noopener">OtoLogic</a>（CC BY 4.0）・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
   $('#t-new').onclick = () => { audio.resume(); trans(setup); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); trans(main); } };
   $('#t-load').onclick = () => loadDialog();
@@ -154,20 +154,18 @@ function setup() {
   const days = (m: number) => new Date(2010, m, 0).getDate();
   app().innerHTML = `<div class="panel setup"><h2>主人公の設定</h2>
   <div class="row"><label>姓<input id="s-sei" value="相沢" maxlength="6"></label><label>名<input id="s-mei" value="悠斗" maxlength="6"></label></div>
-  <div class="row"><label>せい（読み）<input id="s-sy" value="あいざわ" maxlength="12"></label><label>めい（読み）<input id="s-my" value="ゆうと" maxlength="12"></label><button id="s-test" type="button">🔊 呼ばれ方を試聴</button></div>
-  <p class="note">読み仮名はヒロインが名前を呼ぶときの読み上げに使います（ひらがな推奨）。</p>
+  <div class="row"><label>せい（読み）<input id="s-sy" value="あいざわ" maxlength="12"></label><label>めい（読み）<input id="s-my" value="ゆうと" maxlength="12"></label></div>
+  <p class="note">読みはひらがなで（地の文の読み上げで名前を正しく発音するために使います。ヒロインの収録ボイスでは、名前は呼ばれません。画面の文字では、親密度に応じて「悠斗くん」などの呼び方で呼ばれます）。</p>
   <div class="row"><label>誕生日<select id="s-bm">${Array.from({ length: 12 }, (_, i) => `<option ${i === 3 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select>月<select id="s-bd">${Array.from({ length: 31 }, (_, i) => `<option>${i + 1}</option>`).join('')}</select>日</label></div>
   <div class="row"><label>性格<select id="s-p">${Object.keys(PERSONAS).map(p => `<option>${p}</option>`).join('')}</select></label>
   <label>見た目<select id="s-look"><option>爽やか系</option><option>メガネ知的系</option><option>スポーツ刈り</option><option>無造作ヘア</option><option>前髪長め</option></select></label></div>
-  <div class="row"><label>難易度<select id="s-diff">${(Object.keys(DIFF) as Difficulty[]).map(d => `<option value="${d}" ${d === 'NORMAL' ? 'selected' : ''}>${d}：${DIFF[d].label}</option>`).join('')}</select></label></div>
   <div class="row"><button id="s-go" class="primary">入学する</button><button id="s-back">戻る</button></div></div>`;
   void days;
   $('#s-back').onclick = () => trans(title);
-  $('#s-test').onclick = () => { if (!testName($<HTMLInputElement>('#s-my').value || $<HTMLInputElement>('#s-mei').value, set)) toast(voiceSupported() ? '日本語音声が見つかりません（文字のみで遊べます）' : 'このブラウザは読み上げに未対応です'); };
   $('#s-go').onclick = () => {
     const v = (id: string) => ($<HTMLInputElement>(id).value || '').trim();
     if (!v('#s-sei') || !v('#s-mei')) return toast('姓と名を入力してください');
-    S = newGame({ sei: v('#s-sei'), mei: v('#s-mei'), seiYomi: v('#s-sy'), meiYomi: v('#s-my'), bm: +v('#s-bm'), bd: +v('#s-bd'), persona: v('#s-p'), look: v('#s-look'), diff: v('#s-diff') as Difficulty });
+    S = newGame({ sei: v('#s-sei'), mei: v('#s-mei'), seiYomi: v('#s-sy'), meiYomi: v('#s-my'), bm: +v('#s-bm'), bd: +v('#s-bd'), persona: v('#s-p'), look: v('#s-look'), diff: 'NORMAL' });
     main();
   };
 }
@@ -598,7 +596,7 @@ export function showDelta(a: Snap, b: Snap) {
 }
 function statusHtml() {
   const s = S!; const bars = SHOWN.map(k => { const v = Math.round(s.stats[k]); const r = rank(k, v); return `<div class="sx"><span class="sx-l">${STAT_LABEL[k]}</span><span class="sx-bar"><i class="${k === 'st' ? 'bad' : ''}" style="width:${Math.min(100, v / BAR(k) * 100)}%"></i></span><b class="sx-v">${v}</b><em class="rk rk-${r}">${k === 'st' ? '' : r}</em></div>`; }).join('');
-  return `<div class="sxs">${bars}</div><table><tr><th>所持金</th><td>${s.money}円</td></tr><tr><th>部活</th><td>${s.club}</td></tr><tr><th>バイト</th><td>${s.job || 'なし'}（${s.jobDays}日）</td></tr><tr><th>服</th><td>${s.outfits.join('、')}</td></tr><tr><th>難易度</th><td>${s.setup.diff}</td></tr><tr><th>テスト</th><td>${s.exams.map(e => e.rank + '位').join(' → ') || '-'}</td></tr></table>`;
+  return `<div class="sxs">${bars}</div><table><tr><th>所持金</th><td>${s.money}円</td></tr><tr><th>部活</th><td>${s.club}</td></tr><tr><th>バイト</th><td>${s.job || 'なし'}（${s.jobDays}日）</td></tr><tr><th>服</th><td>${s.outfits.join('、')}</td></tr><tr><th>テスト</th><td>${s.exams.map(e => e.rank + '位').join(' → ') || '-'}</td></tr></table>`;
 }
 function relationHtml() {
   const s = S!; return `<table class="rel"><tr><th></th><th>段階</th><th>友好</th><th>ときめき</th><th>傷心</th><th>信頼</th><th>デート</th><th>呼び方</th></tr>${HEROINES.map(H => { const x = s.hs[H.id]; if (!x.met) return `<tr><td>？？？</td><td colspan=7>未登場</td></tr>`; return `<tr><td style="color:${H.color}">${H.sei}${H.mei}${x.bomb ? '💣' : ''}${x.withRival ? '💔' : ''}</td><td>${stage(x)}</td><td>${Math.round(x.friend)}</td><td>${Math.round(x.toki)}</td><td>${Math.round(x.hurt)}</td><td>${Math.round(x.trust)}</td><td>${x.dates}</td><td>${H.call[x.callTier].replace('{S}', s.setup.sei).replace('{M}', s.setup.mei)}</td></tr>`; }).join('')}</table><p class="note">段階：${STAGES.join(' → ')}</p>`;

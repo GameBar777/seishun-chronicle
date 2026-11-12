@@ -9,7 +9,7 @@ export function exportSave(s: GameState): string { const j = JSON.stringify({ ..
 export function importSave(str: string): GameState {
   const t = str.trim(); if (!t.startsWith(PREFIX)) throw new Error('セーブデータの形式が違います（SEISHUN1: で始まる文字列を貼り付けてください）');
   const [, ck, body] = t.split(':'); const j = b64d(body); if (sum(j) !== ck) throw new Error('セーブデータが壊れています（チェックサム不一致）');
-  const s = JSON.parse(j) as GameState; if (s.v !== SAVE_VERSION || !s.hs || !s.stats) throw new Error('対応していないバージョンのセーブです'); s.cold ??= 0; s.injury = s.injury ? 1 : 0; return s;
+  const s = JSON.parse(j) as GameState; if (s.v !== SAVE_VERSION || !s.hs || !s.stats) throw new Error('対応していないバージョンのセーブです'); s.cold ??= 0; s.injury = s.injury ? 1 : 0; if (s.setup) s.setup.diff = 'NORMAL'; return s;
 }
 const KEY = 'seishun:slot';
 export const store = {
