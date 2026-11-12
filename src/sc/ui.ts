@@ -182,7 +182,7 @@ function main() {
   const s = S, c = cal(s.week);
   const acts = actions(s);
   app().innerHTML = `${hud()}${hallHtml(s)}${crowd(s)}
-  <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${a.ok ? effectParts(a.desc).map(x => x.tone ? `<span class="ef ${x.tone}">${esc(x.t)}</span>` : esc(x.t)).join('') : esc(a.why || '')}</small></button>`).join('')}</div>
+  <div class="grid"><div class="panel"><h3>今週の行動 <small>（番号でも入力可）</small></h3><div class="acts">${acts.map((a, i) => `<button class="act" data-a="${a.id}" ${a.ok || s.sick ? '' : 'disabled'} title="${esc(a.desc)}"><b>${i + 1}</b> ${esc(a.label)}<small>${a.ok ? effectParts(a.desc).map(x => x.tone ? `<span class="ef ${x.tone}">${esc(x.t)}</span>` : esc(x.t)).join('').replace(/｜/g, '｜<wbr>') : esc(a.why || '')}</small></button>`).join('')}</div>
   <div id="talkpick" class="hidden"><p>誰と話す？</p>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<button class="tp" data-h="${h.id}" style="border-color:${h.color}">${h.sei}${h.mei}</button>`).join('')}</div></div>
   <div class="panel"><h3>📱 携帯 ${batteryHtml(s)} <small>${s.phoneUsed ? '通話：今週は使用済み' : '通話：週1回'}</small></h3>
    <div class="row"><select id="ph-h"><option value="kenta">早乙女健太（情報・相談）</option>${HEROINES.filter(h => s.hs[h.id].met && !s.hs[h.id].withRival).map(h => `<option value="${h.id}">${h.sei}${h.mei}${s.hs[h.id].bomb ? ' 💣' : ''}</option>`).join('')}</select></div>
@@ -216,9 +216,9 @@ export function nearby(s: GameState, n = 3): string[] {
   const rest = met.filter(h => !hit.includes(h)).sort((a, b) => ((a.id.charCodeAt(0) * 31 + s.week * 17) % 23) - ((b.id.charCodeAt(0) * 31 + s.week * 17) % 23));
   return [...hit, ...rest].slice(0, n).map(h => h.id);
 }
-function crowd(s: GameState) {
+export function crowd(s: GameState) {
   const ids = nearby(s); if (!ids.length) return '';
-  return `<div class="crowd"><div class="cwl">周囲にいる人物 <small>（タップで話しかける）</small></div>${ids.map((id, i) => { const H = HMAP[id], x = s.hs[id]; const e = x.hurt > 40 ? 's' : tierOf(x) >= 2 ? 'b' : tierOf(x) >= 1 ? 'h' : 'n'; return `<button class="cw" data-h="${id}" style="--hc:${H.color};--d:${i * 0.12}s;--ph:${i * 1.3}s"><span class="cwimg"><img src="${pSrc(id, e)}" alt=""></span><span class="cwn">${H.mei}<small>${x.withRival ? '💔' : stage(x)}</small></span></button>`; }).join('')}</div>`;
+  return `<div class="crowd"><div class="cwl">周囲にいる人物 <small>（タップで話しかける）</small></div><div class="cwrow">${ids.map((id, i) => { const H = HMAP[id], x = s.hs[id]; const e = x.hurt > 40 ? 's' : tierOf(x) >= 2 ? 'b' : tierOf(x) >= 1 ? 'h' : 'n'; const src = pSrc(id, e); return `<button type="button" class="cw" data-h="${id}" style="--hc:${H.color};--d:${i * 0.12}s"><span class="cwimg"><img src="${src}" alt="${H.mei}" width="360" height="900" decoding="async" onerror="this.onerror=null;this.src=this.src.replace(/-s\.webp$/,'.webp')"></span><span class="cwn">${H.mei}<small>${x.withRival ? '💔' : stage(x)}</small></span></button>`; }).join('')}</div></div>`;
 }
 function act(id: string) {
   if (id === 'talk') { $('#talkpick').classList.toggle('hidden'); return; }
@@ -232,6 +232,8 @@ function week(id: string, talkTo?: string) {
   const after = snap(S);
   lastDeltaHtml = deltaChips(before, after);
   main();
+  // 会話・イベントが始まった直後に週めくり／変化パネルを重ねると、iPhone では台詞が見えなくなる
+  if (S.queue.length) return;
   if (after.week !== before.week) weekFlip(before.week, after.week, () => showDelta(before, after));
   else showDelta(before, after);
 }
