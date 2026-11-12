@@ -38,6 +38,8 @@ export const DIFF: Record<Difficulty, { gain: number; hurt: number; thr: number;
   HARD: { gain: 0.85, hurt: 1.35, thr: 1.08, decay: 1.3, rival: 1.3, label: '好感度管理が難しい' },
   'VERY HARD': { gain: 0.75, hurt: 1.6, thr: 1.15, decay: 1.5, rival: 1.6, label: '隠し条件・人間関係の管理が非常に難しい' },
 };
+/** 難易度選択は廃止。全員同じバランス（旧NORMAL）。旧セーブの EASY/HARD 等もこれに揃える */
+export const playDiff = () => DIFF.NORMAL;
 export const PERSONAS: Record<string, Partial<Record<StatKey, number>>> = {
   '熱血': { un: 12, kon: 12 }, '知的': { bun: 12, ri: 12 }, '優しい': { moral: 15, kon: 5 }, 'クール': { yo: 15, ri: 5 }, '芸術家肌': { gei: 18 }, 'お調子者': { yo: 6, un: 6, moral: -5 },
 };
@@ -58,6 +60,7 @@ export interface View { kind: Scene['kind']; title: string; h?: string; lines: L
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const newH = (): HState => ({ met: false, friend: 0, toki: 0, hurt: 0, trust: 10, dates: 0, events: 0, points: 0, bomb: 0, lastContact: 0, rival: 0, withRival: false, impression: '', lastLocs: [], mem: [], flags: [], callTier: 0, gotBirthday: -1 });
 export function newGame(setup: Setup): GameState {
+  setup = { ...setup, diff: 'NORMAL' };
   const stats: Record<StatKey, number> = { bun: 40, ri: 40, gei: 30, yo: 35, un: 40, kon: 40, hp: 80, st: 20, moral: 50, exp: 0 };
   for (const [k, v] of Object.entries(PERSONAS[setup.persona] || {})) stats[k as StatKey] += v as number;
   const s: GameState = {
@@ -150,18 +153,18 @@ export function stressMult(st: number) { return st <= GROW.st0 ? 1 : Math.max(GR
 export function statMult(s: GameState, cur: number) { return GROW.base * (cur <= GROW.knee ? 1 : 1 / (1 + (cur - GROW.knee) / GROW.soft)) * stressMult(s.stats.st); }
 export function gainStat(s: GameState, k: StatKey, v: number) {
   let d = v;
-  if (v > 0 && !['hp', 'st'].includes(k)) { if (s.slump > 0) d *= 0.5; if (s.stats.hp < 30) d *= 0.7; if (s.cold) d *= STA.coldGrow; if (s.injury) d *= STA.injGrow; d *= DIFF[s.setup.diff].gain > 1 ? 1.1 : 1; if (k !== 'moral' && k !== 'exp') d *= statMult(s, s.stats[k]); }
+  if (v > 0 && !['hp', 'st'].includes(k)) { if (s.slump > 0) d *= 0.5; if (s.stats.hp < 30) d *= 0.7; if (s.cold) d *= STA.coldGrow; if (s.injury) d *= STA.injGrow; d *= playDiff().gain > 1 ? 1.1 : 1; if (k !== 'moral' && k !== 'exp') d *= statMult(s, s.stats[k]); }
   const cap = ['hp', 'st'].includes(k) ? 100 : k === 'moral' ? 100 : 999;
   s.stats[k] = clamp(Math.round((s.stats[k] + d) * 10) / 10, 0, cap);
 }
 export function applyH(s: GameState, id: string, e: { f?: number; t?: number; tr?: number; h?: number; pt?: number; rival?: number }, contact = true) {
-  const H = HMAP[id], h = s.hs[id], g = DIFF[s.setup.diff].gain;
+  const H = HMAP[id], h = s.hs[id], g = playDiff().gain;
   if (!h.met) return;
   const prevStage = stage(h);
   if (e.f) h.friend = clamp(h.friend + (e.f > 0 ? e.f * H.rate.f * g : e.f), 0, 100);
   if (e.t) h.toki = clamp(h.toki + (e.t > 0 ? e.t * H.rate.t * g * attraction(s, id) : e.t), 0, 100);
   if (e.tr) h.trust = clamp(h.trust + e.tr, 0, 100);
-  if (e.h) h.hurt = clamp(h.hurt + (e.h > 0 ? e.h * DIFF[s.setup.diff].hurt : e.h), 0, 100);
+  if (e.h) h.hurt = clamp(h.hurt + (e.h > 0 ? e.h * playDiff().hurt : e.h), 0, 100);
   if (e.pt) h.points += e.pt;
   if (e.rival) h.rival = clamp(h.rival + e.rival, 0, 100);
   if (contact) { h.lastContact = s.week; }
@@ -175,7 +178,7 @@ export function applyH(s: GameState, id: string, e: { f?: number; t?: number; tr
 export function attraction(s: GameState, id: string): number {
   const H = HMAP[id]; const prog = 0.35 + 0.65 * Math.min(1, s.week / LAST_WEEK);
   let r = 0, n = 0;
-  for (const [k, need] of Object.entries(H.demand)) { r += Math.min(1.5, s.stats[k as StatKey] / ((need as number) * prog * DIFF[s.setup.diff].thr)); n++; }
+  for (const [k, need] of Object.entries(H.demand)) { r += Math.min(1.5, s.stats[k as StatKey] / ((need as number) * prog * playDiff().thr)); n++; }
   const v = n ? r / n : 1; return clamp(0.4 + v * 0.6, 0.5, 1.4) * (s.rumor > 0 ? 0.8 : 1);
 }
 export function applyEff(s: GameState, e: Eff | undefined, ctxH?: string) {
@@ -307,7 +310,7 @@ const shuffle = <T>(s: GameState, a: T[]) => { const b = a.slice(); for (let i =
 function rollWeather(s: GameState) { const m = cal(s.week).m; const r = rand(s); const rainy = m === 6 ? 0.55 : m === 9 ? 0.35 : 0.22; if (r < rainy) return (m === 12 || m <= 2) && r < 0.08 ? '雪' : '雨'; return r < rainy + 0.25 ? 'くもり' : '晴れ'; }
 
 function weeklyHeroines(s: GameState, res: string[]) {
-  const D = DIFF[s.setup.diff];
+  const D = playDiff();
   const close = HEROINES.filter(h => s.hs[h.id].met && (s.hs[h.id].toki >= 30 || s.hs[h.id].friend >= 40)).length;
   for (const H of HEROINES) {
     const h = s.hs[H.id]; if (!h.met || h.withRival) continue;
@@ -346,7 +349,7 @@ function wadaTarget(s: GameState): string | undefined {
 }
 function wadaWeek(s: GameState, res: string[]) {
   if (s.week < WADA_START || !s.wada) return;
-  const w = s.wada; const D = DIFF[s.setup.diff];
+  const w = s.wada; const D = playDiff();
   if (w.won.length || w.done) return;
   const st0 = w.t ? w.st[w.t] || 0 : 0;
   // 目撃（段階2）以降は狙いを固定する
@@ -785,7 +788,7 @@ export function phone(s: GameState, id: string, mode: 'talk' | 'invite', loc?: s
     return out;
   }
   const L = LOCATIONS[loc || 'park'];
-  const need = 25 * DIFF[s.setup.diff].thr;
+  const need = 25 * playDiff().thr;
   const ok = !h.withRival && h.bomb === 0 && (h.friend >= need || h.toki >= 30) && !(L.season && !L.season.includes(cal(s.week).m) && false);
   if (ok && s.dateBooked) { const dbl = tryDouble(s, id, loc || 'park'); if (dbl) { out.push(parseLine(`h(嬉):${pickL(s, H.inviteOk)}`, s, id), ...dbl); return out; } return [parseLine('n:もう今週末の予定が入っている。', s)]; }
   if (ok) { s.dateBooked = { h: id, loc: loc || 'park' }; out.push(parseLine(`h(嬉):${pickL(s, H.inviteOk)}`, s, id)); out.push(parseLine(`n:今週の日曜日、${L.name}で会う約束をした。`, s)); applyH(s, id, { h: -10 }); }
@@ -843,7 +846,7 @@ function birthdayResolve(s: GameState, id: string, idx: number): Line[] {
 }
 function inviteResolve(s: GameState, ch: Choice, marker: string): Line[] {
   const [, id, tag] = marker.split(':'); const H = HMAP[id], h = s.hs[id]; const L = (x: string) => parseLine(x, s, id);
-  const ok = h.bomb === 0 && (h.friend >= 30 * DIFF[s.setup.diff].thr || h.toki >= 35);
+  const ok = h.bomb === 0 && (h.friend >= 30 * playDiff().thr || h.toki >= 35);
   if (!ok) { gainStat(s, 'st', 6); h.lastContact = s.week; return [L(`h(哀):${pickL(s, H.inviteNo)}`), L('n:断られてしまった……。')]; }
   applyEff(s, ch.eff, id); applyH(s, id, { h: -30 });
   const flavor: Record<string, string[]> = {
@@ -875,7 +878,7 @@ function valentine(s: GameState): Line[] {
   return out;
 }
 export function courseRequirement(s: GameState): { ok: boolean; text: string } {
-  const st = s.stats, k = DIFF[s.setup.diff].thr;
+  const st = s.stats, k = playDiff().thr;
   switch (s.course) {
     case '国公立大学': return { ok: st.bun + st.ri >= 390 * k, text: '文系+理系 390以上' };
     case '私立大学': return { ok: Math.max(st.bun, st.ri) >= 200 * k, text: '文系か理系 200以上' };
@@ -906,7 +909,7 @@ const SPECIAL: Record<string, (s: GameState) => boolean> = {
 };
 export const HIDDEN_CONDITIONS = SPECIAL;
 export function evaluate(s: GameState, id: string) {
-  const h = s.hs[id], k = DIFF[s.setup.diff].thr; const evs = HEVENTS.filter(e => e.h === id && !e.id.endsWith('_meet') && !/_s\d$/.test(e.id));
+  const h = s.hs[id], k = playDiff().thr; const evs = HEVENTS.filter(e => e.h === id && !e.id.endsWith('_meet') && !/_s\d$/.test(e.id));
   const allEv = evs.every(e => s.seen.includes(e.id));
   const good = h.met && !h.withRival && h.toki >= 78 * k && h.friend >= 55 && h.trust >= 55 && allEv && SPECIAL[id](s) && h.bomb === 0;
   const normal = h.met && !h.withRival && h.toki >= 58 * k && h.friend >= 45;
