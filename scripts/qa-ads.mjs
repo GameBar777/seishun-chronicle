@@ -11,7 +11,8 @@ await p.addInitScript(() => {
   Object.defineProperty(window, 'adsbygoogle', { configurable: true, get: () => window.__ag || arr, set: v => { window.__ag = v; } });
   arr.push = o => { window.__ads.push({ type: o.type || 'config', name: o.name, stage: !!document.querySelector('.stage'), choices: !!document.querySelector('#ch button'), acts: !!document.querySelector('.acts') }); return orig(o); };
 });
-await p.goto('process.argv[3] || 'http://127.0.0.1:4180/'', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1500);
+const URL = process.argv[3] || 'http://127.0.0.1:4180/';
+await p.goto(URL, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1500);
 await p.click('#t-new', { force: true }); await p.waitForTimeout(600); await p.click('#s-go', { force: true }); await p.waitForTimeout(800);
 let adStates = [], adCloses = 0;
 async function adv() { for (let i = 0; i < 120; i++) {
