@@ -254,3 +254,8 @@ function synthSe(name: string) {
   seq.forEach((n, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = kind === 'bomb' ? 'sawtooth' : 'sine'; o.frequency.value = hz(n); g.gain.setValueAtTime(kind === 'page' ? .1 : .4, t + i * 0.09); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.3); o.connect(g); g.connect(seGain!); o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.32); });
 }
 export function resume() { ensure()?.resume?.(); }
+
+/** 広告中の一時停止（AudioContext・主題歌） */
+let songWasPlaying = false;
+export function pauseAll() { try { ctx?.suspend?.(); } catch { } songWasPlaying = songPlaying(); try { songEl?.pause(); } catch { } }
+export function resumeAll() { try { ctx?.resume?.(); } catch { } if (songWasPlaying) songEl?.play().catch(() => { }); songWasPlaying = false; }

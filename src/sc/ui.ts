@@ -10,6 +10,7 @@ import { exportSave, importSave, store } from './save';
 import { speak, stop, defaultSettings, type VoiceSettings, hasJapaneseVoice, voiceSupported, initVoice, unlockVoice, preloadClip, isSpeaking, hasClip } from './voice';
 import { voiceId, isDated } from './engine';
 import * as audio from './audio';
+import { initAds, weekBreak } from './ads';
 import { bgmForAct, bgmForScene } from './bgm';
 import { sceneOutfit, OUTFIT_HEROINES, type Outfit } from './outfit';
 import { setBg, guessBg, pickBg, LOC_BG, sceneWeather, type Tod } from './bg';
@@ -93,7 +94,7 @@ function gameConfirm(msg: string, yes: () => void) {
 
 export function boot() {
   audio.setBase(BASE); audio.installUnlock(); audio.setVolumes(set.master, set.bgm, set.se); audio.preloadSe();
-  bindUiChrome();
+  bindUiChrome(); initAds();
   const q = new URLSearchParams(location.search);
   const go = () => { if (q.get('debug') === 'end') debugEnding(q); else title(); hideBoot(); };
   if (rmotion() || q.get('debug') || import.meta.env.DEV) go(); else setTimeout(go, 600);
@@ -224,7 +225,13 @@ function act(id: string) {
   if (id === 'talk') { $('#talkpick').classList.toggle('hidden'); return; }
   week(id);
 }
+/** 週送り：行動を決めた直後、週を進める前のハブ画面でだけ広告の区切りを入れる（会話・選択肢・イベント中は呼ばない）。頻度は Google 側 */
+let adBusy = false;
 function week(id: string, talkTo?: string) {
+  if (!S || adBusy || S.queue.length || S.ended || !document.querySelector('.acts')) return weekNow(id, talkTo);
+  adBusy = true; weekBreak(adHooks, () => { adBusy = false; weekNow(id, talkTo); });
+}
+function weekNow(id: string, talkTo?: string) {
   if (!S) return; audio.se('confirm');
   const before = snap(S); const ill0 = { c: S.cold, i: S.injury };
   const res = doWeek(S, id, talkTo); S.lastLog = res; chatCount = 0;
@@ -636,3 +643,9 @@ function modal(t: string, html: string) {
 }
 function closeModal() { const d = document.getElementById('modal'); if (d && (d as any)._esc) window.removeEventListener('keydown', (d as any)._esc); d?.remove(); }
 function toast(t: string) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+
+const adHooks = {
+  pause: () => { stop(); audio.pauseAll(); },
+  resume: () => audio.resumeAll(),
+  lock: (on: boolean) => { let el = document.getElementById('adlock'); if (on) { if (!el) { el = document.createElement('div'); el.id = 'adlock'; el.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:transparent'; document.body.appendChild(el); } } else el?.remove(); },
+};
