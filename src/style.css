@@ -563,3 +563,29 @@ button.act::before{content:none !important;display:none !important}
 .stage{display:flex;flex-direction:column;justify-content:flex-end}
 .stage .box{order:4}
 .stage #ch,.stage .choices{order:3;margin:0 0 8px;z-index:4;max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch}
+
+
+/* ── A8 PR枠（ポータルと同じ見た目）。#app の外・ページ下部。プレイ中は出さない ── */
+aside.fnb{
+  --bg2:#1a1a1a;--line:#2c2c2c;--mute:#9a968f;--acc:#c8a064;
+  border-top:1px solid var(--line);
+  padding:22px 0 calc(22px + env(safe-area-inset-bottom));
+  background:var(--bg2);
+  color:#e8e6e3;
+  user-select:text;-webkit-user-select:text;
+  touch-action:auto;
+  position:relative;z-index:1;
+}
+aside.fnb .in{max-width:1180px;margin:0 auto;padding:0 20px}
+aside.fnb .mark{display:inline-block;font-size:10px;letter-spacing:.1em;border:1px solid var(--line);padding:0 8px;color:var(--mute);margin:0 0 8px}
+aside.fnb p{margin:0;font-size:13px;color:var(--mute)}
+aside.fnb .fnl{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+aside.fnb .fnl li{margin:0;font-size:13px;color:var(--mute);line-height:1.6}
+aside.fnb .fnl a{color:var(--acc);text-decoration:underline;text-underline-offset:3px}
+aside.fnb .fnl a:hover{opacity:.85}
+aside.fnb .fnl img{display:inline;width:1px;height:1px;border:0;vertical-align:middle}
+/* タイトル時だけページをスクロールして枠を見せる。プレイ中は従来どおり body を固定して枠を隠す */
+html:has(#app .title),
+body:has(#app .title){height:auto;min-height:100dvh;overflow:auto;overscroll-behavior:auto}
+body:has(#app .title) #app{height:100dvh;min-height:100dvh;overflow:auto}
+body:not(:has(#app .title)) aside.fnb{display:none}
