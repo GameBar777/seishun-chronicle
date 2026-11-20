@@ -565,27 +565,86 @@ button.act::before{content:none !important;display:none !important}
 .stage #ch,.stage .choices{order:3;margin:0 0 8px;z-index:4;max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch}
 
 
-/* ── A8 PR枠（ポータルと同じ見た目）。#app の外・ページ下部。プレイ中は出さない ── */
+/* ── A8 PR枠（ポータルの金縁・ダーク基調に合わせてコンパクトに） ──
+   表示は body.pr-title / body.pr-ending のみ（ui.ts の setPrMode）。:has() 非依存。
+   枠はビューポート下端に固定し、#app が残りの高さを使う。狭い画面では #app 内だけがスクロールする。 */
 aside.fnb{
-  --bg2:#1a1a1a;--line:#2c2c2c;--mute:#9a968f;--acc:#c8a064;
-  border-top:1px solid var(--line);
-  padding:22px 0 calc(22px + env(safe-area-inset-bottom));
-  background:var(--bg2);
+  display:none;
+  --bg2:#16121c;--line:#e8c56b66;--mute:#c9c2b8;--acc:#e8c56b;
+  position:relative;z-index:6;
+  border-top:1px solid #e8c56b88;
+  background:linear-gradient(180deg,#1f1a26f5,#141018f8);
+  box-shadow:0 -10px 28px #0005,inset 0 1px 0 #ffe9a822;
+  padding:8px 0 calc(8px + env(safe-area-inset-bottom));
   color:#e8e6e3;
   user-select:text;-webkit-user-select:text;
   touch-action:auto;
-  position:relative;z-index:1;
 }
-aside.fnb .in{max-width:1180px;margin:0 auto;padding:0 20px}
-aside.fnb .mark{display:inline-block;font-size:10px;letter-spacing:.1em;border:1px solid var(--line);padding:0 8px;color:var(--mute);margin:0 0 8px}
-aside.fnb p{margin:0;font-size:13px;color:var(--mute)}
-aside.fnb .fnl{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
-aside.fnb .fnl li{margin:0;font-size:13px;color:var(--mute);line-height:1.6}
-aside.fnb .fnl a{color:var(--acc);text-decoration:underline;text-underline-offset:3px}
-aside.fnb .fnl a:hover{opacity:.85}
+aside.fnb .in{max-width:1040px;margin:0 auto;padding:0 16px}
+aside.fnb .mark{
+  display:inline-block;font-size:9px;letter-spacing:.16em;
+  border:1px solid #e8c56b99;color:#e8c56b;padding:0 7px;margin:0 0 4px;
+  border-radius:2px;line-height:1.7;background:#e8c56b14
+}
+aside.fnb p{margin:0;font-size:11px;line-height:1.45;color:var(--mute)}
+aside.fnb .fnl{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px 18px;grid-template-columns:1fr 1fr}
+aside.fnb .fnl li{margin:0;font-size:12px;color:var(--mute);line-height:1.45}
+aside.fnb .fnl a{color:var(--acc);text-decoration:underline;text-underline-offset:2px}
+aside.fnb .fnl a:hover{opacity:.88}
 aside.fnb .fnl img{display:inline;width:1px;height:1px;border:0;vertical-align:middle}
-/* タイトル時だけページをスクロールして枠を見せる。プレイ中は従来どおり body を固定して枠を隠す */
-html:has(#app .title),
-body:has(#app .title){height:auto;min-height:100dvh;overflow:auto;overscroll-behavior:auto}
-body:has(#app .title) #app{height:100dvh;min-height:100dvh;overflow:auto}
-body:not(:has(#app .title)) aside.fnb{display:none}
+
+html.pr-title,html.pr-ending,
+body.pr-title,body.pr-ending{
+  height:100%;height:100dvh;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+body.pr-title #app,
+body.pr-ending #app{
+  flex:1 1 auto;min-height:0;height:auto;width:100%;
+  overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+}
+body.pr-title aside.fnb,
+body.pr-ending aside.fnb{display:block;flex:0 0 auto;width:100%}
+
+/* タイトル側：#app 内でロゴ・余白（立ち絵）・メニュー・注記を収める */
+body.pr-title .title{
+  min-height:0 !important;height:100%;box-sizing:border-box;
+  display:flex;flex-direction:column;justify-content:flex-start;
+  padding:calc(8px + env(safe-area-inset-top)) 10px 10px;
+  overflow:hidden;
+}
+body.pr-title .title .logo{align-self:center;width:auto;max-width:min(520px,92%);padding:8px 28px}
+body.pr-title .title .note{align-self:center;max-width:min(640px,94%);margin-top:8px}
+body.pr-title .title .menu{margin-top:auto;align-self:center}
+/* 解錠ヒントはクレジットと重なるので、タイトル＋PR表示中は出さない（タップ自体は title() のリスナで有効） */
+body.pr-title .tapstart{display:none}
+
+/* デスクトップ：ロゴをコンパクトに、リンクは2列で折り返しを減らす */
+@media(min-width:721px){
+  body.pr-title .title .logo h1{font-size:2.35rem;margin:.08em 0}
+  body.pr-title .title .logo p{font-size:1.05rem}
+  body.pr-title .title .menu{gap:6px;max-width:320px}
+  body.pr-title .title .menu button{min-height:42px;font-size:.95rem}
+  body.pr-title .title .note{font-size:.72rem;line-height:1.55;padding:4px 10px}
+  aside.fnb .fnl{grid-template-columns:1fr 1fr}
+  aside.fnb{padding:8px 0 10px}
+  aside.fnb p{font-size:12px}
+  aside.fnb .fnl li{font-size:12.5px}
+}
+@media(max-width:720px){
+  body.pr-title .title .logo{padding:6px 16px;max-width:94%}
+  body.pr-title .title .menu{width:100%;max-width:none}
+}
+@media(max-width:599px){
+  aside.fnb .fnl{grid-template-columns:1fr;gap:2px}
+  aside.fnb .fnl li{font-size:11px;line-height:1.4}
+  aside.fnb .in{padding:0 12px}
+  aside.fnb{padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+  aside.fnb p{font-size:10px}
+}
+/* とても低い画面：ボタンが切れないようタイトル側だけスクロール */
+@media(max-height:700px){
+  body.pr-title .title{overflow:auto;-webkit-overflow-scrolling:touch}
+  body.pr-title .title .menu{margin-top:12px}
+  body.pr-title .title .menu button{min-height:40px}
+}

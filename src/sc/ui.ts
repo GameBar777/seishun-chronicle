@@ -21,6 +21,7 @@ import { backlog, backlogHtml } from './backlog';
 import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type Snap , logTone, effectParts } from './progress';
 import { replayClip } from './voice';
 import { buildEndingMovie, playEndingMovie } from './ending';
+import { setPrMode } from './pr';
 import { hallTalk, sendMail, startConfess, tm4Bg } from './tm4';
 import { heartChip, batteryHtml, phoneAppBtns, mailHtml, bookHtml, informantHtml, hallHtml, calStripHtml } from './tm4ui';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
@@ -119,6 +120,7 @@ function title() {
   $('#t-help').onclick = () => modal('遊び方', helpText());
   $('#t-song').onclick = () => themeSong();
   $('#t-cg').onclick = () => cgGallery();
+  setPrMode('title');
 }
 const SONG_LYRICS: [number, string][] = [[0, '止まらない この鼓動 今 走り出す'], [13, '迷い込んだ この世界で 答えを探してた'], [20, '小さな光 見つけた時 君が笑ってた'], [27, 'もう一歩 踏み出せば 変わり始める'], [34, '輝いて Shine again'], [37, '何度でも立ち上がれ'], [41, '涙さえ 超えてゆける'], [46, '君となら 走り出せ'], [50, '今すぐに 未来を掴みに行こう'], [56, '響いてるこの想い どこまでも'], [64, '不安だってあるけれど 止まれはしないから'], [71, '繋いだ手を離さないで 前を向いていく'], [78, '遠くでも届くまで 歌い続ける'], [85, '輝いて Shine again 何度でも立ち上がれ'], [92, '壊れその夜の先に 光がある'], [99.5, '止まらないこの鼓動 明日へ繋いで行こう'], [106.7, '変わらないこの想い 抱きしめて'], [113.8, 'どんな未来でも'], [118.8, '君となら行ける'], [124.8, '輝いて Shine again'], [127.8, '限界を超えていけ'], [131.8, '涙さえ力になる'], [136.8, '信じてる'], [138.8, '走り出せ 今すぐに'], [142.8, '新しい空の下 終わらない'], [148.1, 'この歌を届けよう'], [157.3, 'また光る未来へ']];
 function themeSong() {
@@ -152,6 +154,7 @@ function helpText() {
 
 // ───────── 主人公設定 ─────────
 function setup() {
+  setPrMode('off');
   const days = (m: number) => new Date(2010, m, 0).getDate();
   app().innerHTML = `<div class="panel setup"><h2>主人公の設定</h2>
   <div class="row"><label>姓<input id="s-sei" value="相沢" maxlength="6"></label><label>名<input id="s-mei" value="悠斗" maxlength="6"></label></div>
@@ -173,6 +176,7 @@ function setup() {
 
 // ───────── メイン ─────────
 function main() {
+  setPrMode('off');
   wxNow = null;
   cgOff(); if (!S) return title();
   store.save('auto', S);
@@ -340,6 +344,7 @@ function cgGallery() {
 }
 let typing: any = null;
 function playLines(title: string, lines: Line[], after: () => void, h?: string) {
+  setPrMode('off');
   let i = 0, tamed = false, hold = false; const sceneH = h;
   app().innerHTML = `${S ? hud() : ''}<div class="stage" ${h ? `style="--hc:${porColor(h)}"` : ''}><div class="sc-title">${esc(title)}</div>${h ? portrait(h) : ''}
   <div class="box" id="box"><div class="name" id="nm"></div><div class="text" id="tx"></div><div class="hint bl-row-hint"><div class="adv-ctrl"><button type="button" class="adv-btn${set.autoPlay ? ' on' : ''}" id="adv-auto" aria-pressed="${!!set.autoPlay}">AUTO</button><button type="button" class="adv-btn" id="adv-skip">SKIP</button><button type="button" class="bl-btn" id="bl-open" aria-label="会話ログ">ログ</button><button type="button" class="bl-btn" id="adv-qsave" title="クイックセーブ">💾</button><button type="button" class="bl-btn" id="adv-set" title="設定">⚙</button></div><span>クリック / Enter</span></div></div><div id="ch" class="choices"></div></div>${cmdBar()}`;
@@ -505,6 +510,7 @@ function chatBox(h: string) {
   $<HTMLInputElement>('#ci').focus();
 }
 function endingBox(replay = false) {
+  setPrMode('off'); // ムービー／エンドロール中は出さない
   const e = judgeEnding(S!); const st = S!;
   const panel = () => {
     $('#ch').innerHTML = `<div class="panel endpanel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。三年間、ありがとう。</p><div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-r">🎬 エンディングをもう一度</button><button id="e-s">最終セーブ文字列</button></div></div>`;
@@ -524,7 +530,7 @@ function endingBox(replay = false) {
       else if (ph === 'roll' && theme && !audio.songPlaying()) { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
       else if (ph === 'end') { if (audio.songPlaying()) audio.fadeSong(3500); else audio.stopFileBgm(3.5); }
     },
-    done: () => { if (replay) return; },
+    done: () => { setTimeout(() => setPrMode('ending'), 920); },
   });
 }
 /** 検証用：?debug=end&e=good|confess|normal|bad&h=hinata でエンディングへ直行（セーブは作らない） */
