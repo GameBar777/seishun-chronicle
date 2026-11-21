@@ -11,12 +11,14 @@ const ASIDE = `aside class="fnb"`;
 const LINKS = [
   { href: 'https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI', text: '【DMMブックス】', img: 'https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI' },
   { href: 'https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6', text: 'あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS', img: 'https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6' },
-  { href: 'https://px.a8.net/svt/ejp?a8mat=4BGOWO+7VECQA+3CJQ+64C3M', text: '新作続々追加！オーディオブック聴くなら - audiobook.jp', img: 'https://www16.a8.net/0.gif?a8mat=4BGOWO+7VECQA+3CJQ+64C3M' },
+  { href: 'https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE', text: 'ゲーマーズ', img: 'https://www12.a8.net/0.gif?a8mat=4BGQGS+4P34KY+4AHY+5YRHE' },
   { href: 'https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE', text: 'オリジナルコンテンツ数No1！【ABEMAプレミアム】', img: 'https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE' },
 ];
 
-const ISSUED_ASIDE = `<aside class="fnb"><div class="in"><p class="mark">PR</p><p>ゲームのあとで見る・読むときの参考です。登録や購入、効果を保証するものではありません。</p><ul class="fnl"><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" rel="nofollow">【DMMブックス】</a> <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6" rel="nofollow">あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS</a><img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGOWO+7VECQA+3CJQ+64C3M" rel="nofollow">新作続々追加！オーディオブック聴くなら - audiobook.jp</a>
-<img border="0" width="1" height="1" src="https://www16.a8.net/0.gif?a8mat=4BGOWO+7VECQA+3CJQ+64C3M" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE" rel="nofollow">オリジナルコンテンツ数No1！【ABEMAプレミアム】</a>
+const ISSUED_ASIDE = `<aside class="fnb"><div class="in"><p class="mark">PR</p><p>ゲームのあとで見る・読むときの参考です。登録や購入、効果を保証するものではありません。</p><ul class="fnl"><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" rel="nofollow">【DMMブックス】</a> <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6" rel="nofollow">あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS</a><img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" rel="nofollow">ゲーマーズ</a>
+
+
+<img border="0" width="1" height="1" src="https://www12.a8.net/0.gif?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE" rel="nofollow">オリジナルコンテンツ数No1！【ABEMAプレミアム】</a>
 <img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE" alt=""></li></ul></div></aside>`;
 
 describe('A8 PR footer on GitHub Pages index.html', () => {
@@ -40,6 +42,8 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
     expect(html).toContain('class="fnl"');
     expect(html).not.toContain('class="ad"');
     expect(html).not.toContain('無料体験');
+    expect(html).not.toContain('audiobook.jp');
+    expect(html).not.toContain('4BGOWO+7VECQA+3CJQ+64C3M');
     let pos = 0;
     for (const L of LINKS) {
       const a = html.indexOf(`href="${L.href}"`);
