@@ -43,8 +43,8 @@ describe('portal button markup', () => {
     expect(mod).toContain(`id="\${PORTAL_BTN_ID_TITLE}"`);
     expect(mod).toContain(`id="\${PORTAL_BTN_ID_ENDING}"`);
     expect(mod).toContain("window.open(OFFICIAL_SITE_URL, '_blank', 'noopener')");
-    expect(mod).toMatch(/titleBtn\.onclick = go/);
-    expect(mod).toMatch(/endBtn\.onclick = go/);
+    expect(mod).toContain('el.onclick = go');
+    expect(mod).toContain('el.onpointerdown');
     expect(mod).not.toContain('<a ');
     expect(mod).not.toContain('秘密');
     expect(mod).not.toContain('隠しエンド');
@@ -53,7 +53,7 @@ describe('portal button markup', () => {
 });
 
 describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
-  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.9', () => {
+  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.10', () => {
     expect(html).not.toContain(PORTAL_BTN_TEXT);
     expect(html).not.toContain('t-official');
     expect(html).not.toContain('e-official');
@@ -65,11 +65,12 @@ describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
     expect(html).toContain('<!--goatcounter-start-->');
     expect(html).toContain('aside class="fnb"');
     expect(html).toContain('a8.net');
-    expect(html).toContain('"softwareVersion": "1.20.9"');
+    expect(html).toContain('"softwareVersion": "1.20.10"');
   });
 
   it('changelog notes the distribution-build button modestly', () => {
-    expect(changelog).toContain('<h2>v1.20.9</h2>');
+    expect(changelog).toContain('<h2>v1.20.10</h2>');
+    expect(changelog).toContain('配布版の読み込みを安定化');
     expect(changelog).toContain('配布版の公式サイト案内を、押しやすいボタンに変更');
   });
 });
@@ -111,4 +112,10 @@ describe('ui wiring', () => {
     expect(css).toContain('.endpanel .row .portal-link-btn');
     expect(css).not.toContain('.portal-link a{');
   });
+});
+
+it('portal vite config uses stable CSS/JS filenames', () => {
+  const vite = readFileSync('vite.config.ts', 'utf8');
+  expect(vite).toContain("entryFileNames: 'assets/index.js'");
+  expect(vite).toContain("return 'assets/index.css'");
 });

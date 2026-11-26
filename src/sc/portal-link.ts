@@ -39,9 +39,22 @@ export function openOfficialSite(): boolean {
 
 export function bindPortalLinks(): void {
   if (!__PORTAL_LINK__) return;
-  const go = () => { openOfficialSite(); };
-  const titleBtn = document.getElementById(PORTAL_BTN_ID_TITLE) as HTMLButtonElement | null;
-  const endBtn = document.getElementById(PORTAL_BTN_ID_ENDING) as HTMLButtonElement | null;
-  if (titleBtn) titleBtn.onclick = go;
-  if (endBtn) endBtn.onclick = go;
+  // pointerdown でも開く（iframe 内では click の1回目がフォーカスに使われることがある）。連打でタブが重ならないよう短く抑える。
+  let last = 0;
+  const go = (ev?: Event) => {
+    ev?.preventDefault();
+    const now = Date.now();
+    if (now - last < 800) return;
+    last = now;
+    openOfficialSite();
+  };
+  const bind = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.onclick = go;
+    el.onpointerdown = (ev: PointerEvent) => {
+      if (ev.button === 0) go(ev);
+    };
+  };
+  bind(document.getElementById(PORTAL_BTN_ID_TITLE));
+  bind(document.getElementById(PORTAL_BTN_ID_ENDING));
 }
