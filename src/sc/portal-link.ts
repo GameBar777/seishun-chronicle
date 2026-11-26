@@ -124,12 +124,17 @@ export function showOfficialPanel(): void {
       <p class="opanel-msg" id="opanel-msg" aria-live="polite"></p>
     </div>
   </div>`;
-  document.body.appendChild(d);
+  // body に PLiCyFit の transform が掛かっているため、html 直下に置いて viewport 基準の fixed にする
+  document.documentElement.appendChild(d);
   window.addEventListener('keydown', onPanelKey);
   const qr = d.querySelector<HTMLImageElement>('.opanel-qr');
   if (qr) qr.onerror = () => { qr.style.display = 'none'; };
+  // 開いた直後の同じジェスチャ（pointerup / click）がパネルに当たって閉じたり、中のボタンを押したりしない
+  d.style.pointerEvents = 'none';
+  const arm = () => { d.style.pointerEvents = ''; };
+  window.setTimeout(arm, 400);
   document.getElementById('opanel-close')!.onclick = () => closeOfficialPanel();
-  d.onclick = e => { if (e.target === d) closeOfficialPanel(); };
+  d.onclick = e => { if (e.target === d && d.style.pointerEvents !== 'none') closeOfficialPanel(); };
   document.getElementById('opanel-copy')!.onclick = () => {
     void copyOfficialUrl().then(r => setPanelMsg(r === 'ok' ? PORTAL_COPY_OK : PORTAL_COPY_FALLBACK));
   };
@@ -150,9 +155,23 @@ export function bindPortalLinks(): void {
     // PLiCy は最初からパネル。itch はまず新しいタブ、止まれば同じパネル。
     if (__PORTAL_PANEL__ || !openOfficialSite()) showOfficialPanel();
   };
+  const onKey = (ev: KeyboardEvent) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      go(ev);
+    }
+  };
   const bind = (el: HTMLElement | null) => {
     if (!el) return;
-    el.onclick = go;
+    // PLiCy の親ページ #windowCanvas が最初の pointerdown を奪い、ゲーム側には pointerup / mouseup だけが届く。
+    // click は発火しないので、pointerup でも開く。pointerdown / mousedown / click / Enter / Space も受けて保险にする。
+    // preventDefault はポインタには掛けない（以前 itch の判定を壊したため）。
+    el.addEventListener('pointerdown', go);
+    el.addEventListener('mousedown', go);
+    el.addEventListener('pointerup', go);
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', onKey);
   };
   bind(document.getElementById(PORTAL_BTN_ID_TITLE));
   bind(document.getElementById(PORTAL_BTN_ID_ENDING));

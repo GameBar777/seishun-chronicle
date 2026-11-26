@@ -52,8 +52,14 @@ describe('portal button markup', () => {
     expect(mod).toContain(`id="\${PORTAL_BTN_ID_TITLE}"`);
     expect(mod).toContain(`id="\${PORTAL_BTN_ID_ENDING}"`);
     expect(mod).toContain("window.open(OFFICIAL_SITE_URL, '_blank')");
-    expect(mod).toContain('el.onclick = go');
-    expect(mod).not.toContain('el.onpointerdown');
+    expect(mod).toContain("el.addEventListener('pointerdown', go)");
+    expect(mod).toContain("el.addEventListener('mousedown', go)");
+    expect(mod).toContain("el.addEventListener('pointerup', go)");
+    expect(mod).toContain("el.addEventListener('click', go)");
+    expect(mod).toContain("el.addEventListener('keydown', onKey)");
+    expect(mod).toContain("ev.key === 'Enter' || ev.key === ' '");
+    expect(mod).not.toContain('el.onclick = go');
+    expect(mod).toContain('windowCanvas');
     expect(mod).not.toContain('ev?.preventDefault()');
     expect(mod).toContain('showOfficialPanel()');
     expect(mod).toContain("if (__PORTAL_PANEL__ || !openOfficialSite()) showOfficialPanel()");
@@ -70,7 +76,7 @@ describe('portal button markup', () => {
 });
 
 describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
-  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.11', () => {
+  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.12', () => {
     expect(html).not.toContain(PORTAL_BTN_TEXT);
     expect(html).not.toContain('t-official');
     expect(html).not.toContain('e-official');
@@ -82,10 +88,12 @@ describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
     expect(html).toContain('<!--goatcounter-start-->');
     expect(html).toContain('aside class="fnb"');
     expect(html).toContain('a8.net');
-    expect(html).toContain('"softwareVersion": "1.20.11"');
+    expect(html).toContain('"softwareVersion": "1.20.12"');
   });
 
   it('changelog notes the distribution-build button modestly', () => {
+    expect(changelog).toContain('<h2>v1.20.12</h2>');
+    expect(changelog).toContain('配布版の公式サイト案内が、1回のクリックで開くようにした');
     expect(changelog).toContain('<h2>v1.20.11</h2>');
     expect(changelog).toContain('配布版の公式サイト案内を、URLのコピーでも使えるようにした');
     expect(changelog).toContain('<h2>v1.20.10</h2>');
@@ -119,7 +127,7 @@ describe('portal HTML strip', () => {
 });
 
 describe('ui wiring', () => {
-  it('places the official-site button inside the title menu and the ending button row, bound via onclick', () => {
+  it('places the official-site button inside the title menu and the ending button row, bound via pointer and click', () => {
     expect(ui).toContain("import { portalLinkHtml, bindPortalLinks, portalLinkEnabled } from './portal-link';");
     // タイトル：はじめから（押せる列の先頭）の直後、.menu の中
     expect(ui).toMatch(/id="t-new" class="primary menu-btn">はじめから<\/button>\$\{portalLinkHtml\('title'\)\}/);
