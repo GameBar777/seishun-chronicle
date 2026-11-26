@@ -112,6 +112,6 @@ describe('setPrMode body classes', () => {
     expect(ui).toMatch(/function main\(\) \{\s*setPrMode\('off'\);/);
     expect(ui).toMatch(/function playLines[\s\S]{0,120}?setPrMode\('off'\);/);
     expect(ui).toMatch(/function endingBox[\s\S]{0,80}?setPrMode\('off'\);/);
-    expect(ui).toContain("setTimeout(() => setPrMode('ending'), 920)");
+    expect(ui).toMatch(/setTimeout\(\(\) => \{[\s\S]*?setPrMode\('ending'\);[\s\S]*?\}, 920\)/);
   });
 });

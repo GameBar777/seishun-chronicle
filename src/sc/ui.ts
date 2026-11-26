@@ -112,8 +112,7 @@ function title() {
     const go = () => { if (!S) audio.unlockTitleSong(BASE); setTimeout(() => { if (audio.songPlaying() || audio.titleFallbackOn() || S) { EVS.forEach(e => document.removeEventListener(e, go, true)); h.remove(); } }, 300); };
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
-  <div class="menu"><button type="button" id="t-new" class="primary menu-btn">はじめから</button><button type="button" class="menu-btn" id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button type="button" class="menu-btn" id="t-load">セーブ文字列から再開</button><button type="button" class="menu-btn" id="t-set">音声・音量設定</button><button type="button" class="menu-btn" id="t-song">🎵 主題歌</button><button type="button" class="menu-btn" id="t-cg">🖼 CGモード</button><button type="button" class="menu-btn" id="t-help">遊び方</button></div>
-  ${portalLinkHtml('title')}
+  <div class="menu"><button type="button" id="t-new" class="primary menu-btn">はじめから</button>${portalLinkHtml('title')}<button type="button" class="menu-btn" id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button type="button" class="menu-btn" id="t-load">セーブ文字列から再開</button><button type="button" class="menu-btn" id="t-set">音声・音量設定</button><button type="button" class="menu-btn" id="t-song">🎵 主題歌</button><button type="button" class="menu-btn" id="t-cg">🖼 CGモード</button><button type="button" class="menu-btn" id="t-help">遊び方</button></div>
   <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><a href="https://gamebar777.github.io/guides/seishun-chronicle/" target="_blank" rel="noopener">📖 攻略ガイド（ヒロイン・エンディング・イベント）</a><br><span class="credit">主題歌：「Shine Again」 歌：<a href="https://youtube.com/@mirai_official19" target="_blank" rel="noopener">MIRAi</a>／音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://otologic.jp/" target="_blank" rel="noopener">OtoLogic</a>（CC BY 4.0）・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
   $('#t-new').onclick = () => { audio.resume(); trans(setup); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); trans(main); } };
@@ -517,7 +516,7 @@ function endingBox(replay = false) {
   setPrMode('off'); // ムービー／エンドロール中は出さない
   const e = judgeEnding(S!); const st = S!;
   const panel = () => {
-    $('#ch').innerHTML = `<div class="panel endpanel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。三年間、ありがとう。</p>${portalLinkHtml('ending')}<div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-r">🎬 エンディングをもう一度</button><button id="e-s">最終セーブ文字列</button></div></div>`;
+    $('#ch').innerHTML = `<div class="panel endpanel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。三年間、ありがとう。</p><div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-r">🎬 エンディングをもう一度</button><button id="e-s">最終セーブ文字列</button>${portalLinkHtml('ending')}</div></div>`;
     $('#e-t').onclick = () => { audio.stopSong(); audio.stopFileBgm(); resolve(st, 0); store.save('auto', st); try { localStorage.removeItem('seishun:slotauto'); } catch { } title(); };
     $('#e-r').onclick = () => endingBox(true);
     $('#e-s').onclick = () => modal('SAVE', `<textarea readonly class="savestr">${exportSave(st)}</textarea>`);
@@ -536,7 +535,10 @@ function endingBox(replay = false) {
       else if (ph === 'roll' && theme && !audio.songPlaying()) { audio.stopFileBgm(1.6); audio.playSong(BASE, { loop: false }); }
       else if (ph === 'end') { if (audio.songPlaying()) audio.fadeSong(3500); else audio.stopFileBgm(3.5); }
     },
-    done: () => { setTimeout(() => setPrMode('ending'), 920); },
+    done: () => { setTimeout(() => {
+      setPrMode('ending');
+      if (portalLinkEnabled()) document.getElementById('e-official')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }, 920); },
   });
 }
 /** 検証用：?debug=end&e=good|confess|normal|bad&h=hinata でエンディングへ直行（セーブは作らない） */

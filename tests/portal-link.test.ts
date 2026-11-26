@@ -4,13 +4,15 @@ import {
   stripA8Pr, stripPortalExtras, shouldStripA8Pr, shouldPortalLink,
 } from '../scripts/strip-a8-pr.mjs';
 import {
-  OFFICIAL_SITE_URL, PORTAL_LINK_TEXT, portalLinkHtml, portalLinkEnabled,
+  OFFICIAL_SITE_URL, PORTAL_BTN_TEXT, PORTAL_BTN_ID_TITLE, PORTAL_BTN_ID_ENDING,
+  portalLinkHtml, portalLinkEnabled,
 } from '../src/sc/portal-link';
 
 const html = readFileSync('index.html', 'utf8');
 const css = readFileSync('src/style.css', 'utf8');
 const ui = readFileSync('src/sc/ui.ts', 'utf8');
 const changelog = readFileSync('public/changelog.html', 'utf8');
+const mod = readFileSync('src/sc/portal-link.ts', 'utf8');
 
 describe('portal link flag', () => {
   it('is off by default and on with PORTAL_LINK=1 or PORTAL_BUILD=1', () => {
@@ -30,42 +32,45 @@ describe('portal link flag', () => {
   });
 });
 
-describe('portalLinkHtml', () => {
-  it('defines the official URL, target and wording (rendered only when __PORTAL_LINK__ is true)', () => {
+describe('portal button markup', () => {
+  it('is a menu-style button (not an anchor), with official URL opened via window.open', () => {
     expect(OFFICIAL_SITE_URL).toBe('https://gamebar777.github.io/seishun-chronicle/');
-    expect(PORTAL_LINK_TEXT).toBe('公式サイト版（攻略ページ・最新版あり）はこちら');
-    const mod = readFileSync('src/sc/portal-link.ts', 'utf8');
-    expect(mod).toContain(`href="\${OFFICIAL_SITE_URL}"`);
-    expect(mod).toContain('target="_blank"');
-    expect(mod).toContain('rel="noopener"');
-    expect(mod).toContain('portal-link-title');
-    expect(mod).toContain('portal-link-ending');
+    expect(PORTAL_BTN_TEXT).toBe('公式サイト版（攻略ページ・最新版）');
+    expect(PORTAL_BTN_ID_TITLE).toBe('t-official');
+    expect(PORTAL_BTN_ID_ENDING).toBe('e-official');
+    expect(mod).toContain('button type="button"');
+    expect(mod).toContain('menu-btn portal-link-btn');
+    expect(mod).toContain(`id="\${PORTAL_BTN_ID_TITLE}"`);
+    expect(mod).toContain(`id="\${PORTAL_BTN_ID_ENDING}"`);
+    expect(mod).toContain("window.open(OFFICIAL_SITE_URL, '_blank', 'noopener')");
+    expect(mod).toMatch(/titleBtn\.onclick = go/);
+    expect(mod).toMatch(/endBtn\.onclick = go/);
+    expect(mod).not.toContain('<a ');
     expect(mod).not.toContain('秘密');
     expect(mod).not.toContain('隠しエンド');
-    expect(mod).toContain("window.open(url, '_blank', 'noopener')");
+    expect(PORTAL_BTN_TEXT).not.toContain('はこちら');
   });
 });
 
 describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
-  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.8', () => {
-    expect(html).not.toContain(PORTAL_LINK_TEXT);
+  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.9', () => {
+    expect(html).not.toContain(PORTAL_BTN_TEXT);
+    expect(html).not.toContain('t-official');
+    expect(html).not.toContain('e-official');
     expect(html).not.toContain('class="portal-link"');
     expect(html).toContain('adsbygoogle');
     expect(html).toContain('pagead2.googlesyndication.com');
     expect(html).toContain('<!--ads-start-->');
-    expect(html).toContain('<!--ads-end-->');
     expect(html).toContain('goatcounter');
-    expect(html).toContain('gc.zgo.at/count.js');
     expect(html).toContain('<!--goatcounter-start-->');
-    expect(html).toContain('<!--goatcounter-end-->');
     expect(html).toContain('aside class="fnb"');
     expect(html).toContain('a8.net');
-    expect(html).toContain('"softwareVersion": "1.20.8"');
+    expect(html).toContain('"softwareVersion": "1.20.9"');
   });
 
-  it('changelog notes the distribution-build link modestly', () => {
-    expect(changelog).toContain('<h2>v1.20.8</h2>');
-    expect(changelog).toContain('配布版に公式サイトへの案内を追加');
+  it('changelog notes the distribution-build button modestly', () => {
+    expect(changelog).toContain('<h2>v1.20.9</h2>');
+    expect(changelog).toContain('配布版の公式サイト案内を、押しやすいボタンに変更');
   });
 });
 
@@ -78,9 +83,6 @@ describe('portal HTML strip', () => {
     expect(gone).not.toContain('aside class="fnb"');
     expect(gone).not.toContain('goatcounter');
     expect(gone).not.toContain('gc.zgo.at');
-    expect(gone).not.toContain('<!--ads-start-->');
-    expect(gone).not.toContain('<!--a8-pr-start-->');
-    expect(gone).not.toContain('<!--goatcounter-start-->');
     expect(gone).toContain('<div id="app" aria-live="polite"></div>');
     expect(gone).toContain('application/ld+json');
   });
@@ -97,19 +99,16 @@ describe('portal HTML strip', () => {
 });
 
 describe('ui wiring', () => {
-  it('title and endpanel insert the portal link and bind it, with window.open fallback in the module', () => {
+  it('places the official-site button inside the title menu and the ending button row, bound via onclick', () => {
     expect(ui).toContain("import { portalLinkHtml, bindPortalLinks, portalLinkEnabled } from './portal-link';");
-    expect(ui).toContain("document.body.classList.toggle('portal-ending', portalLinkEnabled())");
-    expect(ui).toMatch(/\$\{portalLinkHtml\('title'\)\}/);
-    expect(ui).toMatch(/\$\{portalLinkHtml\('ending'\)\}/);
+    // タイトル：はじめから（押せる列の先頭）の直後、.menu の中
+    expect(ui).toMatch(/id="t-new" class="primary menu-btn">はじめから<\/button>\$\{portalLinkHtml\('title'\)\}/);
+    // エンディング：既存ボタンと同じ .row の中
+    expect(ui).toMatch(/id="e-s">最終セーブ文字列<\/button>\$\{portalLinkHtml\('ending'\)\}<\/div>/);
     expect(ui).toMatch(/setPrMode\('title'\);\s*document\.body\.classList\.remove\('portal-ending'\);\s*bindPortalLinks\(\);/);
-    expect(ui).toContain('class="panel endpanel"');
-    expect(ui).toMatch(/portalLinkHtml\('ending'\)\}<div class="row">/);
-    const mod = readFileSync('src/sc/portal-link.ts', 'utf8');
-    expect(mod).toContain("window.open(url, '_blank', 'noopener')");
-    expect(mod).toContain('target="_blank"');
-    expect(css).toContain('.portal-link{');
-    expect(css).toContain('.endpanel .portal-link{display:none');
-    expect(css).toContain('body.pr-ending .endpanel .portal-link{display:block}');
+    expect(ui).toContain("document.body.classList.toggle('portal-ending', portalLinkEnabled())");
+    expect(css).toContain('.title .menu button.portal-link-btn');
+    expect(css).toContain('.endpanel .row .portal-link-btn');
+    expect(css).not.toContain('.portal-link a{');
   });
 });

@@ -565,31 +565,41 @@ button.act::before{content:none !important;display:none !important}
 .stage #ch,.stage .choices{order:3;margin:0 0 8px;z-index:4;max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch}
 
 
-/* ── 配布版（PLiCy / itch）だけの公式サイト案内。本家ビルドでは DOM に出さない ── */
-.portal-link{
-  margin:8px auto 0;padding:0;text-align:center;
-  font-family:var(--font-deco);font-size:.78rem;line-height:1.5;letter-spacing:.06em;
-  max-width:min(520px,94%);flex:0 0 auto;align-self:center;
+/* ── 配布版（PLiCy / itch）だけの公式サイト案内。本家ビルドでは DOM に出さない ──
+   タイトルはメニュー列のボタン（#t-official）。エンディングは結果のボタン列（#e-official）。
+   メニューと同じ button.onclick / pointerdown 経路。テキストリンクは使わない。 */
+.title .menu button.portal-link-btn{
+  font-size:.88rem;min-height:40px;letter-spacing:.04em;font-weight:600;
 }
-.portal-link a{
-  color:#8a5a12;text-decoration:underline;text-underline-offset:3px;
-  text-shadow:0 1px 0 #fff,0 0 8px #fffef8;
+.title .menu button#t-official{grid-column:1/-1}
+@media(max-width:600px){
+  .title .menu button.portal-link-btn{font-size:.8rem;min-height:38px}
 }
-.portal-link a:hover,.portal-link a:focus-visible{color:#6a2048}
-/* エンディング結果：ムービー中は出さず、pr-ending になってから表示。ボタンより上に置く */
-.endpanel .portal-link{display:none;margin:8px 0}
-body.pr-ending .endpanel .portal-link{display:block}
+.endpanel .row .portal-link-btn{font-size:.85rem;letter-spacing:.04em}
 /* 配布版の結果画面だけ：残った台詞窓を畳み、案内が画面内に収まるようにする（本家には .portal-ending が付かない） */
-body.portal-ending .stage{min-height:0}
+body.portal-ending .stage{min-height:0;justify-content:flex-end}
 body.portal-ending .stage .box,
 body.portal-ending .cmd{display:none}
 body.portal-ending .stage #ch,
 body.portal-ending .stage .choices{max-height:none;overflow:visible;margin-bottom:0}
-@media(min-width:721px){
-  body.portal-ending .pwrap{height:min(38dvh,40vh)}
+body.portal-ending .pwrap{height:min(34dvh,280px)}
+@media(max-width:720px){
+  body.portal-ending .pwrap{height:min(26dvh,170px)}
 }
-@media(max-width:600px){
-  .portal-link{font-size:.72rem;margin-top:6px}
+/* PLiCy のゲーム枠は約 600px（狭い端末ではさらに低い）なので、結果のボタン列が枠内に残るように畳む */
+@media(max-height:640px){
+  body.portal-ending .hud .stats{display:none}
+  body.portal-ending .pwrap{height:min(24dvh,150px)}
+  body.portal-ending .portrait .pi{display:none}
+  body.portal-ending .sc-title{display:none}
+  body.portal-ending .endpanel{padding:8px 10px;margin:4px 0}
+  body.portal-ending .endpanel h2{font-size:1.05rem;margin:0 0 .2em}
+  body.portal-ending .endpanel p{margin:0 0 6px;font-size:.9rem}
+  body.portal-ending .endpanel .row{margin:4px 0 0}
+}
+@media(max-height:540px){
+  body.portal-ending .hud .hs{display:none}
+  body.portal-ending .pwrap{height:min(18dvh,110px)}
 }
 
 /* ── A8 PR枠（ポータルの金縁・ダーク基調に合わせてコンパクトに） ──
