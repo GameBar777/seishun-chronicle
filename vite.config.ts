@@ -1,5 +1,7 @@
 import { defineConfig } from 'vite';
-import { stripPortalExtras, shouldPortalLink, shouldStripA8Pr } from './scripts/strip-a8-pr.mjs';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { stripPortalExtras, shouldPortalLink, shouldStripA8Pr, shouldPortalPanel } from './scripts/strip-a8-pr.mjs';
 // BASE_PATH: e.g. "/seishun-chronicle/" for GitHub Pages project sites. VITE_SITE_URL: absolute public URL (for canonical/og).
 const base = process.env.BASE_PATH || '/';
 process.env.VITE_SITE_URL ||= 'https://gamebar777.github.io/seishun-chronicle/'; // canonical/og always absolute
@@ -27,11 +29,19 @@ export default defineConfig({
     __BUILD__: JSON.stringify(BUILD),
     // PLiCy / itch など配布ZIPのみ公式サイト案内を出す。GitHub Pages の通常ビルドでは false。
     __PORTAL_LINK__: JSON.stringify(shouldPortalLink()),
+    // PORTAL_TARGET=plicy のときだけ、案内は最初からゲーム内パネル。
+    __PORTAL_PANEL__: JSON.stringify(shouldPortalPanel()),
     // A8_PR=0 または PORTAL_BUILD=1。広告ラッパーをバンドルから落とす。
     __PORTAL_BUILD__: JSON.stringify(shouldStripA8Pr()),
   },
   plugins: [
     { name: 'build-version', generateBundle() { this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD }) }); } },
+    // 配布ZIPだけ、ビルド時に作った公式サイトQRを同梱する（外部APIは使わない）
+    { name: 'official-qr', generateBundle() {
+      if (!shouldPortalLink()) return;
+      const png = readFileSync(resolve('scripts/official-qr.png'));
+      this.emitFile({ type: 'asset', fileName: 'img/official-qr.png', source: png });
+    } },
     // itch / Game Jolt / portal ZIP: A8_PR=0 または PORTAL_BUILD=1 で PR枠・広告・GoatCounter を除く。GitHub Pages の通常ビルドでは残す。
     { name: 'a8-pr-gate', transformIndexHtml(html) { return stripPortalExtras(html); } },
   ],

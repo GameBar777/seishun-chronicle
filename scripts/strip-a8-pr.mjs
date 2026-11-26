@@ -12,6 +12,11 @@ export function shouldPortalLink(env = process.env) {
   return env.PORTAL_LINK === '1' || env.PORTAL_BUILD === '1';
 }
 
+/** PLiCy 配布だけ、案内ボタンは最初からゲーム内パネルを開く（window.open を枠が止めるため） */
+export function shouldPortalPanel(env = process.env) {
+  return env.PORTAL_TARGET === 'plicy';
+}
+
 export function stripA8Pr(html, env = process.env) {
   return shouldStripA8Pr(env) ? html.replace(A8_PR_BLOCK, '') : html;
 }
