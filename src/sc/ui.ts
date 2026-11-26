@@ -22,6 +22,7 @@ import { snap, diffStats, diffHearts, rank, fmtDelta, weekCard, SHOWN, BAR, type
 import { replayClip } from './voice';
 import { buildEndingMovie, playEndingMovie } from './ending';
 import { setPrMode } from './pr';
+import { portalLinkHtml, bindPortalLinks, portalLinkEnabled } from './portal-link';
 import { hallTalk, sendMail, startConfess, tm4Bg } from './tm4';
 import { heartChip, batteryHtml, phoneAppBtns, mailHtml, bookHtml, informantHtml, hallHtml, calStripHtml } from './tm4ui';
 const BASE = (import.meta as any).env?.BASE_URL ?? '/';
@@ -112,6 +113,7 @@ function title() {
     EVS.forEach(e => document.addEventListener(e, go, true)); });
   app().innerHTML = `<div class="title"><div class="rays"></div><div class="logo"><small>星見ヶ丘学園</small><h1>青春クロニクル</h1><p>～君と過ごした1000日間～</p></div>
   <div class="menu"><button type="button" id="t-new" class="primary menu-btn">はじめから</button><button type="button" class="menu-btn" id="t-cont" ${store.has('auto') ? '' : 'disabled'}>つづきから（オートセーブ）</button><button type="button" class="menu-btn" id="t-load">セーブ文字列から再開</button><button type="button" class="menu-btn" id="t-set">音声・音量設定</button><button type="button" class="menu-btn" id="t-song">🎵 主題歌</button><button type="button" class="menu-btn" id="t-cg">🖼 CGモード</button><button type="button" class="menu-btn" id="t-help">遊び方</button></div>
+  ${portalLinkHtml('title')}
   <p class="note">全${LAST_WEEK}週（高校3年間）。1周の目安 約4時間。ヒロイン・芽衣・健太・井上・真鍋先生はボイスつき（ElevenLabsで生成したAI音声）。<br><a href="https://gamebar777.github.io/guides/seishun-chronicle/" target="_blank" rel="noopener">📖 攻略ガイド（ヒロイン・エンディング・イベント）</a><br><span class="credit">主題歌：「Shine Again」 歌：<a href="https://youtube.com/@mirai_official19" target="_blank" rel="noopener">MIRAi</a>／音楽：<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a>（CC BY 4.0）／効果音：<a href="https://otologic.jp/" target="_blank" rel="noopener">OtoLogic</a>（CC BY 4.0）・<a href="https://maou.audio/" target="_blank" rel="noopener">魔王魂</a></span></p></div>`;
   $('#t-new').onclick = () => { audio.resume(); trans(setup); };
   $('#t-cont').onclick = () => { const g = store.load('auto'); if (g) { S = g; syncCg(); audio.resume(); trans(main); } };
@@ -121,6 +123,8 @@ function title() {
   $('#t-song').onclick = () => themeSong();
   $('#t-cg').onclick = () => cgGallery();
   setPrMode('title');
+  document.body.classList.remove('portal-ending');
+  bindPortalLinks();
 }
 const SONG_LYRICS: [number, string][] = [[0, '止まらない この鼓動 今 走り出す'], [13, '迷い込んだ この世界で 答えを探してた'], [20, '小さな光 見つけた時 君が笑ってた'], [27, 'もう一歩 踏み出せば 変わり始める'], [34, '輝いて Shine again'], [37, '何度でも立ち上がれ'], [41, '涙さえ 超えてゆける'], [46, '君となら 走り出せ'], [50, '今すぐに 未来を掴みに行こう'], [56, '響いてるこの想い どこまでも'], [64, '不安だってあるけれど 止まれはしないから'], [71, '繋いだ手を離さないで 前を向いていく'], [78, '遠くでも届くまで 歌い続ける'], [85, '輝いて Shine again 何度でも立ち上がれ'], [92, '壊れその夜の先に 光がある'], [99.5, '止まらないこの鼓動 明日へ繋いで行こう'], [106.7, '変わらないこの想い 抱きしめて'], [113.8, 'どんな未来でも'], [118.8, '君となら行ける'], [124.8, '輝いて Shine again'], [127.8, '限界を超えていけ'], [131.8, '涙さえ力になる'], [136.8, '信じてる'], [138.8, '走り出せ 今すぐに'], [142.8, '新しい空の下 終わらない'], [148.1, 'この歌を届けよう'], [157.3, 'また光る未来へ']];
 function themeSong() {
@@ -513,10 +517,12 @@ function endingBox(replay = false) {
   setPrMode('off'); // ムービー／エンドロール中は出さない
   const e = judgeEnding(S!); const st = S!;
   const panel = () => {
-    $('#ch').innerHTML = `<div class="panel endpanel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。三年間、ありがとう。</p><div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-r">🎬 エンディングをもう一度</button><button id="e-s">最終セーブ文字列</button></div></div>`;
+    $('#ch').innerHTML = `<div class="panel endpanel"><h2>🌸 ${esc(e.title)}</h2><p>おつかれさまでした。三年間、ありがとう。</p>${portalLinkHtml('ending')}<div class="row"><button id="e-t" class="primary">タイトルへ</button><button id="e-r">🎬 エンディングをもう一度</button><button id="e-s">最終セーブ文字列</button></div></div>`;
     $('#e-t').onclick = () => { audio.stopSong(); audio.stopFileBgm(); resolve(st, 0); store.save('auto', st); try { localStorage.removeItem('seishun:slotauto'); } catch { } title(); };
     $('#e-r').onclick = () => endingBox(true);
     $('#e-s').onclick = () => modal('SAVE', `<textarea readonly class="savestr">${exportSave(st)}</textarea>`);
+    bindPortalLinks();
+    document.body.classList.toggle('portal-ending', portalLinkEnabled());
   };
   if (!replay) panel();
   const m = buildEndingMovie(st, e, BASE);

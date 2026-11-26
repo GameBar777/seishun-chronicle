@@ -565,6 +565,33 @@ button.act::before{content:none !important;display:none !important}
 .stage #ch,.stage .choices{order:3;margin:0 0 8px;z-index:4;max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch}
 
 
+/* ── 配布版（PLiCy / itch）だけの公式サイト案内。本家ビルドでは DOM に出さない ── */
+.portal-link{
+  margin:8px auto 0;padding:0;text-align:center;
+  font-family:var(--font-deco);font-size:.78rem;line-height:1.5;letter-spacing:.06em;
+  max-width:min(520px,94%);flex:0 0 auto;align-self:center;
+}
+.portal-link a{
+  color:#8a5a12;text-decoration:underline;text-underline-offset:3px;
+  text-shadow:0 1px 0 #fff,0 0 8px #fffef8;
+}
+.portal-link a:hover,.portal-link a:focus-visible{color:#6a2048}
+/* エンディング結果：ムービー中は出さず、pr-ending になってから表示。ボタンより上に置く */
+.endpanel .portal-link{display:none;margin:8px 0}
+body.pr-ending .endpanel .portal-link{display:block}
+/* 配布版の結果画面だけ：残った台詞窓を畳み、案内が画面内に収まるようにする（本家には .portal-ending が付かない） */
+body.portal-ending .stage{min-height:0}
+body.portal-ending .stage .box,
+body.portal-ending .cmd{display:none}
+body.portal-ending .stage #ch,
+body.portal-ending .stage .choices{max-height:none;overflow:visible;margin-bottom:0}
+@media(min-width:721px){
+  body.portal-ending .pwrap{height:min(38dvh,40vh)}
+}
+@media(max-width:600px){
+  .portal-link{font-size:.72rem;margin-top:6px}
+}
+
 /* ── A8 PR枠（ポータルの金縁・ダーク基調に合わせてコンパクトに） ──
    表示は body.pr-title / body.pr-ending のみ（ui.ts の setPrMode）。:has() 非依存。
    枠はビューポート下端に固定し、#app が残りの高さを使う。狭い画面では #app 内だけがスクロールする。 */

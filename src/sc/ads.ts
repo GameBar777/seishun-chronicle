@@ -1,19 +1,26 @@
 /** AdSense H5 Games Ads (Ad Placement API) の安全ラッパー。
- *  広告スクリプトが無い／ブロック／未承認でも、必ず done を呼んでゲームを止めない。 */
+ *  広告スクリプトが無い／ブロック／未承認でも、必ず done を呼んでゲームを止めない。
+ *  ポータル／itch／Game Jolt ビルド（__PORTAL_BUILD__）では広告コード自体を出さない。 */
+declare const __PORTAL_BUILD__: boolean;
 export type AdHooks = { pause: () => void; resume: () => void; lock: (on: boolean) => void };
 type W = { adBreak?: (o: any) => void; adConfig?: (o: any) => void; adsbygoogle?: any };
 /** 広告ライブラリ本体が読み込まれたか（ブロック・読み込み失敗なら false → 即スキップ） */
-export const adsReady = () => { const a = win().adsbygoogle; return !!a && !Array.isArray(a) || !!a?.loaded; };
+export const adsReady = () => {
+  if (__PORTAL_BUILD__) return false;
+  const a = win().adsbygoogle; return !!a && !Array.isArray(a) || !!a?.loaded;
+};
 const win = (): W => (typeof window === 'undefined' ? {} : (window as any));
 let configured = false;
 
 export function initAds() {
+  if (__PORTAL_BUILD__) return;
   if (configured) return; configured = true;
   try { win().adConfig?.({ preloadAdBreaks: 'on', sound: 'on' }); } catch { /* ignore */ }
 }
 
 /** 週送りのインタースティシャル。done は一度だけ必ず呼ばれる（timeoutMs で強制終了） */
 export function weekBreak(h: AdHooks, done: () => void = () => { }, timeoutMs = 4000, adMaxMs = 120000) {
+  if (__PORTAL_BUILD__) { done(); return; }
   let fin = false, paused = false, timer: any = null;
   const finish = () => {
     if (fin) return; fin = true; clearTimeout(timer);
