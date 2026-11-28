@@ -643,6 +643,23 @@ body.pr-ending #app{
 body.pr-title aside.fnb,
 body.pr-ending aside.fnb{display:block;flex:0 0 auto;width:100%}
 
+/* エンディング結果のみ：説明文の切替と並び（ゲーマーズ→DMM→ABEMA→AMNIBUS）。li は複製せず order で並べる */
+aside.fnb .fnb-lead-ending{display:none}
+body.pr-ending aside.fnb .fnb-lead-title{display:none}
+body.pr-ending aside.fnb .fnb-lead-ending{display:block}
+body.pr-ending aside.fnb .fnl li:nth-child(1){order:2} /* DMMブックス */
+body.pr-ending aside.fnb .fnl li:nth-child(2){order:4} /* AMNIBUS */
+body.pr-ending aside.fnb .fnl li:nth-child(3){order:1} /* ゲーマーズ */
+body.pr-ending aside.fnb .fnl li:nth-child(4){order:3} /* ABEMAプレミアム */
+
+/* 広告ではない内部リンク。PR枠の上、pr-ending のときだけ出す */
+.end-guide{display:none;margin:0;padding:8px 16px 6px;text-align:center;
+  background:linear-gradient(180deg,#fff6faee,#f3e8eef2);
+  border-top:1px solid #e8c4d4aa;color:#4a3040;font-size:13px;line-height:1.55;z-index:6}
+body.pr-ending .end-guide{display:block;flex:0 0 auto;width:100%}
+.end-guide a{color:#9b2d5a;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.end-guide a:hover{opacity:.88}
+
 /* タイトル側：#app 内でロゴ・余白（立ち絵）・メニュー・注記を収める */
 body.pr-title .title{
   min-height:0 !important;height:100%;box-sizing:border-box;
@@ -678,6 +695,7 @@ body.pr-title .tapstart{display:none}
   aside.fnb .in{padding:0 12px}
   aside.fnb{padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
   aside.fnb p{font-size:10px}
+  .end-guide{padding:6px 12px 4px;font-size:12px}
 }
 /* とても低い画面：ボタンが切れないようタイトル側だけスクロール */
 @media(max-height:700px){

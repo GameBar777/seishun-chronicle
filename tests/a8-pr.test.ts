@@ -15,11 +15,16 @@ const LINKS = [
   { href: 'https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE', text: 'オリジナルコンテンツ数No1！【ABEMAプレミアム】', img: 'https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE' },
 ];
 
-const ISSUED_ASIDE = `<aside class="fnb"><div class="in"><p class="mark">PR</p><p>ゲームのあとで見る・読むときの参考です。登録や購入、効果を保証するものではありません。</p><ul class="fnl"><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" rel="nofollow">【DMMブックス】</a> <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6" rel="nofollow">あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS</a><img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" rel="nofollow">ゲーマーズ</a>
+const ISSUED_LIST = `<ul class="fnl"><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" rel="nofollow">【DMMブックス】</a> <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6" rel="nofollow">あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS</a><img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" rel="nofollow">ゲーマーズ</a>
 
 
 <img border="0" width="1" height="1" src="https://www12.a8.net/0.gif?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE" rel="nofollow">オリジナルコンテンツ数No1！【ABEMAプレミアム】</a>
-<img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE" alt=""></li></ul></div></aside>`;
+<img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE" alt=""></li></ul>`;
+
+const TITLE_LEAD = 'ゲームのあとで見る・読むときの参考です。登録や購入、効果を保証するものではありません。';
+const ENDING_LEAD = 'エンディングのあとに（PR）　学園恋愛ものの余韻に。登録や購入、効果を保証するものではありません。';
+const GUIDE_HREF = 'https://gamebar777.github.io/guides/seishun-chronicle/endings.html';
+const GUIDE_TEXT = 'ほかの結末も見てみる → 攻略ガイド：エンディング一覧';
 
 describe('A8 PR footer on GitHub Pages index.html', () => {
   it('sits after #app and outside it, before </body>', () => {
@@ -31,15 +36,17 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
     expect(bodyEnd).toBeGreaterThan(fnb);
     const afterApp = html.slice(app);
     expect(afterApp.startsWith('<div id="app" aria-live="polite"></div>')).toBe(true);
-    expect(html.includes('<div id="app" aria-live="polite"></div>\n<!--a8-pr-start-->\n<aside class="fnb">')).toBe(true);
+    expect(html.includes('<div id="app" aria-live="polite"></div>\n<!--a8-pr-start-->\n<p class="end-guide">')).toBe(true);
+    expect(fnb).toBeGreaterThan(html.indexOf('class="end-guide"'));
   });
 
-  it('keeps issued markup byte-for-byte: PR mark, lead, classes, 4 links in order, no 無料体験', () => {
-    const i = html.indexOf('<aside class="fnb">');
-    const j = html.indexOf('</aside>', i) + '</aside>'.length;
-    expect(html.slice(i, j)).toBe(ISSUED_ASIDE);
+  it('keeps issued A8 <a>/<img> byte-for-byte in title order, no 無料体験, each 0.gif once', () => {
+    const i = html.indexOf('<ul class="fnl">');
+    const j = html.indexOf('</ul>', i) + '</ul>'.length;
+    expect(html.slice(i, j)).toBe(ISSUED_LIST);
     expect(html).toContain('<p class="mark">PR</p>');
-    expect(html).toContain('class="fnl"');
+    expect(html).toContain(`<p class="fnb-lead fnb-lead-title">${TITLE_LEAD}</p>`);
+    expect(html).toContain(`<p class="fnb-lead fnb-lead-ending">${ENDING_LEAD}</p>`);
     expect(html).not.toContain('class="ad"');
     expect(html).not.toContain('無料体験');
     expect(html).not.toContain('audiobook.jp');
@@ -50,8 +57,38 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
       expect(a).toBeGreaterThan(pos);
       expect(html).toContain(`>${L.text}</a>`);
       expect(html).toContain(`src="${L.img}"`);
+      expect(html.split(`src="${L.img}"`).length - 1).toBe(1);
       pos = a;
     }
+  });
+
+  it('adds a non-ad internal guide link above the PR box, same tab, no nofollow', () => {
+    const guide = html.indexOf('class="end-guide"');
+    const fnb = html.indexOf('<aside class="fnb">');
+    const a8start = html.indexOf('<!--a8-pr-start-->');
+    const a8end = html.indexOf('<!--a8-pr-end-->');
+    expect(guide).toBeGreaterThan(a8start);
+    expect(guide).toBeLessThan(fnb);
+    expect(fnb).toBeLessThan(a8end);
+    expect(html).toContain(`<p class="end-guide"><a href="${GUIDE_HREF}">${GUIDE_TEXT}</a></p>`);
+    const chunk = html.slice(guide, fnb);
+    expect(chunk).not.toContain('nofollow');
+    expect(chunk).not.toContain('target=');
+    expect(chunk).not.toContain('秘密');
+    expect(chunk).not.toContain('隠し');
+    expect(css).toContain('body.pr-ending .end-guide{display:block');
+    expect(css).toMatch(/\.end-guide\{[^}]*display:\s*none/);
+  });
+
+  it('reorders ending links with CSS order and does not duplicate the list', () => {
+    expect(css).toContain('body.pr-ending aside.fnb .fnb-lead-title{display:none}');
+    expect(css).toContain('body.pr-ending aside.fnb .fnb-lead-ending{display:block}');
+    expect(css).toContain('body.pr-ending aside.fnb .fnl li:nth-child(1){order:2}');
+    expect(css).toContain('body.pr-ending aside.fnb .fnl li:nth-child(2){order:4}');
+    expect(css).toContain('body.pr-ending aside.fnb .fnl li:nth-child(3){order:1}');
+    expect(css).toContain('body.pr-ending aside.fnb .fnl li:nth-child(4){order:3}');
+    expect((html.match(/class="fnl"/g) || []).length).toBe(1);
+    expect((html.match(/a8mat=4BGQGS\+4P34KY\+4AHY\+5YRHE/g) || []).length).toBe(2); // a + img
   });
 
   it('hides the box by default and shows it only with pr-title / pr-ending (no :has() dependency)', () => {
@@ -68,8 +105,14 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
     const gone = stripA8Pr(html, { A8_PR: '0' });
     expect(gone).not.toContain('aside class="fnb"');
     expect(gone).not.toContain('a8.net');
+    expect(gone).not.toContain('end-guide');
+    expect(gone).not.toContain('ほかの結末も見てみる');
+    expect(gone).not.toContain('endings.html');
     expect(gone).toContain('<div id="app" aria-live="polite"></div>');
-    expect(stripA8Pr(html, { PORTAL_BUILD: '1' })).not.toContain('aside class="fnb"');
+    const portal = stripA8Pr(html, { PORTAL_BUILD: '1' });
+    expect(portal).not.toContain('aside class="fnb"');
+    expect(portal).not.toContain('end-guide');
+    expect(portal).not.toContain('ほかの結末も見てみる');
   });
 });
 

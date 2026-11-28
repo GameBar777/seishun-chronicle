@@ -76,7 +76,7 @@ describe('portal button markup', () => {
 });
 
 describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
-  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.12', () => {
+  it('index.html has no portal CTA, keeps ads / GoatCounter / A8, and is v1.20.13', () => {
     expect(html).not.toContain(PORTAL_BTN_TEXT);
     expect(html).not.toContain('t-official');
     expect(html).not.toContain('e-official');
@@ -88,10 +88,12 @@ describe('official (GitHub Pages) sources stay unchanged in appearance', () => {
     expect(html).toContain('<!--goatcounter-start-->');
     expect(html).toContain('aside class="fnb"');
     expect(html).toContain('a8.net');
-    expect(html).toContain('"softwareVersion": "1.20.12"');
+    expect(html).toContain('"softwareVersion": "1.20.13"');
   });
 
   it('changelog notes the distribution-build button modestly', () => {
+    expect(changelog).toContain('<h2>v1.20.13</h2>');
+    expect(changelog).toContain('エンディングの結果画面で、参考リンクの案内と並びを変え、攻略ガイドへの案内を足しました');
     expect(changelog).toContain('<h2>v1.20.12</h2>');
     expect(changelog).toContain('配布版の公式サイト案内が、1回のクリックで開くようにした');
     expect(changelog).toContain('<h2>v1.20.11</h2>');
