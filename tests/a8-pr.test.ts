@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { stripA8Pr } from '../scripts/strip-a8-pr.mjs';
-import { setPrMode, prMode } from '../src/sc/pr';
+import { setPrMode, prMode, campaignOf, prEventPath } from '../src/sc/pr';
+const prSrc = readFileSync('src/sc/pr.ts', 'utf8');
 
 const html = readFileSync('index.html', 'utf8');
 const css = readFileSync('src/style.css', 'utf8');
@@ -15,11 +16,11 @@ const LINKS = [
   { href: 'https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE', text: 'オリジナルコンテンツ数No1！【ABEMAプレミアム】', img: 'https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE' },
 ];
 
-const ISSUED_LIST = `<ul class="fnl"><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" rel="nofollow">【DMMブックス】</a> <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6" rel="nofollow">あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS</a><img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" rel="nofollow">ゲーマーズ</a>
+const ISSUED_ITEMS = `<li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" rel="nofollow">【DMMブックス】</a> <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGJFP+UYK8I+6HW+3SY4KI" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6" rel="nofollow">あなたの好きなアニメ・漫画・ゲームのコラボグッズがみつかる！AMNIBUS</a><img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGJFP+XCANM+41ZK+60WN6" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" rel="nofollow">ゲーマーズ</a>
 
 
 <img border="0" width="1" height="1" src="https://www12.a8.net/0.gif?a8mat=4BGQGS+4P34KY+4AHY+5YRHE" alt=""></li><li><a href="https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE" rel="nofollow">オリジナルコンテンツ数No1！【ABEMAプレミアム】</a>
-<img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE" alt=""></li></ul>`;
+<img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=4BGOWO+87WGFM+4EKC+60OXE" alt=""></li>`;
 
 const TITLE_LEAD = 'ゲームのあとで見る・読むときの参考です。登録や購入、効果を保証するものではありません。';
 const ENDING_LEAD = 'エンディングのあとに（PR）　学園恋愛ものの余韻に。登録や購入、効果を保証するものではありません。';
@@ -40,10 +41,17 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
     expect(fnb).toBeGreaterThan(html.indexOf('class="end-guide"'));
   });
 
-  it('keeps issued A8 <a>/<img> byte-for-byte in title order, no 無料体験, each 0.gif once', () => {
-    const i = html.indexOf('<ul class="fnl">');
-    const j = html.indexOf('</ul>', i) + '</ul>'.length;
-    expect(html.slice(i, j)).toBe(ISSUED_LIST);
+  it('keeps issued A8 <a>/<img> byte-for-byte inside <template>, with an empty live ul', () => {
+    expect(html).toContain('<ul class="fnl"></ul><template id="fnb-links">');
+    const open = '<template id="fnb-links">';
+    const i = html.indexOf(open) + open.length;
+    const j = html.indexOf('</template>', i);
+    expect(html.slice(i, j)).toBe(ISSUED_ITEMS);
+    const aside = html.indexOf('<aside class="fnb">');
+    const tpl = html.indexOf('<template id="fnb-links">');
+    expect(html.slice(aside, tpl)).not.toContain('0.gif');
+    expect(html).not.toContain('data-src');
+    expect(html).not.toContain('data-goatcounter-click');
     expect(html).toContain('<p class="mark">PR</p>');
     expect(html).toContain(`<p class="fnb-lead fnb-lead-title">${TITLE_LEAD}</p>`);
     expect(html).toContain(`<p class="fnb-lead fnb-lead-ending">${ENDING_LEAD}</p>`);
@@ -88,6 +96,7 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
     expect(css).toContain('body.pr-ending aside.fnb .fnl li:nth-child(3){order:1}');
     expect(css).toContain('body.pr-ending aside.fnb .fnl li:nth-child(4){order:3}');
     expect((html.match(/class="fnl"/g) || []).length).toBe(1);
+    expect((html.match(/<template id="fnb-links">/g) || []).length).toBe(1);
     expect((html.match(/a8mat=4BGQGS\+4P34KY\+4AHY\+5YRHE/g) || []).length).toBe(2); // a + img
   });
 
@@ -108,11 +117,17 @@ describe('A8 PR footer on GitHub Pages index.html', () => {
     expect(gone).not.toContain('end-guide');
     expect(gone).not.toContain('ほかの結末も見てみる');
     expect(gone).not.toContain('endings.html');
+    expect(gone).not.toContain('fnb-links');
+    expect(gone).not.toContain('<template');
+    expect(gone).not.toContain('a8mat');
     expect(gone).toContain('<div id="app" aria-live="polite"></div>');
     const portal = stripA8Pr(html, { PORTAL_BUILD: '1' });
     expect(portal).not.toContain('aside class="fnb"');
     expect(portal).not.toContain('end-guide');
     expect(portal).not.toContain('ほかの結末も見てみる');
+    expect(portal).not.toContain('fnb-links');
+    expect(portal).not.toContain('<template');
+    expect(portal).not.toContain('a8mat');
   });
 });
 
@@ -156,5 +171,45 @@ describe('setPrMode body classes', () => {
     expect(ui).toMatch(/function playLines[\s\S]{0,120}?setPrMode\('off'\);/);
     expect(ui).toMatch(/function endingBox[\s\S]{0,80}?setPrMode\('off'\);/);
     expect(ui).toMatch(/setTimeout\(\(\) => \{[\s\S]*?setPrMode\('ending'\);[\s\S]*?\}, 920\)/);
+  });
+});
+
+describe('PR lazy mount and GoatCounter events', () => {
+  it('mounts links via IntersectionObserver and does not rewrite ad tags or preventDefault', () => {
+    expect(prSrc).toContain('IntersectionObserver');
+    expect(prSrc).toContain("getElementById('fnb-links')");
+    expect(prSrc).toContain('cloneNode(true)');
+    expect(prSrc).toContain('auxclick');
+    expect(prSrc).toContain('goatcounter?.count');
+    expect(prSrc).toContain('event: true');
+    expect(prSrc).not.toContain('data-src');
+    expect(prSrc).not.toMatch(/\.(preventDefault|stopPropagation)\s*\(/);
+    expect(prSrc).toContain('if (!__PORTAL_BUILD__)');
+  });
+
+  it('uses short ASCII campaign names and a8-<name>-title/ending event paths', () => {
+    const href = (h: string) => ({ getAttribute: () => h, closest: () => null }) as unknown as HTMLAnchorElement;
+    expect(campaignOf(href('https://px.a8.net/svt/ejp?a8mat=4BGQGS+4P34KY+4AHY+5YRHE'))).toBe('gamers');
+    expect(campaignOf(href('https://px.a8.net/svt/ejp?a8mat=4BGJFP+UYK8I+6HW+3SY4KI'))).toBe('dmm');
+    expect(campaignOf(href('https://px.a8.net/svt/ejp?a8mat=4BGOWO+87WGFM+4EKC+60OXE'))).toBe('abema');
+    expect(campaignOf(href('https://px.a8.net/svt/ejp?a8mat=4BGJFP+XCANM+41ZK+60WN6'))).toBe('amnibus');
+    expect(prEventPath('gamers', 'title')).toBe('a8-gamers-title');
+    expect(prEventPath('dmm', 'ending')).toBe('a8-dmm-ending');
+    expect(prEventPath('abema', 'title')).toBe('a8-abema-title');
+    expect(prEventPath('amnibus', 'ending')).toBe('a8-amnibus-ending');
+    expect(prEventPath('guide-endings', 'ending')).toBe('guide-endings');
+  });
+});
+
+describe('ending PR tap targets on narrow screens', () => {
+  it('makes ending links 14px+ and 44px+ tall at max-width 600px, without changing title styles', () => {
+    expect(css).toContain('@media(max-width:600px)');
+    expect(css).toContain('body.pr-ending aside.fnb .fnl{grid-template-columns:1fr');
+    expect(css).toContain('body.pr-ending aside.fnb .fnl a{');
+    expect(css).toMatch(/body\.pr-ending aside\.fnb \.fnl a\{[^}]*display:\s*block/);
+    expect(css).toMatch(/body\.pr-ending aside\.fnb \.fnl a\{[^}]*font-size:\s*14px/);
+    expect(css).toMatch(/body\.pr-ending aside\.fnb \.fnl a\{[^}]*min-height:\s*44px/);
+    expect(css).toContain('body.pr-ending{overflow-x:hidden}');
+    expect(css).not.toContain('body.pr-title aside.fnb .fnl a{');
   });
 });

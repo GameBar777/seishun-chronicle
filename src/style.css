@@ -697,6 +697,17 @@ body.pr-title .tapstart{display:none}
   aside.fnb p{font-size:10px}
   .end-guide{padding:6px 12px 4px;font-size:12px}
 }
+/* エンディング後のPR枠だけ、狭い画面で押しやすくする（タイトルの枠は変えない） */
+@media(max-width:600px){
+  body.pr-ending{overflow-x:hidden}
+  body.pr-ending aside.fnb .fnl{grid-template-columns:1fr;gap:6px}
+  body.pr-ending aside.fnb .fnl li{font-size:14px;line-height:1.4}
+  body.pr-ending aside.fnb .fnl a{
+    display:block;box-sizing:border-box;
+    font-size:14px;line-height:1.4;min-height:44px;padding:10px 8px;
+    overflow-wrap:anywhere;word-break:break-word
+  }
+}
 /* とても低い画面：ボタンが切れないようタイトル側だけスクロール */
 @media(max-height:700px){
   body.pr-title .title{overflow:auto;-webkit-overflow-scrolling:touch}
