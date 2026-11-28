@@ -211,5 +211,7 @@ describe('ending PR tap targets on narrow screens', () => {
     expect(css).toMatch(/body\.pr-ending aside\.fnb \.fnl a\{[^}]*min-height:\s*44px/);
     expect(css).toContain('body.pr-ending{overflow-x:hidden}');
     expect(css).not.toContain('body.pr-title aside.fnb .fnl a{');
+    expect(css).toContain('body.pr-ending .stage{min-height:0}');
+    expect(css).toContain('body.pr-ending .stage .box,');
   });
 });

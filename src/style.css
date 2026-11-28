@@ -643,6 +643,14 @@ body.pr-ending #app{
 body.pr-title aside.fnb,
 body.pr-ending aside.fnb{display:block;flex:0 0 auto;width:100%}
 
+/* 結果画面は下にPR枠が固定される。100dvh 基準の min-height と余った台詞窓を外し、#app 内でスクロールしてボタンを見られるようにする */
+body.pr-ending .stage{min-height:0}
+body.pr-ending .stage .box,
+body.pr-ending .cmd{display:none}
+@media(max-width:600px){
+  body.pr-ending .pwrap{height:min(36dvh,260px)}
+}
+
 /* エンディング結果のみ：説明文の切替と並び（ゲーマーズ→DMM→ABEMA→AMNIBUS）。li は複製せず order で並べる */
 aside.fnb .fnb-lead-ending{display:none}
 body.pr-ending aside.fnb .fnb-lead-title{display:none}
